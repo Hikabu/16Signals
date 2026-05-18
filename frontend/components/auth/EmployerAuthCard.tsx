@@ -153,6 +153,7 @@ function EmployerWaitlistWizard({
   onSwitchToCandidate?: () => void;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
+  const [showOtherRoles, setShowOtherRoles] = useState(false);
   const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>("idle");
   const [submitError, setSubmitError] = useState("");
@@ -417,44 +418,76 @@ function EmployerWaitlistWizard({
             </div>
           </div>
 
-          {/* Other roles row */}
+          {/* Other roles row — collapsible, hidden by default */}
           <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-              Other roles
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {OTHER_ROLES.map((r) => (
-                <Chip
-                  key={r}
-                  label={r}
-                  selected={data.rolesHiring.includes(r)}
-                  onClick={() =>
-                    setData((d) => ({ ...d, rolesHiring: toggle(d.rolesHiring, r) }))
+            <button
+              type="button"
+              onClick={() => {
+                setShowOtherRoles((v) => {
+                  // clear selections when collapsing
+                  if (v) {
+                    setData((d) => ({
+                      ...d,
+                      rolesHiring: d.rolesHiring.filter((r) => !OTHER_ROLES.includes(r)),
+                      otherRolesText: "",
+                    }));
                   }
-                />
-              ))}
-              {/* "Other" chip — reveals free text */}
-              <Chip
-                label="+ Other"
-                selected={data.otherRolesText.length > 0}
-                onClick={() =>
-                  setData((d) => ({
-                    ...d,
-                    otherRolesText: d.otherRolesText.length > 0 ? "" : " ",
-                  }))
-                }
-              />
-            </div>
-            {/* Inline text input for "Other" */}
-            {(data.rolesHiring.includes("+ Other") || data.otherRolesText.trim().length >= 0 && data.otherRolesText.length > 0) && (
-              <Input
-                autoFocus
-                type="text"
-                placeholder="Which role? (e.g. Legal, Finance, Operations…)"
-                value={data.otherRolesText.trim() === "" && data.otherRolesText.length > 0 ? "" : data.otherRolesText}
-                onChange={(e) => setData((d) => ({ ...d, otherRolesText: e.target.value }))}
-                className="mt-1"
-              />
+                  return !v;
+                });
+              }}
+              className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+            >
+              <span
+                className={cn(
+                  "inline-block transition-transform duration-150",
+                  showOtherRoles ? "rotate-90" : "rotate-0"
+                )}
+              >
+                ▶
+              </span>
+              Other roles
+              {!showOtherRoles && (
+                data.rolesHiring.some((r) => OTHER_ROLES.includes(r)) || data.otherRolesText.trim()
+                  ? <span className="ml-1 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary normal-case tracking-normal">selected</span>
+                  : <span className="ml-1 font-normal normal-case tracking-normal opacity-60">(optional)</span>
+              )}
+            </button>
+
+            {showOtherRoles && (
+              <div className="space-y-2 pt-1">
+                <div className="flex flex-wrap gap-2">
+                  {OTHER_ROLES.map((r) => (
+                    <Chip
+                      key={r}
+                      label={r}
+                      selected={data.rolesHiring.includes(r)}
+                      onClick={() =>
+                        setData((d) => ({ ...d, rolesHiring: toggle(d.rolesHiring, r) }))
+                      }
+                    />
+                  ))}
+                  {/* "Other" chip — reveals free text */}
+                  <Chip
+                    label="+ Other"
+                    selected={data.otherRolesText.length > 0}
+                    onClick={() =>
+                      setData((d) => ({
+                        ...d,
+                        otherRolesText: d.otherRolesText.length > 0 ? "" : " ",
+                      }))
+                    }
+                  />
+                </div>
+                {data.otherRolesText.length > 0 && (
+                  <Input
+                    autoFocus
+                    type="text"
+                    placeholder="Which role? (e.g. Legal, Finance, Operations…)"
+                    value={data.otherRolesText.trim() === "" ? "" : data.otherRolesText}
+                    onChange={(e) => setData((d) => ({ ...d, otherRolesText: e.target.value }))}
+                  />
+                )}
+              </div>
             )}
           </div>
         </div>

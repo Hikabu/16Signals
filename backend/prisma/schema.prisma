@@ -506,13 +506,22 @@ model EmployerWaitlist {
 
 
 
+// ─── NON-DEVELOPER CANDIDATE WAITLIST ────────────────────────────────────────
+// People who work in tech but are not (yet) developers — designers, PMs, etc.
+// Collected to plan roadmap expansion; emailed when their role/tools are supported.
+
 model CandidateInterestedWaitlist {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  roleType  RoleType?
-  otherRoleType String? // freeform if roleType is OTHER
-  tools     String[] @default([]) // selected tools of interest
-  userId    String? // nullable, set when signed-in candidate subscribes
+  id    String @id @default(uuid())
+  email String @unique
+  name  String?  // optional display name
+
+  // Role signals
+  role      String?  // primary role chip selected (e.g. "Designer")
+  otherRole String?  // free-text when "Other" is chosen
+
+  // Tooling signals
+  tools String?  // free-text: tools they use day-to-day (Figma, Notion, etc.)
+
   createdAt DateTime @default(now())
 
   @@map("candidate_interested_waitlist")

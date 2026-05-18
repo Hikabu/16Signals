@@ -13,10 +13,12 @@ import {
   ApiOperation,
   ApiOkResponse,
   ApiBadRequestResponse,
+  ApiConflictResponse,
 } from '@nestjs/swagger';
 
 import { ProfileService } from './profile.service';
 import { RegisterWaitlistDto } from './dto/register-waitlist.dto';
+import { RegisterNonDevWaitlistDto } from './dto/register-nondev-waitlist.dto';
 
 @ApiTags('Public Profiles')
 @Controller('profile')
@@ -29,9 +31,7 @@ export class PublicProfileController {
   getPublicProfile(
     @Param('username') username: string,
   ) {
-    return this.profileService.getPublicProfile(
-      username,
-    );
+    return this.profileService.getPublicProfile(username);
   }
 
   @Get('public')
@@ -39,18 +39,33 @@ export class PublicProfileController {
     return this.profileService.searchPublicProfiles(q || '');
   }
 
-  // ─── Employer Launch Waitlist (public, no auth) ──────────────────────────
+  // ─── Legacy employer launch waitlist (guest) ─────────────────────────────
 
   @Post('waitlist')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Join employer launch waitlist (guest)',
-    description:
-      'Stores the email and sends a confirmation email. Idempotent, calling twice with the same email is a no-op.',
-  })
+  @ApiOperation({ summary: 'Join employer launch waitlist (guest)' })
   @ApiOkResponse({ description: 'Joined the waitlist' })
   @ApiBadRequestResponse({ description: 'Invalid email address' })
   registerWaitlist(@Body() dto: RegisterWaitlistDto) {
     return this.profileService.registerWaitlistGuest(dto.email);
+  }
+
+  // ─── Non-developer candidate waitlist ────────────────────────────────────
+
+  @Get('candidate-waitlist/status')
+  @ApiOperation({ summary: 'Check if email is already on the non-dev candidate waitlist' })
+  @ApiOkResponse({ description: '{ registered: boolean }' })
+  getNonDevWaitlistStatus(@Query('email') email: string) {
+    return this.profileService.getNonDevWaitlistStatus(email);
+  }
+
+  @Post('candidate-waitlist')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Join the non-developer candidate waitlist' })
+  @ApiOkResponse({ description: 'Successfully joined the waitlist' })
+  @ApiConflictResponse({ description: 'Email already on the waitlist' })
+  @ApiBadRequestResponse({ description: 'Invalid payload' })
+  registerNonDevWaitlist(@Body() dto: RegisterNonDevWaitlistDto) {
+    return this.profileService.registerNonDevWaitlist(dto);
   }
 }

@@ -3316,7 +3316,6 @@
     },
     "/profile/waitlist": {
       "post": {
-        "description": "Stores the email and sends a confirmation email. Idempotent, calling twice with the same email is a no-op.",
         "operationId": "PublicProfileController_registerWaitlist",
         "parameters": [],
         "requestBody": {
@@ -3338,6 +3337,61 @@
           }
         },
         "summary": "Join employer launch waitlist (guest)",
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/profile/candidate-waitlist/status": {
+      "get": {
+        "operationId": "PublicProfileController_getNonDevWaitlistStatus",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ registered: boolean }"
+          }
+        },
+        "summary": "Check if email is already on the non-dev candidate waitlist",
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/profile/candidate-waitlist": {
+      "post": {
+        "operationId": "PublicProfileController_registerNonDevWaitlist",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterNonDevWaitlistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully joined the waitlist"
+          },
+          "400": {
+            "description": "Invalid payload"
+          },
+          "409": {
+            "description": "Email already on the waitlist"
+          }
+        },
+        "summary": "Join the non-developer candidate waitlist",
         "tags": [
           "Public Profiles"
         ]
@@ -5973,6 +6027,34 @@
           "email": {
             "type": "string",
             "example": "candidate@example.com"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "RegisterNonDevWaitlistDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "jane@company.com"
+          },
+          "name": {
+            "type": "string",
+            "example": "Jane Smith"
+          },
+          "role": {
+            "type": "string",
+            "example": "Designer"
+          },
+          "otherRole": {
+            "type": "string",
+            "example": "Operations Manager"
+          },
+          "tools": {
+            "type": "string",
+            "example": "Figma, Notion, Linear, Salesforce"
           }
         },
         "required": [

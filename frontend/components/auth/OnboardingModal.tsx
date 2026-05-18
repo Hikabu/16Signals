@@ -13,13 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +27,7 @@ interface OnboardingModalProps {
 export interface OnboardingFormValues {
   displayName: string;
   username: string;
+  /** Kept for backwards-compatibility with auth/page.tsx — always "candidate" */
   role: "candidate" | "employer";
 }
 
@@ -49,7 +43,6 @@ export function OnboardingModal({
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<OnboardingFormValues>({
     defaultValues: { username: defaultUsername, role: "candidate" },
@@ -106,24 +99,8 @@ export function OnboardingModal({
             )}
           </div>
 
-          {/* Role */}
-          <div className="space-y-1">
-            <Label htmlFor="onboard-role">I am a...</Label>
-            <Select
-              defaultValue="candidate"
-              onValueChange={(v) =>
-                setValue("role", v as "candidate" | "employer")
-              }
-            >
-              <SelectTrigger id="onboard-role">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="candidate">Candidate</SelectItem>
-                <SelectItem value="employer">Employer</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* role is a hidden field — always "candidate" for OAuth onboarding */}
+          <input type="hidden" {...register("role")} value="candidate" />
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 

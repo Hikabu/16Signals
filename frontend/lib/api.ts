@@ -612,7 +612,10 @@ export async function completeOnboarding(
 ): Promise<AuthResponse> {
   const body = await AuthCandidateController_completeOnboarding({
     headers: undefined,
-    body: { username: input.username },
+    body: {
+      username: input.username,
+      ...(input.displayName ? { displayName: input.displayName } : {}),
+    },
   });
   return normalizeAuthResponse(
     { ...(body as Record<string, unknown> | undefined), role: input.role },

@@ -13,7 +13,7 @@ interface ModeSwitcherProps {
 
 interface ModeFormTransitionProps {
   /** Use the current mode as the key so AnimatePresence detects a real swap. */
-  modeKey: Mode;
+  modeKey: string;
   children: ReactNode;
 }
 

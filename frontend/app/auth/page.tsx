@@ -8,12 +8,13 @@ import { CandidateAuthCard } from "@/components/auth/CandidateAuthCard";
 import { EmailVerifyModal } from "@/components/auth/EmailVerifyModal";
 import { EmployerAuthCard } from "@/components/auth/EmployerAuthCard";
 import { MfaModal } from "@/components/auth/MfaModal";
+import { NonDeveloperWaitlistCard } from "@/components/auth/NonDeveloperWaitlistCard";
 import {
   OnboardingModal,
   type OnboardingFormValues,
 } from "@/components/auth/OnboardingModal";
 import { PrivyEmployerAuthCard } from "@/components/auth/PrivyEmployerAuthCard";
-import { ModeFormTransition, ModeSwitcher } from "@/components/ModeSwitcher";
+import { ModeFormTransition } from "@/components/ModeSwitcher";
 import {
   completeOnboarding,
   getApiErrorMessage,
@@ -34,7 +35,7 @@ import { useAuthStore } from "@/lib/auth-store";
 //TODO: conditional non rendering of hr login
 
 
-type Mode = "candidate" | "employer";
+type Mode = "candidate" | "employer" | "nondev";
 type PasswordResetStep = 1 | 2 | null;
 
 const PRIVY_ENABLED =
@@ -254,7 +255,10 @@ function AuthPageContent() {
 
   function handleOnboardingComplete(data: OnboardingFormValues) {
     setOnboardingError(null);
-    onboardingMutation.mutate(data);
+    onboardingMutation.mutate({
+      ...data,
+      displayName: data.displayName,
+    });
   }
 
   // Show a neutral loading screen while we validate the stored token.
@@ -273,24 +277,38 @@ function AuthPageContent() {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:44px_44px]" />
 
       <div className="relative z-10 flex w-full max-w-md flex-col items-center gap-6">
-        <ModeSwitcher mode={mode} onChange={setMode} />
 
         <ModeFormTransition modeKey={mode}>
-          {mode === "candidate" ? (
-            <CandidateAuthCard
-              onRegisterSuccess={handleRegisterSuccess}
-              onMfaRequired={handleMfaRequired}
-              onEmailVerificationRequired={() => {
-                setEmailVerifyError(null);
-                setShowEmailVerify(true);
-              }}
-              passwordResetStep={passwordResetStep}
-              onPasswordResetBack={() => setPasswordResetStep(null)}
-              onPasswordResetSuccess={() => {
-                setPasswordResetStep(null);
-                router.push("/auth");
-              }}
-            />
+          {mode === "nondev" ? (
+            <NonDeveloperWaitlistCard onBack={() => setMode("candidate")} />
+          ) : mode === "candidate" ? (
+            <>
+              <CandidateAuthCard
+                onRegisterSuccess={handleRegisterSuccess}
+                onMfaRequired={handleMfaRequired}
+                onEmailVerificationRequired={() => {
+                  setEmailVerifyError(null);
+                  setShowEmailVerify(true);
+                }}
+                passwordResetStep={passwordResetStep}
+                onPasswordResetBack={() => setPasswordResetStep(null)}
+                onPasswordResetSuccess={() => {
+                  setPasswordResetStep(null);
+                  router.push("/auth");
+                }}
+              />
+              {/* Non-developer soft link */}
+              <p className="text-center text-xs text-muted-foreground">
+                Not a developer?{" "}
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-foreground transition-colors"
+                  onClick={() => setMode("nondev")}
+                >
+                  Join the interest list
+                </button>
+              </p>
+            </>
           ) : IS_CANDIDATE_ONLY ? (
             <EmployerAuthCard
               candidateOnly

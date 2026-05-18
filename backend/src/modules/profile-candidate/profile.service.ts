@@ -726,5 +726,97 @@ where: {
 </html>`;
   }
 
+
+  // ─── Non-Developer Candidate Waitlist ──────────────────────────────────────
+
+  async getNonDevWaitlistStatus(email: string): Promise<{ registered: boolean }> {
+    if (!email) return { registered: false };
+    const existing = await (this.prisma as any).candidateInterestedWaitlist.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    return { registered: !!existing };
+  }
+
+  async registerNonDevWaitlist(dto: {
+    email: string;
+    name?: string;
+    role?: string;
+    otherRole?: string;
+    tools?: string;
+  }) {
+    const email = dto.email.toLowerCase().trim();
+
+    const existing = await (this.prisma as any).candidateInterestedWaitlist.findUnique({
+      where: { email },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        "This email is already on the waitlist. We'll reach out when we support your role.",
+      );
+    }
+
+    await (this.prisma as any).candidateInterestedWaitlist.create({
+      data: {
+        email,
+        name: dto.name,
+        role: dto.role,
+        otherRole: dto.otherRole,
+        tools: dto.tools,
+      },
+    });
+
+    await this.emailQueue.add('send', {
+      to: email,
+      subject: "You're on the list — 16Signals is expanding",
+      html: this.buildNonDevWaitlistEmail(email, dto.name, dto.role ?? dto.otherRole),
+    });
+
+    return {
+      message:
+        "You're on the list! We'll reach out as soon as we support your role.",
+    };
+  }
+
+  private buildNonDevWaitlistEmail(
+    email: string,
+    name?: string,
+    role?: string,
+  ): string {
+    const greeting = name ? `Hi ${name.split(' ')[0]},` : 'Hi there,';
+    const roleText = role ? ` for ${role}s` : '';
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're on the list</title>
+  <style>
+    body { margin: 0; padding: 0; background: #0a0a0f; font-family: 'Inter', system-ui, sans-serif; }
+    .wrapper { max-width: 580px; margin: 0 auto; padding: 40px 20px; }
+    .card { background: #12121a; border: 1px solid #1e1e2e; border-radius: 16px; padding: 40px 36px; }
+    .badge { display: inline-block; background: rgba(42,161,152,0.12); border: 1px solid rgba(42,161,152,0.3); color: #2aa198; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 24px; }
+    h1 { color: #e2e8f0; font-size: 22px; font-weight: 700; margin: 0 0 12px; line-height: 1.3; }
+    p { color: #94a3b8; font-size: 14px; line-height: 1.7; margin: 0 0 16px; }
+    .divider { border: none; border-top: 1px solid #1e1e2e; margin: 28px 0; }
+    .footer { color: #475569; font-size: 12px; text-align: center; margin-top: 28px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="badge">✓ You're on the list</div>
+      <h1>${greeting} we've got you covered.</h1>
+      <p>16Signals is currently focused on verified developer talent, but we're actively building${roleText}. You'll be one of the first to know when we expand.</p>
+      <p>Your feedback on the tools and workflows you use helps us prioritise the right features.</p>
+      <hr class="divider" />
+      <p style="font-size:13px;">We'll reach out when support for your role launches. No spam, ever.</p>
+    </div>
+    <div class="footer">16Signals · <a href="#" style="color:#475569;">Unsubscribe</a></div>
+  </div>
+</body>
+</html>`;
+  }
 }
 
