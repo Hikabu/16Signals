@@ -2731,6 +2731,60 @@
         ]
       }
     },
+    "/employer/waitlist/status": {
+      "get": {
+        "description": "Returns whether the given email is already registered on the employer waitlist.",
+        "operationId": "EmployerWaitlistController_getStatus",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ registered: boolean }"
+          }
+        },
+        "summary": "Check employer waitlist registration status",
+        "tags": [
+          "Employer Waitlist (public)"
+        ]
+      }
+    },
+    "/employer/waitlist": {
+      "post": {
+        "description": "Registers a company on the employer waitlist. Returns 409 if already registered.",
+        "operationId": "EmployerWaitlistController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterEmployerWaitlistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ message: string }"
+          },
+          "409": {
+            "description": "Email already registered"
+          }
+        },
+        "summary": "Join employer waitlist",
+        "tags": [
+          "Employer Waitlist (public)"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_check",
@@ -5629,6 +5683,63 @@
           "createdAt",
           "updatedAt",
           "_count"
+        ]
+      },
+      "RegisterEmployerWaitlistDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "hiring@acme.com"
+          },
+          "companyName": {
+            "type": "string",
+            "example": "Acme Corp"
+          },
+          "website": {
+            "type": "string",
+            "example": "https://acme.com"
+          },
+          "rolesHiring": {
+            "example": [
+              "Frontend Developer",
+              "Backend Developer"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "usesGithub": {
+            "type": "boolean",
+            "example": true
+          },
+          "evalTools": {
+            "type": "string",
+            "example": "Greenhouse, Notion, Loom"
+          },
+          "companyTypes": {
+            "example": [
+              "Startup",
+              "Web3 / Crypto"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "teamSize": {
+            "type": "string",
+            "example": "11–50"
+          },
+          "socialLinks": {
+            "type": "string",
+            "example": "https://linkedin.com/in/jane"
+          }
+        },
+        "required": [
+          "email",
+          "companyName"
         ]
       },
       "AuthAccountDto": {

@@ -466,8 +466,8 @@ model CachedResult {
   @@map("cached_results")
 }
 
-// ─── EMPLOYER LAUNCH WAITLIST ─────────────────────────────────────────────────
-// Intentionally no FK to User, works for both guests and authenticated users.
+// ─── EMPLOYER LAUNCH WAITLIST (candidate side) ───────────────────────────────
+// Candidates who want to be notified when employers go live.
 // The userId field links a signup to an account when known (nullable).
 
 model EmployerLaunchWaitlist {
@@ -477,4 +477,41 @@ model EmployerLaunchWaitlist {
   createdAt DateTime @default(now())
 
   @@map("employer_launch_waitlist")
+}
+
+// ─── EMPLOYER WAITLIST ────────────────────────────────────────────────────────
+// Companies that want early access to 16Signals hiring platform.
+// Collects ICP signals: roles hiring, eval tooling, company profile.
+
+model EmployerWaitlist {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  companyName String
+  website     String?
+
+  // ICP signals (all optional — collected in step 2 of onboarding)
+  rolesHiring  String[] @default([]) // e.g. ["Frontend Developer", "Backend Developer"]
+  usesGithub   Boolean  @default(false) // whether they already use GitHub to evaluate engineers
+  evalTools    String?  // free-text: other tools they use (Notion, Linear, etc.)
+  companyTypes String[] @default([]) // multi-select: ["Startup", "Web3 / Crypto"]
+  teamSize     String?  // e.g. "11–50"
+  socialLinks  String?  // free-text: LinkedIn / Twitter URLs
+
+  createdAt DateTime @default(now())
+
+  @@map("employer_waitlist")
+}
+
+
+
+model CandidateInterestedWaitlist {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  roleType  RoleType?
+  otherRoleType String? // freeform if roleType is OTHER
+  tools     String[] @default([]) // selected tools of interest
+  userId    String? // nullable, set when signed-in candidate subscribes
+  createdAt DateTime @default(now())
+
+  @@map("candidate_interested_waitlist")
 }

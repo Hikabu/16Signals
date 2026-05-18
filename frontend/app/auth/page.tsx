@@ -41,6 +41,8 @@ const PRIVY_ENABLED =
   process.env.NEXT_PUBLIC_PRIVY_ENABLED === "true" &&
   Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID);
 
+const IS_CANDIDATE_ONLY = process.env.NEXT_PUBLIC_CANDIDATE_ONLY === "true";
+
 function routeForRole(role: AuthRole | string | null | undefined) {
   return role === "employer" ? "/hr/jobs/new" : "/profile";
 }
@@ -288,6 +290,11 @@ function AuthPageContent() {
                 setPasswordResetStep(null);
                 router.push("/auth");
               }}
+            />
+          ) : IS_CANDIDATE_ONLY ? (
+            <EmployerAuthCard
+              candidateOnly
+              onSwitchToCandidate={() => setMode("candidate")}
             />
           ) : PRIVY_ENABLED ? (
             <PrivyEmployerAuthCard
