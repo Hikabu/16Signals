@@ -543,7 +543,7 @@ where: {
    * account creation.
    */
   async registerWaitlistGuest(email: string) {
-    // Idempotent — second call for same email is a no-op
+    // Idempotent, second call for same email is a no-op
     await this.prisma.employerLaunchWaitlist.upsert({
       where: { email },
       update: {},
@@ -552,7 +552,7 @@ where: {
 
     await this.emailQueue.add('send', {
       to: email,
-      subject: "You're on the list — 16Signals employer marketplace",
+      subject: "You're on the list, 16Signals employer marketplace",
       html: this.buildGuestWaitlistEmail(email),
     });
 
@@ -587,7 +587,7 @@ where: {
 
     await this.emailQueue.add('send', {
       to: user.email,
-      subject: "You're on the list — 16Signals employer marketplace",
+      subject: "You're on the list, 16Signals employer marketplace",
       html: this.buildAuthWaitlistEmail(user.email, hasScorecard),
     });
 
@@ -621,7 +621,7 @@ where: {
     <div class="card">
       <div class="badge">✓ You're on the list</div>
       <h1>Employers are coming to 16Signals</h1>
-      <p>We're building the fairest hiring experience in tech — where candidates are evaluated on real contribution signals, not resumes.</p>
+      <p>We're building the fairest hiring experience in tech, where candidates are evaluated on real contribution signals, not resumes.</p>
       <p>You'll be the first to know when companies start posting roles. In the meantime, create your candidate profile so you're ready when the moment comes.</p>
       <a href="${process.env.FRONTEND_URL ?? 'https://app.16signals.io'}/auth" class="cta">Create your account →</a>
       <hr class="divider" />
@@ -635,8 +635,8 @@ where: {
 
   private buildAuthWaitlistEmail(email: string, hasScorecard: boolean): string {
     const scorecardSection = hasScorecard
-      ? `<p>Your candidate card is already set up — you're ahead of the curve. When employers go live, you'll be discoverable immediately.</p>`
-      : `<p style="background:rgba(42,161,152,0.06);border:1px solid rgba(42,161,152,0.2);border-radius:10px;padding:16px;"><strong style="color:#2aa198;">One thing before we launch:</strong> Your candidate scorecard isn't built yet. Connect your GitHub and run analysis now — employers will only see candidates with verified signal data.</p>
+      ? `<p>Your candidate card is already set up, you're ahead of the curve. When employers go live, you'll be discoverable immediately.</p>`
+      : `<p style="background:rgba(42,161,152,0.06);border:1px solid rgba(42,161,152,0.2);border-radius:10px;padding:16px;"><strong style="color:#2aa198;">One thing before we launch:</strong> Your candidate scorecard isn't built yet. Connect your GitHub and run analysis now, employers will only see candidates with verified signal data.</p>
          <a href="${process.env.FRONTEND_URL ?? 'https://app.16signals.io'}/profile" class="cta">Build my scorecard →</a>`;
 
     return `
@@ -663,7 +663,7 @@ where: {
     <div class="card">
       <div class="badge">✓ Notification enabled</div>
       <h1>We'll let you know when employers go live</h1>
-      <p>You're already part of the 16Signals network. Employers are coming — and when they do, you'll be the first to explore open roles matched to your real-world signal data.</p>
+      <p>You're already part of the 16Signals network. Employers are coming, and when they do, you'll be the first to explore open roles matched to your real-world signal data.</p>
       ${scorecardSection}
       <hr class="divider" />
       <p style="font-size:13px;">You'll receive one email when the employer marketplace launches. No spam, ever.</p>

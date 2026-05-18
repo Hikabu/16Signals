@@ -129,12 +129,12 @@ export default function HRDashboardPage() {
             variant="hero"
             icon={Sparkles}
             title="Welcome to your hiring command center"
-            description="16Signals helps you find and hire exceptional people — with real work samples, escrow-backed offers, and data-driven decisions."
+            description="16Signals helps you find and hire exceptional people, with real work samples, escrow-backed offers, and data-driven decisions."
             primaryAction={{ label: "Create your first job", route: "/hr/jobs/new" }}
             secondaryAction={{ label: "Complete company profile", route: "/hr/settings" }}
             features={[
               { icon: Briefcase, text: "Post jobs with an escrow bonus to attract serious candidates" },
-              { icon: ShieldCheck, text: "Analyze real candidate work samples — not just CVs" },
+              { icon: ShieldCheck, text: "Analyze real candidate work samples, not just CVs" },
               { icon: TrendingUp, text: "Hire with proof and track your pipeline end-to-end" },
             ]}
           />

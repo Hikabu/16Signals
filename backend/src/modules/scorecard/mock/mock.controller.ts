@@ -196,7 +196,7 @@ export class MockController {
   @Get('viewer')
   @Header('Content-Type', 'text/html; charset=utf-8')
   @ApiOperation({
-    summary: '[MOCK] API Viewer — interactive reference page',
+    summary: '[MOCK] API Viewer, interactive reference page',
     description:
       'Serves a standalone HTML page that renders all mock API responses for frontend developers.',
   })
@@ -537,7 +537,7 @@ const VIEWER_HTML = /* html */ `<!DOCTYPE html>
     if (!d.web3) {
       return \`<div class="panel">
         <div class="panel-header"><span class="panel-title">⛓ Web3 / Solana</span></div>
-        <div class="web3-null">web3: null — GitHub-only mode</div>
+        <div class="web3-null">web3: null, GitHub-only mode</div>
       </div>\`;
     }
     const w = d.web3;

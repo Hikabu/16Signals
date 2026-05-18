@@ -224,7 +224,7 @@ async function main() {
     },
   });
 
-  // Control case — unverified payer, unfunded escrow
+  // Control case, unverified payer, unfunded escrow
   await prisma.jobPost.create({
     data: {
       companyId: companies[0].id,
@@ -244,7 +244,7 @@ async function main() {
     },
   });
 
-  // Trusted case — verified payer, funded escrow
+  // Trusted case, verified payer, funded escrow
   await prisma.jobPost.create({
     data: {
       companyId: companies[1].id,

@@ -172,7 +172,7 @@ export function StepAiSuggestions(props: {
 
       {parseResult?.requiresReview ? (
         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-          Parser confidence is low — review the structured output carefully before
+          Parser confidence is low, review the structured output carefully before
           publishing.
         </p>
       ) : null}

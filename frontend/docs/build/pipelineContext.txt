@@ -1,4 +1,4 @@
-Page 6 — Employer
+Page 6, Employer
 Candidate Pipeline
 app/hr/jobs/[id]/page.tsx
 Split-pane: candidate list + detail panel. Scorecard (shared component), gap report, interview Qs, stage/decision controls, full escrow management.
@@ -16,7 +16,7 @@ Mobile: full-screen list → tap → full-screen detail (back button)
 Data deps
 GET /applications/hr/jobs/:jobId
 5 sections
-S2: ScorecardView (isPublic) — shared component
+S2: ScorecardView (isPublic), shared component
 S3: Gap report (matched/missing/fit%)
 S4: Interview Qs (lazy accordion)
 S5: Stage + Decision controls

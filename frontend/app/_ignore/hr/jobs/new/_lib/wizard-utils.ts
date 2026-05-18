@@ -164,10 +164,10 @@ export function salaryMarketNote(
     return "Add a salary range so AI can sanity-check it against the inferred seniority.";
   }
   if (seniority === "SENIOR" && mid < 90000) {
-    return "For roles inferred as **senior**, this range sits below typical US tech bands — double-check unless this is a non-US or equity-heavy package.";
+    return "For roles inferred as **senior**, this range sits below typical US tech bands, double-check unless this is a non-US or equity-heavy package.";
   }
   if (seniority === "JUNIOR" && mid > 140000) {
-    return "For **junior**-shaped roles, this range is ambitious — ensure scope matches the level.";
+    return "For **junior**-shaped roles, this range is ambitious, ensure scope matches the level.";
   }
   return "Range looks broadly consistent with the inferred seniority; still validate against your market and location.";
 }

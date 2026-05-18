@@ -128,7 +128,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     { name: 'GHOST_PROFILE', data: GHOST_PROFILE },
   ];
 
-  describe('VERIFICATION TEST V1 — Signal extraction', () => {
+  describe('VERIFICATION TEST V1, Signal extraction', () => {
     it('All 8 signals return valid values for 5 seed usernames', () => {
       for (const { name, data } of fixtures) {
         const signals = signalExtractor.extract(data);
@@ -162,7 +162,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     });
   });
 
-  describe('VERIFICATION TEST V2 — Capability scoring', () => {
+  describe('VERIFICATION TEST V2, Capability scoring', () => {
     it('Scores correlate with known profiles directionally', () => {
       // alex-backend
       const alexRes = scoringService.score(ALEX_BACKEND);
@@ -190,7 +190,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     });
   });
 
-  describe('VERIFICATION TEST V3 — Confidence modifier', () => {
+  describe('VERIFICATION TEST V3, Confidence modifier', () => {
     it('Developer with < 5 repos returns confidence: low across all dimensions', () => {
       const result = scoringService.score(GHOST_PROFILE);
       expect(result.capabilities.backend.confidence).toBe('low');
@@ -201,7 +201,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     });
   });
 
-  describe('VERIFICATION TEST V5 — Cache miss', () => {
+  describe('VERIFICATION TEST V5, Cache miss', () => {
     it('New username triggers full pipeline and sets cache on completion', async () => {
       mockGithubAdapter.fetchRawData.mockClear();
       const testUser = `alex-backend`;
@@ -227,7 +227,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
   });
 
   // Run V4 after V5 as it tests cache hit
-  describe('VERIFICATION TEST V4 — Cache hit', () => {
+  describe('VERIFICATION TEST V4, Cache hit', () => {
     it('Second request for same username returns immediately without re-queuing', async () => {
       // Alex was already processed in V5
       mockGithubAdapter.fetchRawData.mockClear();
@@ -249,7 +249,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     }, 10000);
   });
 
-  describe('VERIFICATION TEST V6 — Headless API', () => {
+  describe('VERIFICATION TEST V6, Headless API', () => {
     it('POST /analysis/recompute with seed username returns correct result schema', async () => {
       mockGithubAdapter.fetchRawData.mockClear();
 
@@ -308,7 +308,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     }, 15000);
   });
 
-  describe('VERIFICATION TEST V7 — Private-heavy profile', () => {
+  describe('VERIFICATION TEST V7, Private-heavy profile', () => {
     it('Developer with high consistency + sparse repos gets confidence: low with private work note', () => {
       const result = scoringService.score(MAYA_DEVOPS);
       expect(result.privateWorkNote).toBeDefined();
@@ -325,7 +325,7 @@ describe('Stage 2 Verification Plan - Final Validation', () => {
     });
   });
 
-  describe('VERIFICATION TEST V8 — Zero public data', () => {
+  describe('VERIFICATION TEST V8, Zero public data', () => {
     it('Pipeline fails gracefully; job status: failed with clear reason', async () => {
       const createRes = await request(app.getHttpServer())
         .post('/api/analysis')

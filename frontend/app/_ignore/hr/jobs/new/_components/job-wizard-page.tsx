@@ -70,7 +70,7 @@ export function JobWizardPage() {
               Create job posting
             </h1>
             <p className="text-muted-foreground">
-              Four steps — details, mandatory AI verification, optional escrow,
+              Four steps, details, mandatory AI verification, optional escrow,
               then publish.
             </p>
           </div>

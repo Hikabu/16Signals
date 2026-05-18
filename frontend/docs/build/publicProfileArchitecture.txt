@@ -9,4 +9,4 @@ app/u/[username]/page.tsx     ← export const revalidate = 60
     ├── VouchesList             ← from scorecard.vouches[]
     └── VouchForm               ← 6-step on-chain flow
 Shared component reuse: ProfileHeader and ScorecardView were built in Page 2. This page imports them directly. Zero duplication.
-Solana context required: This page uses @solana/wallet-adapter. The WalletAdapterProvider in app/layout.tsx covers this — no extra provider needed here. getPublicScorecard must call apiFetch with skipAuth=true (no Authorization header).
+Solana context required: This page uses @solana/wallet-adapter. The WalletAdapterProvider in app/layout.tsx covers this, no extra provider needed here. getPublicScorecard must call apiFetch with skipAuth=true (no Authorization header).

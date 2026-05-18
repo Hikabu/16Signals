@@ -1,6 +1,6 @@
 Post a Job
 app/hr/jobs/new/page.tsx
-5-step employer form. Step 4 = Escrow setup (optional Solana integration — hackathon showcase). My Jobs tab.
+5-step employer form. Step 4 = Escrow setup (optional Solana integration, hackathon showcase). My Jobs tab.
 EMPLOYER ONLY
 Step 4: Escrow setup
 On-chain proof of commitment

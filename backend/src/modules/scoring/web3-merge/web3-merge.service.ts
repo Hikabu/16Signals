@@ -68,7 +68,7 @@ export class Web3MergeService {
   ): AnalysisResult {
     const updatedResult: AnalysisResult = JSON.parse(JSON.stringify(result));
 
-    // Upgrade rules (same pattern as wallet — can only upgrade, never downgrade):
+    // Upgrade rules (same pattern as wallet, can only upgrade, never downgrade):
     if (verifiedVouchCount >= 2) {
       if (updatedResult.impact.confidence === 'low') {
         updatedResult.impact.confidence = 'medium';

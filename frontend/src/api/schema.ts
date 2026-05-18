@@ -448,7 +448,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * [MOCK] API Viewer — interactive reference page
+         * [MOCK] API Viewer, interactive reference page
          * @description Serves a standalone HTML page that renders all mock API responses for frontend developers.
          */
         get: operations["MockController_getViewer"];

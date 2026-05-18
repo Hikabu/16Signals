@@ -39,14 +39,14 @@ export class PublicProfileController {
     return this.profileService.searchPublicProfiles(q || '');
   }
 
-  // ─── Employer Launch Waitlist (public — no auth) ──────────────────────────
+  // ─── Employer Launch Waitlist (public, no auth) ──────────────────────────
 
   @Post('waitlist')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Join employer launch waitlist (guest)',
     description:
-      'Stores the email and sends a confirmation email. Idempotent — calling twice with the same email is a no-op.',
+      'Stores the email and sends a confirmation email. Idempotent, calling twice with the same email is a no-op.',
   })
   @ApiOkResponse({ description: 'Joined the waitlist' })
   @ApiBadRequestResponse({ description: 'Invalid email address' })

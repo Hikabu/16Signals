@@ -1,7 +1,7 @@
 export function buildHrView(shortlist: any): object {
   const dc = shortlist.decisionCard ?? {};
   return {
-    // Summary — plain language, readable by non-technical HR
+    // Summary, plain language, readable by non-technical HR
     verdict: dc.verdict ?? null,
     reviewOutcome: dc.reviewOutcome ?? null,
     hrSummary: dc.hrSummary ?? null,
@@ -33,7 +33,7 @@ export function buildTechnicalView(shortlist: any): object {
   const missingTechnologies = gap.missingTechnologies ?? [];
 
   return {
-    // Deep technical — for CTO / technical interviewers
+    // Deep technical, for CTO / technical interviewers
     technicalSummary: dc.technicalSummary ?? null,
     strengths: dc.strengths ?? [],
     risks: dc.risks ?? [],
@@ -45,7 +45,7 @@ export function buildTechnicalView(shortlist: any): object {
     fraudTier: shortlist.fraudTier ?? sc.fraudTier ?? 'CLEAN',
     behaviorPattern: shortlist.behaviorPattern ?? sc.behaviorPattern ?? null,
 
-    // Final scorecard breakdown (from freeze — NOT live)
+    // Final scorecard breakdown (from freeze, NOT live)
     scorecard: {
       summary: sc.summary ?? null,
       capabilities: sc.capabilities ?? {},

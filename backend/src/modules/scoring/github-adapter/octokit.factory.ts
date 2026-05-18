@@ -71,7 +71,7 @@ export class OctokitFactory {
           (octokit as any).__githubTokenSource = 'user';
           return octokit;
         } catch (err: any) {
-          // Token decrypt failed — fall through to system token
+          // Token decrypt failed, fall through to system token
           this.logger.warn(
             { userId, err: err.message },
             'octokit_token_decrypt_failed',
@@ -86,7 +86,7 @@ export class OctokitFactory {
     // but log clearly if it somehow does.
     if (!systemToken) {
       this.logger.error(
-        'GITHUB_SYSTEM_TOKEN is undefined at request time — making unauthenticated request',
+        'GITHUB_SYSTEM_TOKEN is undefined at request time, making unauthenticated request',
       );
       return new Octokit();
     }

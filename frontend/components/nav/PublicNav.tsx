@@ -68,7 +68,7 @@ const isActive = (href: string) => {
           </span>
         </Link>
 
-        {/* Center nav links — desktop only */}
+        {/* Center nav links, desktop only */}
         <nav className="hidden md:flex items-center gap-1 ml-4">
           {NAV_LINKS.map((link) => (
             <Link
@@ -89,7 +89,7 @@ const isActive = (href: string) => {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Auth + Wallet — desktop */}
+        {/* Auth + Wallet, desktop */}
         <div className="hidden md:flex items-center gap-2">
           <div className="hidden md:flex items-center gap-2">
   {mounted && <WalletMultiButton />}

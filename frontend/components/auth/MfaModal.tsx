@@ -50,7 +50,7 @@ export function MfaModal({
 
   return (
     <Dialog open={open}>
-      {/* No close button — must complete MFA */}
+      {/* No close button, must complete MFA */}
       <DialogContent
         className="sm:max-w-sm"
         onPointerDownOutside={(e) => e.preventDefault()}

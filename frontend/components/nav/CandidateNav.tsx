@@ -89,7 +89,7 @@ useEffect(() => {
           </span>
         </Link>
 
-        {/* Center nav links — desktop only */}
+        {/* Center nav links, desktop only */}
         <nav className="hidden md:flex items-center gap-1 ml-4">
           {NAV_LINKS.map((link) => (
             <Link
@@ -110,7 +110,7 @@ useEffect(() => {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Wallet + Avatar — desktop */}
+        {/* Wallet + Avatar, desktop */}
         <div className="hidden md:flex items-center gap-2">
           <WalletMultiButton />
           <DropdownMenu>

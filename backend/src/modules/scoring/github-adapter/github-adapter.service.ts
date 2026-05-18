@@ -512,7 +512,7 @@ export class GithubAdapterService {
           }
         }
         // Non-rate-limit error OR retries exhausted:
-        // Return empty array — external PRs are signal, not required
+        // Return empty array, external PRs are signal, not required
         this.logger.warn(
           { username, err: err.status },
           'external_pr_fetch_failed',
@@ -1057,7 +1057,7 @@ export class GithubAdapterService {
       resetAt: status.resetAt.toISOString(),
       username,
     });
-    this.logger.warn('Manifest fetch aborted — low rate limit');
+    this.logger.warn('Manifest fetch aborted, low rate limit');
   }
 
   private logRateLimit(response: any, endpoint: string, jobId?: string) {

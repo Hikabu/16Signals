@@ -1101,7 +1101,7 @@
             "description": ""
           }
         },
-        "summary": "[MOCK] API Viewer — interactive reference page",
+        "summary": "[MOCK] API Viewer, interactive reference page",
         "tags": [
           "Mock / Dev Reference"
         ]
@@ -3250,7 +3250,7 @@
     },
     "/profile/waitlist": {
       "post": {
-        "description": "Stores the email and sends a confirmation email. Idempotent — calling twice with the same email is a no-op.",
+        "description": "Stores the email and sends a confirmation email. Idempotent, calling twice with the same email is a no-op.",
         "operationId": "PublicProfileController_registerWaitlist",
         "parameters": [],
         "requestBody": {

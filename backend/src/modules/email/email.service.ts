@@ -28,7 +28,7 @@ export class EmailService {
 
     try {
       const { data, error } = await this.resend.emails.send({
-        from: 'Colosseum <no-reply@colossseum.com>',
+        from: this.configService.get<string>('RESEND_FROM') || 'mail.16signals.com',
         to: [to],
         subject,
         html,

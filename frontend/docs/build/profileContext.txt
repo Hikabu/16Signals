@@ -2,7 +2,7 @@
 Section breakdown
 Purpose + Content
 Avatar (initials fallback), display name, username
-Bio, location, website — inline editable
+Bio, location, website, inline editable
 "Edit" toggle on/off
 Public profile URL copy badge
 "Scorecard public" toggle
@@ -24,7 +24,7 @@ Visual hierarchy + Interaction
 Card with subtle border. 3 rows stacked: GitHub / Wallet / Generate.
 Each row: left icon + status label, right action button
 Locked state: button disabled, amber "⏳ Xh Ym" badge replaces button text
-Sync triggers independent cooldown from Generate — can sync without triggering generate gate
+Sync triggers independent cooldown from Generate, can sync without triggering generate gate
 If neither GitHub nor wallet linked: Generate button disabled with tooltip "Sync at least one source first"
 Data deps
 GET /me/user/githubGET /me/user/walletPOST /sync/githubPOST /sync/walletPOST /api/analysisGET /api/analysis/cooldown
@@ -41,7 +41,7 @@ DONE state: headline score badge is dominant (large number)
 Capability bars animate in on scroll-enter (Framer Motion)
 Stack chips: scrollable row on mobile
 Regenerate: confirmation dialog (destructive)
-Raw data: accordion — lazy fetch on open
+Raw data: accordion, lazy fetch on open
 Data deps
 GET /api/scorecard/mePOST /api/analysisGET /api/analysis/:id/statusGET /api/analysis/:id/resultGET /api/scorecard/me/raw
 Purpose + Content
@@ -52,9 +52,9 @@ Visual hierarchy + Interaction
 Each vouch is a card with subtle border
 Wallet address truncated (first 4 + last 4 chars)
 Tx link opens Solana explorer in new tab
-No interaction — read-only here
+No interaction, read-only here
 Data deps
-Derived from scorecard response (scorecard.vouches[]). No additional API call — use React Query cache from S2.
+Derived from scorecard response (scorecard.vouches[]). No additional API call, use React Query cache from S2.
 
 Purpose + Content
 List of applied jobs: title, company, applied date, stage badge
@@ -70,9 +70,9 @@ Linked Accounts (GitHub connect/disconnect, Google)
 Wallet address management (link/unlink)
 MFA Setup (QR + activate)
 Danger Zone (delete account)
-GitHub Sync and Generate are NOT here — see S1b above
+GitHub Sync and Generate are NOT here, see S1b above
 Visual hierarchy + Interaction
-shadcn Accordion — all items collapsed by default
+shadcn Accordion, all items collapsed by default
 Each item has status icon in header (connected ✓ or not connected)
 Danger zone: red text, red border, requires typed confirmation
 Data deps

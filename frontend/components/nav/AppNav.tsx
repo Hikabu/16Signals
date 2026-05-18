@@ -32,6 +32,6 @@ export function AppNav() {
     return <CandidateNav username={username} />;
   }
 
-  // Not logged in — show public nav (includes sign-in/get-started)
+  // Not logged in, show public nav (includes sign-in/get-started)
   return <PublicNav />;
 }

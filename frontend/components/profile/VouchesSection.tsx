@@ -47,7 +47,7 @@ function relativeTime(dateStr: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// CopyWallet — inline copy button for a wallet address
+// CopyWallet, inline copy button for a wallet address
 // ---------------------------------------------------------------------------
 
 function CopyWallet({ address }: { address: string }) {

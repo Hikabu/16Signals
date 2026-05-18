@@ -82,7 +82,7 @@ export function EmailVerifyModal({
 
   return (
     <Dialog open={open}>
-      {/* No close button — must complete verification */}
+      {/* No close button, must complete verification */}
       <DialogContent
         className="sm:max-w-sm"
         onPointerDownOutside={(e) => e.preventDefault()}

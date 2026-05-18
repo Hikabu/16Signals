@@ -397,7 +397,7 @@ export function VouchForm({
   try {
     setError(null)
 
-    // Step 3 — initiate
+    // Step 3, initiate
     setStep(3)
 
     if (!publicKey) {
@@ -407,7 +407,7 @@ export function VouchForm({
     const viewerWallet = publicKey.toBase58()
 
     console.log("━━━━━━━━━━━━━━━━━━━━")
-    console.log("STEP 1 — HANDLE VOUCH")
+    console.log("STEP 1, HANDLE VOUCH")
     console.log("username:", username)
     console.log("message:", message)
     console.log("wallet:", viewerWallet)
@@ -438,7 +438,7 @@ export function VouchForm({
       throw new Error("Backend did not return txData")
     }
 
-    // Step 4 — sign
+    // Step 4, sign
     setStep(4)
 
     const tx = Transaction.from(
@@ -451,7 +451,7 @@ export function VouchForm({
 
     const signed = await signTransaction(tx)
 
-    // Step 5 — broadcast
+    // Step 5, broadcast
     setStep(5)
 
     const sig = await connection.sendRawTransaction(
@@ -462,7 +462,7 @@ export function VouchForm({
 
     setTxSignature(sig)
 
-    // Step 6 — confirm on-chain
+    // Step 6, confirm on-chain
     // await confirmVouch({ signature: sig, txData })
 
     await confirmVouch({
@@ -497,7 +497,7 @@ export function VouchForm({
       <div className="mb-5 space-y-1">
         <h2 className="text-base font-semibold text-[#F9FAFB]">Vouch for @{username}</h2>
         <p className="text-xs text-[#64748B]">
-          On-chain reputation — permanently linked to your wallet
+          On-chain reputation, permanently linked to your wallet
         </p>
       </div>
 

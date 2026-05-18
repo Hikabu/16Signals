@@ -18,7 +18,7 @@ export function useLogout() {
       }
     },
     onSettled: () => {
-      // Clear regardless of success/fail — server may already have revoked
+      // Clear regardless of success/fail, server may already have revoked
       clearAuth()
       queryClient.clear() // wipe all cached data
       router.push('/')

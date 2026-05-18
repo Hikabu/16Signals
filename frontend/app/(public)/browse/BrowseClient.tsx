@@ -130,7 +130,7 @@ function CandidateCardSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Employer launch waitlist — GUEST flow (email input)
+// Employer launch waitlist, GUEST flow (email input)
 // ---------------------------------------------------------------------------
 
 function GuestWaitlistForm({
@@ -173,7 +173,7 @@ function GuestWaitlistForm({
 //       <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
 //         <CheckCircle2 className="h-4 w-4 shrink-0" />
 //         <span>
-//           You're on the list — we'll email you when employers go live.
+//           You're on the list, we'll email you when employers go live.
 //         </span>
 //       </div>
 //     </div>
@@ -215,7 +215,7 @@ className="h-10 shrink-0 w-[120px] rounded-lg bg-primary px-4 text-sm font-mediu
 }
 
 // ---------------------------------------------------------------------------
-// Employer launch waitlist — AUTH flow (one-click button)
+// Employer launch waitlist, AUTH flow (one-click button)
 // ---------------------------------------------------------------------------
 
 function AuthWaitlistButton({
@@ -353,7 +353,7 @@ Get your scorecard ready before employer access opens.            </p>
       <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
         <span>
-          You're on the list — we'll email you when employers go live.
+          You're on the list, we'll email you when employers go live.
         </span>
       </div>
     </div>

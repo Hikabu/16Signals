@@ -1,14 +1,14 @@
 4
 Page architecture
 app/profile/page.tsx
-├── SectionNav (sticky — Profile | Generate | Scorecard | Vouches | Applications | Settings)
+├── SectionNav (sticky, Profile | Generate | Scorecard | Vouches | Applications | Settings)
 ├── ProfileHeader          (S1) ← getMe + getCandidateProfile
 ├── GenerateScorecardSection (S1b) ← sync + analyse with 24hr gate [NEW]
 │   ├── GitHub sync row    ← getLinkedGithub + triggerGithubSync
 │   ├── Wallet link row    ← getLinkedWallet
 │   └── Generate CTA       ← startAnalysis (gated by getAnalysisCooldown)
 ├── ScorecardSection       (S2) ← state machine wrapper
-│   ├── [state=empty]  — CTA defers to GenerateScorecardSection above
+│   ├── [state=empty] , CTA defers to GenerateScorecardSection above
 │   ├── [state=loading] AnalysisPoller
 │   └── [state=done]   ScorecardView         ← SHARED COMPONENT
 ├── VouchesSection         (S3) ← from scorecard cache
@@ -22,8 +22,8 @@ Shared components created here (reused elsewhere):
 Redirect required
 Add to next.config.ts: { source: '/scorecard', destination: '/profile', permanent: true }. Old route removed.
 
-Shared state — scorecard cache
-Vouches section reads from the same ['scorecard'] React Query key. No second API call. staleTime: Infinity — once loaded, never re-fetch on focus.
+Shared state, scorecard cache
+Vouches section reads from the same ['scorecard'] React Query key. No second API call. staleTime: Infinity, once loaded, never re-fetch on focus.
 
 Animation system
 Capability bars: Framer Motion staggered width animation. Scorecard state transitions: AnimatePresence mode="wait". Settings accordion: shadcn native. Section nav: smooth scroll on click.

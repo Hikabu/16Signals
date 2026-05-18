@@ -20,7 +20,7 @@ export interface GitHubRepo {
 }
 
 export interface GitHubContributionData {
-  weeklyTotals: number[]; // exactly 52 values — one per week, most recent last
+  weeklyTotals: number[]; // exactly 52 values, one per week, most recent last
   activeWeeksCount: number; // pre-computed: count of weeks with total > 0
 }
 

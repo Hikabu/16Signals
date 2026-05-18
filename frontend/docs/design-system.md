@@ -1,4 +1,4 @@
-# 16signals — DESIGN SYSTEM
+# 16signals, DESIGN SYSTEM
 
 # Theme Direction
 

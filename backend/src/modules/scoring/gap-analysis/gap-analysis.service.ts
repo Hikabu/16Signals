@@ -26,7 +26,7 @@ export class GapAnalysisService {
     const parsedReqs: ParsedJobRequirements = job.parsedRequirements as any;
     const gaps: Gap[] = [];
 
-    // Step 1 — Technology matching
+    // Step 1, Technology matching
     const requiredTechs = parsedReqs?.requiredSkills?.length
       ? parsedReqs.requiredSkills
       : job.requiredSkills || [];
@@ -67,7 +67,7 @@ export class GapAnalysisService {
           )
         : 100;
 
-    // Step 2 — Capability threshold gaps
+    // Step 2, Capability threshold gaps
     const seniority = parsedReqs?.seniorityLevel || Seniority.MID;
     const thresholds: Record<Seniority, number> = {
       [Seniority.JUNIOR]: 30,
@@ -120,7 +120,7 @@ export class GapAnalysisService {
     const web3Gap = this.buildWeb3Gap(analysisResult, parsedReqs, job);
     if (web3Gap) gaps.push(web3Gap);
 
-    // Step 3 — overallVerdict
+    // Step 3, overallVerdict
     let overallVerdict: GapReport['overallVerdict'] = 'LIKELY_FIT';
     const hasDealbreaker = gaps.some((g) => g.severity === 'DEALBREAKER');
     const hasSignificant = gaps.some((g) => g.severity === 'SIGNIFICANT');
@@ -131,7 +131,7 @@ export class GapAnalysisService {
       overallVerdict = 'POSSIBLE_FIT';
     }
 
-    // Step 4 — return GapReport
+    // Step 4, return GapReport
     return {
       overallVerdict,
       gaps,

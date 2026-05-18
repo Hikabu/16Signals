@@ -148,7 +148,7 @@ export function StepEscrow(props: {
         targetBonus !== st.lastPostedBonus
       ) {
         throw new Error(
-          "Bonus amount is locked after funding — go back without funding if you need to change it.",
+          "Bonus amount is locked after funding, go back without funding if you need to change it.",
         );
       }
       if (targetBonus !== st.lastPostedBonus) {
@@ -194,7 +194,7 @@ export function StepEscrow(props: {
         </h2>
         <p className="text-sm text-muted-foreground">
           Decide whether to fund an on-chain USDT escrow for this role. The job
-          bonus amount on the draft must match what you fund — we sync it before
+          bonus amount on the draft must match what you fund, we sync it before
           you load wallet instructions.
         </p>
       </div>
@@ -248,7 +248,7 @@ export function StepEscrow(props: {
             <p className="font-medium">Funding flow</p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
               <li>
-                Load funding instructions — the draft bonus is synced first if it
+                Load funding instructions, the draft bonus is synced first if it
                 does not match this amount.
               </li>
               <li>Send USDT from your Solana wallet to the escrow PDA shown below.</li>
@@ -263,7 +263,7 @@ export function StepEscrow(props: {
               Draft bonus on server:{" "}
               <span className="font-mono">{lastPostedBonus}</span> USDT
               {escrowAmount !== lastPostedBonus
-                ? " — Continue will update the draft to match the escrow amount."
+                ? ", Continue will update the draft to match the escrow amount."
                 : null}
             </p>
           ) : null}
@@ -317,7 +317,7 @@ export function StepEscrow(props: {
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Escrow disabled — you can still publish or save a draft without
+          Escrow disabled, you can still publish or save a draft without
           on-chain funding.
         </p>
       )}

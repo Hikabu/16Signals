@@ -227,7 +227,7 @@ export function PrivyEmployerAuthCard({
 
           {otpSent && (
             <div className="space-y-2">
-              {/* 6-digit OTP — shadcn InputOTP requires setup; using plain inputs for portability */}
+              {/* 6-digit OTP, shadcn InputOTP requires setup; using plain inputs for portability */}
               <Label htmlFor="privy-otp">6-digit code</Label>
               <div className="flex gap-2">
                 <Input

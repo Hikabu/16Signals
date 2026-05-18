@@ -18,7 +18,7 @@ Identical visual to private profile
 No interactive controls beyond accordion expand
 Web3 achievements especially prominent (hackathon showcase)
 Data deps
-Same data as S1 query — scorecard response includes all display data.
+Same data as S1 query, scorecard response includes all display data.
 
 Content
 Count badge in section header
@@ -29,7 +29,7 @@ Tx link opens explorer in new tab
 Wallet address copy on click
 Max 10 shown, "Show more" expand
 Data deps
-scorecard.vouches[] — from same query as S1/S2. No extra call.
+scorecard.vouches[], from same query as S1/S2. No extra call.
 
 Content + Steps
 Step 1: Connect wallet (WalletMultiButton)

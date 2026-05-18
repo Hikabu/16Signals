@@ -154,7 +154,7 @@ export function StepDtoForm(props: {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Optional — helps scoring" />
+                    <SelectValue placeholder="Optional, helps scoring" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -166,7 +166,7 @@ export function StepDtoForm(props: {
                   ))}
                 </SelectContent>
               </Select>
-              <FormDescription>Optional — maps to backend role scoring.</FormDescription>
+              <FormDescription>Optional, maps to backend role scoring.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -334,7 +334,7 @@ export function StepDtoForm(props: {
 
         <div className="flex justify-end">
           <Button type="submit" size="lg" className="min-w-[140px]">
-            Next — AI review
+            Next, AI review
           </Button>
         </div>
       </form>

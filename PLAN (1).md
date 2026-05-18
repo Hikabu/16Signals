@@ -8,22 +8,22 @@
 - [3. Architecture](#3-architecture)
   - [3.1 Architecture Decision Records](#31-architecture-decision-records)
   - [3.2 System Architecture Pipeline](#32-system-architecture-pipeline)
-- [4. Scoring Model — Capability-Based Engine](#4-scoring-model--capability-based-engine)
+- [4. Scoring Model, Capability-Based Engine](#4-scoring-model--capability-based-engine)
   - [4.1 Design Principles](#41-design-principles)
-  - [4.2 Signal Set — 8 High-Signal Inputs](#42-signal-set--8-high-signal-inputs)
+  - [4.2 Signal Set, 8 High-Signal Inputs](#42-signal-set--8-high-signal-inputs)
   - [4.3 Capability Scoring](#43-capability-scoring)
   - [4.4 Ownership Scoring](#44-ownership-scoring)
   - [4.5 Impact Scoring](#45-impact-scoring)
-  - [4.6 Confidence — Inline Modifier, Not a Peer Score](#46-confidence--inline-modifier-not-a-peer-score)
+  - [4.6 Confidence, Inline Modifier, Not a Peer Score](#46-confidence--inline-modifier-not-a-peer-score)
   - [4.7 Data Completeness & Visibility](#47-data-completeness--visibility)
   - [4.8 What Was Removed and Why](#48-what-was-removed-and-why)
 - [5. Output Format](#5-output-format)
   - [5.1 Result Schema](#51-result-schema)
   - [5.2 AnalysisJob Entity](#52-analysisjob-entity)
-  - [5.3 Recruiter Card — Example Output](#53-recruiter-card--example-output)
+  - [5.3 Recruiter Card, Example Output](#53-recruiter-card--example-output)
 - [6. Job Processing Pipeline](#6-job-processing-pipeline)
   - [6.1 Queue Stages](#61-queue-stages)
-  - [6.2 Data Fetcher — Lightweight Only](#62-data-fetcher--lightweight-only)
+  - [6.2 Data Fetcher, Lightweight Only](#62-data-fetcher--lightweight-only)
   - [6.3 Caching Strategy](#63-caching-strategy)
 - [7. API Contract](#7-api-contract)
   - [7.1 Analysis](#71-analysis)
@@ -31,7 +31,7 @@
 - [8. Web3 / Solana Integration](#8-web3--solana-integration)
   - [8.1 Who This Covers](#81-who-this-covers)
   - [8.2 What Was Cut and Why](#82-what-was-cut-and-why)
-  - [8.3 Signal Set — Stage 3 Additions](#83-signal-set--stage-3-additions)
+  - [8.3 Signal Set, Stage 3 Additions](#83-signal-set--stage-3-additions)
   - [8.4 Stack Fingerprint Signal](#84-stack-fingerprint-signal)
   - [8.5 How Signals Merge](#85-how-signals-merge)
   - [8.6 Three-Mode Operation](#86-three-mode-operation)
@@ -48,11 +48,11 @@
 
 ### The Fundamental Shift
 
-A CV is a claim. Colosseum is evidence. The system replaces traditional CVs with automatically generated proof-of-work profiles derived from real developer activity — requiring zero manual input from the candidate. A developer's GitHub activity contains most of what a hiring decision actually requires: ownership patterns, project longevity, tech stack signals, collaboration breadth, and consistency over time.
+A CV is a claim. Colosseum is evidence. The system replaces traditional CVs with automatically generated proof-of-work profiles derived from real developer activity, requiring zero manual input from the candidate. A developer's GitHub activity contains most of what a hiring decision actually requires: ownership patterns, project longevity, tech stack signals, collaboration breadth, and consistency over time.
 
 For Web3 developers, on-chain deployment history, program ownership, ecosystem achievements, and curated credential NFTs add a cryptographic layer of proof that no CV can replicate.
 
-The problem is that raw GitHub and on-chain data is noisy, visibility-uneven, and easy to over-engineer into low-signal complexity. Colosseum filters, interprets, and presents that data as a recruiter-ready output — not a dashboard, not a score dump, not an analytics platform.
+The problem is that raw GitHub and on-chain data is noisy, visibility-uneven, and easy to over-engineer into low-signal complexity. Colosseum filters, interprets, and presents that data as a recruiter-ready output, not a dashboard, not a score dump, not an analytics platform.
 
 ### The Question the System Answers
 
@@ -60,14 +60,14 @@ The problem is that raw GitHub and on-chain data is noisy, visibility-uneven, an
 
 ### Structural Problems This Solves
 
-1. CVs are claims — the system replaces them with observable evidence
-2. Role-based self-reporting is inaccurate — capabilities are inferred automatically
-3. Noisy metrics (commit counts, lines of code) obscure real signal — they are excluded
-4. Confidence is often conflated with ability — they are separated per dimension
-5. Unequal visibility across candidates (public vs. private work) — data completeness is surfaced as a qualifier, not a penalty
-6. Recruiter outputs are not actionable — the system produces a plain-English summary, not a score dump
-7. Wallet-based proof of work has no structured home — the schema is designed to absorb Solana signals without redesign
-8. Web3 developers who never deploy programs are invisible to wallet-based systems — ecosystem signals from GitHub cover the full developer population
+1. CVs are claims, the system replaces them with observable evidence
+2. Role-based self-reporting is inaccurate, capabilities are inferred automatically
+3. Noisy metrics (commit counts, lines of code) obscure real signal, they are excluded
+4. Confidence is often conflated with ability, they are separated per dimension
+5. Unequal visibility across candidates (public vs. private work), data completeness is surfaced as a qualifier, not a penalty
+6. Recruiter outputs are not actionable, the system produces a plain-English summary, not a score dump
+7. Wallet-based proof of work has no structured home, the schema is designed to absorb Solana signals without redesign
+8. Web3 developers who never deploy programs are invisible to wallet-based systems, ecosystem signals from GitHub cover the full developer population
 
 ---
 
@@ -83,7 +83,7 @@ The problem is that raw GitHub and on-chain data is noisy, visibility-uneven, an
 | GitHub Client | @octokit/rest + @octokit/graphql |
 | Auth | passport-github2 + @nestjs/jwt + passport-jwt |
 | Token Security | Node.js crypto AES-256-GCM |
-| Web3 (Solana) | @solana/web3.js (read-only, RPC-native) — Stage 3 |
+| Web3 (Solana) | @solana/web3.js (read-only, RPC-native), Stage 3 |
 | Config | @nestjs/config + Zod env schema (fail at startup) |
 | Validation | zod + nestjs-zod |
 | Security | helmet, @nestjs/throttler |
@@ -98,7 +98,7 @@ The problem is that raw GitHub and on-chain data is noisy, visibility-uneven, an
 ```
 src/
 ├── main.ts / app.module.ts
-├── config/env.schema.ts             # Zod — fail at startup
+├── config/env.schema.ts             # Zod, fail at startup
 ├── prisma/prisma.service.ts
 ├── redis/redis.service.ts
 │
@@ -108,7 +108,7 @@ src/
 │   ├── profile/                     # Candidate profile, wallet address
 │   └── admin/                       # Queue stats, cache management
 │
-├── scoring/                         # Pure domain — no HTTP surface
+├── scoring/                         # Pure domain, no HTTP surface
 │   ├── github-adapter/              # Lightweight data fetcher
 │   ├── signal-extractor/            # 8+4 signal extraction from raw data
 │   │   ├── github-signals.service.ts    # S1–S8 (existing)
@@ -116,7 +116,7 @@ src/
 │   │   └── stack-fingerprint.service.ts     # S13 (new)
 │   ├── scoring-service/             # Capability + Ownership + Impact scoring
 │   ├── summary-generator/           # Plain-English summary from top dimensions
-│   └── web3-adapter/                # Stage 3 — Solana signal fetch
+│   └── web3-adapter/                # Stage 3, Solana signal fetch
 │       ├── solana-adapter.service.ts
 │       ├── achievement-whitelist.service.ts
 │       └── whitelists/
@@ -143,7 +143,7 @@ src/
 |---|---|---|
 | ADR001 | Modular monolith (NestJS modules) | Clean domain boundaries; extract to microservices later without redesign |
 | ADR002 | BullMQ on Redis for async analysis | GitHub data fetch is 3–10s per profile; sync is infeasible |
-| ADR003 | AnalysisJob is the source of truth | Not users, not sessions — the job anchors the entire system |
+| ADR003 | AnalysisJob is the source of truth | Not users, not sessions, the job anchors the entire system |
 | ADR004 | No role-based scoring | Requires user input; self-reports are inaccurate; hybrid developers break classification |
 | ADR005 | Confidence is an inline modifier, not a peer score | A recruiter needs "backend: 82 (high confidence)", not "confidence: 72" as a standalone number |
 | ADR006 | Collaboration is Impact, not a Capability | Collaboration is a behavioral signal. Backend / Frontend / DevOps are technical skills. These are different categories |
@@ -151,9 +151,9 @@ src/
 | ADR008 | No deep commit or diff parsing | Commit counts and lines of code are noisy and gameable; contribution graph summary is sufficient |
 | ADR009 | 24h result cache by username | Protects GitHub API rate limits; critical for demo reliability |
 | ADR010 | Output schema locked before scoring logic is written | The schema is the contract; all layers build toward it |
-| ADR011 | Lightweight fetcher only — no deep repo analysis at MVP | Repo list + contribution graph + external PRs covers all 8 signals without deep parsing |
+| ADR011 | Lightweight fetcher only, no deep repo analysis at MVP | Repo list + contribution graph + external PRs covers all 8 signals without deep parsing |
 | ADR012 | Headless analysis API callable without user account | Testing and CI pipelines decouple from the user session layer |
-| ADR013 | Wallet address extends the same job input | No redesign needed when Solana signals are added — same AnalysisJob, same schema |
+| ADR013 | Wallet address extends the same job input | No redesign needed when Solana signals are added, same AnalysisJob, same schema |
 | ADR014 | Summary is rule-based at MVP, not AI-generated | Template-driven summaries are consistent, auditable, and fast. AI generation is a Stage 4 enhancement |
 | ADR015 | Progress stages defined before queue implementation | Stages must map 1:1 to UI messages; define them once, use them everywhere |
 | ADR016 | No EVM integration | Adds an entire second chain for zero Solana-specific signal. Revisit if product expands to multi-chain |
@@ -162,7 +162,7 @@ src/
 | ADR019 | Superteam achievement detection via NFT whitelist, not API | No stable public API exists. NFT parsing by known minters is more reliable and requires no external dependency |
 | ADR020 | Wallet signals can only upgrade confidence, never downgrade | Absence of a wallet is not negative signal. Many strong developers have no on-chain footprint |
 | ADR021 | Wallet-only mode is first-class, not a fallback | Some web3 developers have minimal public GitHub. Their on-chain work is their CV |
-| ADR022 | Ecosystem classifier runs on existing fetched data — no new GitHub API calls | Topics and PR repo names are already fetched. The classifier is a filter, not a fetcher |
+| ADR022 | Ecosystem classifier runs on existing fetched data, no new GitHub API calls | Topics and PR repo names are already fetched. The classifier is a filter, not a fetcher |
 | ADR023 | 7d cache TTL for Solana program data | Programs deploy slowly; upgrade authority transfers are rare |
 | ADR024 | Stack fingerprint reads only dependency keys, not values or lock files | Enough to detect tooling presence; avoids the cost and noise of parsing full manifests |
 | ADR025 | Stack fingerprint is display-only on recruiter card, not a scored dimension | Tooling presence is factual, not evaluative. Scores are for capabilities, counts for ownership, descriptors for impact |
@@ -174,7 +174,7 @@ src/
 ↓
 [ AnalysisJob created → jobId returned ]
 ↓
-[ Cache check — hit? → return cached result immediately ]
+[ Cache check, hit? → return cached result immediately ]
 ↓ (cache miss)
 [ BullMQ queue → analysis.processor ]
 ↓
@@ -182,16 +182,16 @@ src/
 │ GitHub Data Fetcher (if githubUsername)  │  │ Solana Adapter (if walletAddress)        │
 │ · User profile                           │  │ · getProgramAccounts by upgrade authority│
 │ · Repo list: name, language, stars,      │  │ · getSignaturesForAddress (traction)     │
-│   forks, topics, created_at, pushed_at,  │  │ · getAssetsByOwner (DAS — NFT scan)      │
+│   forks, topics, created_at, pushed_at,  │  │ · getAssetsByOwner (DAS, NFT scan)      │
 │   is_fork, description                   │  │ · Filter against achievement whitelists  │
 │ · Root manifest scan: package.json +     │  └──────────────────────────────────────────┘
-│   Cargo.toml — dependency keys only      │
+│   Cargo.toml, dependency keys only      │
 │ · Contribution graph (weekly summary)    │
 │ · External PR contributions (count +     │
 │   repo names)                            │
 └──────────────────────────────────────────┘
 ↓
-[ Signal Extractor — 12 signals total ]
+[ Signal Extractor, 12 signals total ]
   GitHub signals (S1–S8, existing):
     S1  Ownership depth
     S2  Project longevity
@@ -201,13 +201,13 @@ src/
     S6  Project meaningfulness
     S7  Stack identity
     S8  Data completeness
-  Ecosystem signals (S9–S10, new — GitHub data, no new fetches):
+  Ecosystem signals (S9–S10, new, GitHub data, no new fetches):
     S9  Ecosystem identity
     S10 Ecosystem contribution credibility
-  Wallet signals (S11–S12, new — optional):
+  Wallet signals (S11–S12, new, optional):
     S11 On-chain program ownership + traction
     S12 Ecosystem achievements (Colosseum wins + Superteam bounties)
-  Stack signal (S13, new — lightweight manifest read):
+  Stack signal (S13, new, lightweight manifest read):
     S13 Stack fingerprint
 ↓
 [ Web3 Merge Service ]
@@ -221,7 +221,7 @@ src/
   · Impact (activity, consistency, external, ecosystem PRs) ← S3, S5, S6, S10
   · Confidence modifier applied inline per dimension ← S8, cross-source agreement
 ↓
-[ Summary Generator — rule-based 1–2 sentence description ]
+[ Summary Generator, rule-based 1–2 sentence description ]
 ↓
 [ Result stored → cache set → job marked complete ]
 ↓
@@ -230,7 +230,7 @@ src/
 
 ---
 
-## 4. Scoring Model — Capability-Based Engine
+## 4. Scoring Model, Capability-Based Engine
 
 ### 4.1 Design Principles
 
@@ -246,24 +246,24 @@ src/
 
 **Fast and scalable.** No deep repo parsing. Lightweight fetcher only.
 
-**Wallet-compatible.** Schema designed to absorb Solana signals without structural change. The wallet enhances — it never penalises.
+**Wallet-compatible.** Schema designed to absorb Solana signals without structural change. The wallet enhances, it never penalises.
 
-### 4.2 Signal Set — 8 High-Signal Inputs (GitHub)
+### 4.2 Signal Set, 8 High-Signal Inputs (GitHub)
 
 | # | Signal | Computed From | Why It Matters |
 |---|---|---|---|
 | S1 | Ownership depth | Non-fork repos owned, maintained > 3 months | Distinguishes real work from clones and toy experiments |
 | S2 | Project longevity | Average age of actively maintained repos | Signals commitment vs. short-lived projects |
-| S3 | Activity consistency | Contribution graph: active weeks / 52 | Sustained pattern of work over time — not raw commit volume |
+| S3 | Activity consistency | Contribution graph: active weeks / 52 | Sustained pattern of work over time, not raw commit volume |
 | S4 | Tech stack breadth | Unique languages across owned repos | Generalist vs. specialist; feeds capability inference |
 | S5 | External contributions | PRs merged into repos not owned by user | Collaboration quality and real-world credibility |
 | S6 | Project meaningfulness | Stars + forks + topic tags on owned repos | Evidence that others found the work useful |
-| S7 | Stack identity | Top 2 languages by repo count and bytes written | Primary build environment — primary driver of capability scoring |
+| S7 | Stack identity | Top 2 languages by repo count and bytes written | Primary build environment, primary driver of capability scoring |
 | S8 | Data completeness | Public repo count, contribution visibility, account age | Confidence modifier applied inline to each dimension |
 
 ### 4.3 Capability Scoring
 
-Capability scores (0–100) are inferred from S7 (stack identity) and S4 (tech stack breadth). A developer can score high on multiple capabilities — no single label is forced.
+Capability scores (0–100) are inferred from S7 (stack identity) and S4 (tech stack breadth). A developer can score high on multiple capabilities, no single label is forced.
 
 | Capability | Primary Language Signals | Secondary Signals |
 |---|---|---|
@@ -271,37 +271,37 @@ Capability scores (0–100) are inferred from S7 (stack identity) and S4 (tech s
 | Frontend | TypeScript, JavaScript with UI topics, CSS | React/Vue/Svelte/Angular repos, CSS-heavy repos, UI component topics |
 | DevOps | Shell, HCL, YAML-dominant repos | Docker, Kubernetes, CI/CD configs, infra topics, Terraform |
 
-Each capability score carries an inline confidence qualifier (low / medium / high) derived from S8. In Stage 3, wallet signals (S11) can reinforce capability scoring — a Rust-heavy GitHub profile with deployed Solana programs upgrades backend confidence one tier.
+Each capability score carries an inline confidence qualifier (low / medium / high) derived from S8. In Stage 3, wallet signals (S11) can reinforce capability scoring, a Rust-heavy GitHub profile with deployed Solana programs upgrades backend confidence one tier.
 
 ### 4.4 Ownership Scoring
 
 Ownership is expressed as counts, not a weighted score. Recruiters can read counts directly.
 
-- `ownedProjects` — count of non-fork repos maintained > 3 months (S1)
-- `activelyMaintained` — count of repos with a push in the last 6 months (S2)
-- `deployedPrograms` — count of Solana programs where wallet holds upgrade authority (S11, optional)
-- `confidence` — derived from S8
+- `ownedProjects`, count of non-fork repos maintained > 3 months (S1)
+- `activelyMaintained`, count of repos with a push in the last 6 months (S2)
+- `deployedPrograms`, count of Solana programs where wallet holds upgrade authority (S11, optional)
+- `confidence`, derived from S8
 
 ### 4.5 Impact Scoring
 
 Impact uses qualitative descriptors rather than a 0–100 score.
 
-- `activityLevel` — high / medium / low — from S3 (active weeks / 52)
-- `consistency` — strong / moderate / sparse — from S3 trend over time
-- `externalContributions` — count of PRs merged into external repos — from S5 + S10 (ecosystem PRs increment this count)
-- `confidence` — derived from S8
+- `activityLevel`, high / medium / low, from S3 (active weeks / 52)
+- `consistency`, strong / moderate / sparse, from S3 trend over time
+- `externalContributions`, count of PRs merged into external repos, from S5 + S10 (ecosystem PRs increment this count)
+- `confidence`, derived from S8
 
 Collaboration (external contributions) sits here under Impact. It is a behavioral signal, not a technical skill.
 
-### 4.6 Confidence — Inline Modifier, Not a Peer Score
+### 4.6 Confidence, Inline Modifier, Not a Peer Score
 
-Confidence is not a top-level dimension. It is a qualifier that travels with each dimension. The value comes from S8 (data completeness). In Stage 3, cross-source agreement between GitHub and wallet signals can upgrade confidence — but wallet signals can never downgrade it.
+Confidence is not a top-level dimension. It is a qualifier that travels with each dimension. The value comes from S8 (data completeness). In Stage 3, cross-source agreement between GitHub and wallet signals can upgrade confidence, but wallet signals can never downgrade it.
 
 ```json
 // Correct
 { "backend": { "score": 82, "confidence": "high" } }
 
-// Incorrect — confidence as a peer score adds nothing
+// Incorrect, confidence as a peer score adds nothing
 { "backend": 82, "confidence": 72 }
 ```
 
@@ -332,7 +332,7 @@ Factors affecting confidence:
 | Lines of code | The most gameable metric available; conveys nothing about quality |
 | Repo complexity scoring | Expensive to compute; poorly defined; no recruiter interpretability |
 | PR/issue micro-metrics | Simplified into S5 external contributions count |
-| Time decay functions | Replaced by S3 activity consistency — simpler and more intuitive |
+| Time decay functions | Replaced by S3 activity consistency, simpler and more intuitive |
 | Collaboration as a Capability | Collaboration is behavioral; moved to Impact as externalContributions |
 | Confidence as a top-level score | Restructured as an inline modifier |
 | Deep commit and diff parsing | Not needed; all signals compute from repo metadata and contribution graph |
@@ -354,7 +354,7 @@ This schema is locked. All scoring logic builds toward this contract.
 
 ```json
 {
-  "summary": "string — 1–2 sentence plain-English description of primary strengths",
+  "summary": "string, 1–2 sentence plain-English description of primary strengths",
 
   "capabilities": {
     "backend":  { "score": 0, "confidence": "low | medium | high" },
@@ -423,16 +423,16 @@ The AnalysisJob is the source of truth for the entire system. Not users, not ses
     "percentage":  0
   },
   "result":    {},
-  "userId":    "optional — attached on auth",
+  "userId":    "optional, attached on auth",
   "createdAt": "ISO timestamp",
   "updatedAt": "ISO timestamp"
 }
 ```
 
-### 5.3 Recruiter Card — Example Output
+### 5.3 Recruiter Card, Example Output
 
 ```
-Alex Chen — GitHub + Solana Wallet
+Alex Chen, GitHub + Solana Wallet
 
 Backend-focused Solana developer with strong program ownership. Primarily building
 in Rust and TypeScript. Has contributed to coral-xyz/anchor and deployed 2 active
@@ -475,30 +475,30 @@ Progress stages are defined here and used verbatim in both queue and UI. No dive
 | building_profile | Scoring service computing capabilities, ownership, impact |
 | complete | Result stored; cache set; job closed |
 
-### 6.2 Data Fetcher — Lightweight Only
+### 6.2 Data Fetcher, Lightweight Only
 
 The fetcher pulls only what the signals need. No deep analysis.
 
-**GitHub — fetched:**
+**GitHub, fetched:**
 - User profile (account age, public repo count, followers)
 - Repo list per repo: `name`, `language`, `stars`, `forks`, `topics`, `created_at`, `pushed_at`, `is_fork`, `description`
-- Root manifest: `package.json` and/or `Cargo.toml` — dependency keys only, no values, no lock files
-- Contribution graph — weekly summary (active weeks count)
-- External PR contributions — count and repo names only
+- Root manifest: `package.json` and/or `Cargo.toml`, dependency keys only, no values, no lock files
+- Contribution graph, weekly summary (active weeks count)
+- External PR contributions, count and repo names only
 
-**GitHub — not fetched:**
+**GitHub, not fetched:**
 - Commit-level data
 - Diff or line-count data
 - README content
 - Per-file language breakdown
 - Full manifest values, lock files, or nested dependencies
 
-**Solana — fetched (if walletAddress provided):**
+**Solana, fetched (if walletAddress provided):**
 - Programs where wallet holds upgrade authority (`getProgramAccounts` on BPF_LOADER_UPGRADEABLE_ID)
 - Per program: first slot timestamp, recent signature sample for traction (capped at 500)
-- NFT holdings via `getAssetsByOwner` (Helius DAS API or equivalent) — filtered against whitelists
+- NFT holdings via `getAssetsByOwner` (Helius DAS API or equivalent), filtered against whitelists
 
-**Solana — not fetched:**
+**Solana, not fetched:**
 - Token balances
 - Transaction history beyond traction sample
 - DeFi / swap / NFT financial activity
@@ -561,7 +561,7 @@ The original Stage 3 design implicitly optimised for smart contract developers w
 | Developer Type | GitHub Signal | Wallet Signal |
 |---|---|---|
 | Smart contract dev (own wallet) | Rust repos, anchor-lang topics | Program upgrade authority ✦ |
-| Smart contract dev (company wallet) | Rust repos, anchor-lang topics | No wallet signal — GitHub only |
+| Smart contract dev (company wallet) | Rust repos, anchor-lang topics | No wallet signal, GitHub only |
 | Protocol contributor | PRs into Solana core, Anchor, Metaplex | Typically none |
 | SDK / tooling developer | TypeScript/Rust, solana deps in manifests | Typically none |
 | Frontend / dApp developer | TS repos, @solana/web3.js in package.json | Possibly achievement NFTs |
@@ -582,9 +582,9 @@ Consequence: the GitHub ecosystem classifier (S9, S10) and stack fingerprint (S1
 | Hackathon participation NFTs | Participation ≠ winning. Indistinguishable from bulk submissions |
 | Superteam API dependency | No stable public API exists. NFT whitelist is more reliable |
 
-### 8.3 Signal Set — Stage 3 Additions
+### 8.3 Signal Set, Stage 3 Additions
 
-#### S9 — Ecosystem Identity
+#### S9, Ecosystem Identity
 
 Computed from existing repo topics (S6 already fetches these) and repo descriptions. Zero new API calls.
 
@@ -602,7 +602,7 @@ const ecosystemIdentity = repos.some(r =>
 
 Output: `"solana" | null`. Binary. Not a score.
 
-#### S10 — Ecosystem Contribution Credibility
+#### S10, Ecosystem Contribution Credibility
 
 Computed from existing S5 external PR data cross-referenced against a curated list of canonical Solana ecosystem repositories. Zero new API calls.
 
@@ -618,7 +618,7 @@ const SOLANA_ECOSYSTEM_REPOS = [
   'openbook-dex/openbook-v2',
   'solana-developers/program-examples',
   'solana-developers/solana-cookbook',
-  // ~20 total — manually curated, quarterly review
+  // ~20 total, manually curated, quarterly review
 ];
 
 const ecosystemPRs = externalPRs.filter(pr =>
@@ -628,7 +628,7 @@ const ecosystemPRs = externalPRs.filter(pr =>
 
 Output: integer. Increments `externalContributions` in Impact and adds an ecosystem note to the summary.
 
-#### S11 — On-Chain Program Ownership + Traction
+#### S11, On-Chain Program Ownership + Traction
 
 One Solana RPC call. Cached 7 days.
 
@@ -650,27 +650,27 @@ Output per program: `{ programId, deployedAt, isActive, uniqueCallers }`.
 
 Unique callers are used instead of transaction counts because transaction volume is trivially gameable. 200 distinct wallets calling a program is meaningful; 50,000 transactions from 3 bots is not.
 
-#### S12 — Ecosystem Achievements
+#### S12, Ecosystem Achievements
 
 Two curated whitelists. NFT parsing by known minters. No external API dependency.
 
 **Colosseum Hackathon Wins:**
 - Fetch NFTs held by the wallet via `getAssetsByOwner` (Helius DAS API or equivalent)
-- Filter against `whitelists/colosseum-mints.json` — winner mint authorities only
+- Filter against `whitelists/colosseum-mints.json`, winner mint authorities only
 - Participation NFTs explicitly excluded
 - Output: `[{ type: "hackathon_win", source: "colosseum", label, year }]`
 
 **Superteam Bounty Completions:**
-- Same NFT scan, filter against `whitelists/superteam-mints.json` — completion credential mints
+- Same NFT scan, filter against `whitelists/superteam-mints.json`, completion credential mints
 - Output: `[{ type: "bounty_completion", source: "superteam", label, year }]`
 
 Both whitelists are JSON files in the repository, versioned, reviewed quarterly.
 
 ### 8.4 Stack Fingerprint Signal
 
-#### S13 — Stack Fingerprint
+#### S13, Stack Fingerprint
 
-Computed from root-level `package.json` and/or `Cargo.toml` across owned repos. Dependency keys only — no values, no lock files, no transitive dependencies.
+Computed from root-level `package.json` and/or `Cargo.toml` across owned repos. Dependency keys only, no values, no lock files, no transitive dependencies.
 
 The fetcher reads one file per repo. It extracts the keys from `dependencies` and `devDependencies` (package.json) or `[dependencies]` (Cargo.toml) and passes them to the classifier.
 
@@ -703,7 +703,7 @@ The fetcher reads one file per repo. It extracts the keys from `dependencies` an
 }
 ```
 
-Stack is **display-only** on the recruiter card. It is not a scored dimension. Languages come from S7 (already computed). Tools come from S13 manifest scan. Together they form a factual stack fingerprint — what the developer demonstrably uses, inferred without asking them.
+Stack is **display-only** on the recruiter card. It is not a scored dimension. Languages come from S7 (already computed). Tools come from S13 manifest scan. Together they form a factual stack fingerprint, what the developer demonstrably uses, inferred without asking them.
 
 ### 8.5 How Signals Merge
 
@@ -719,14 +719,14 @@ No new top-level scoring dimensions are added. Wallet and ecosystem signals feed
 | S12 Achievements | web3.achievements block | Verifiable credentials, not a score |
 | S13 Stack fingerprint | stack block (display only) | Languages + tools shown on recruiter card |
 
-**Confidence upgrade rules — wallet can only upgrade, never downgrade:**
+**Confidence upgrade rules, wallet can only upgrade, never downgrade:**
 
 | GitHub State | Wallet Present | Result |
 |---|---|---|
 | Sparse repos + high consistency | Programs deployed | Confidence upgrades to medium; private work note updated |
 | Strong Rust GitHub profile | Programs deployed | Backend confidence upgrades one tier |
 | TypeScript dApp repos | Achievements present | Summary notes full-stack web3 capability |
-| Strong profile | No wallet provided | No change — profile is complete |
+| Strong profile | No wallet provided | No change, profile is complete |
 | No GitHub | Programs + achievements | Wallet-only profile, confidence low-medium, clearly surfaced |
 
 ### 8.6 Three-Mode Operation
@@ -779,8 +779,8 @@ All three input combinations produce a valid, complete profile. No mode is a deg
 | JWT_REFRESH_SECRET | JWT refresh token secret |
 | INTERNAL_API_KEY | X-Internal-Key for headless scorecard endpoint |
 | SENTRY_DSN | Sentry error tracking DSN |
-| SOLANA_RPC_URL | Solana RPC endpoint — Stage 3 |
-| HELIUS_API_KEY | Helius DAS API key for NFT scanning — Stage 3 |
+| SOLANA_RPC_URL | Solana RPC endpoint, Stage 3 |
+| HELIUS_API_KEY | Helius DAS API key for NFT scanning, Stage 3 |
 
 ---
 
@@ -823,45 +823,45 @@ All three input combinations produce a valid, complete profile. No mode is a deg
 
 > Stages 1 and 2 are built. The roadmap continues from Stage 2's scoring refactor. Each stage extends the system progressively without redesigning what came before.
 
-### Stage 3 — Web3 / Solana Layer + Stack Fingerprint
+### Stage 3, Web3 / Solana Layer + Stack Fingerprint
 
 This is an extension, not a rebuild. The API contract, job service, queue infrastructure, and Stage 2 scoring logic are not changing. Four new signals are added (two from existing GitHub data, two from the wallet). A stack fingerprint is added to the recruiter card. Three-mode input is introduced.
 
 **What does not change:**
 - POST /analysis, GET /analysis/:id/status, GET /analysis/:id/result API contract
-- Stage 2 result schema fields — all existing fields, names, and types are frozen
+- Stage 2 result schema fields, all existing fields, names, and types are frozen
 - BullMQ queue infrastructure and processor structure
-- GitHub data fetcher — only extended with manifest read, nothing removed
+- GitHub data fetcher, only extended with manifest read, nothing removed
 - S1–S8 signal extraction and scoring logic
 
-**Phase 1 — Ecosystem Classifier (zero new infrastructure)**
+**Phase 1, Ecosystem Classifier (zero new infrastructure)**
 
 Deliverable: S9 + S10 live. Web3 developers get ecosystem tagging and ecosystem PR recognition from existing data with no new API calls.
 
 - Define `SOLANA_TOPICS` constant in signal-extractor module
-- Build `EcosystemClassifierService` — takes existing repo list + external PR list, returns `{ ecosystemIdentity, ecosystemPRs }`
-- Wire S9 result into summary generator — add "Solana ecosystem developer" language when detected
-- Wire S10 into `externalContributions` — increment count + add note distinguishing ecosystem PRs
+- Build `EcosystemClassifierService`, takes existing repo list + external PR list, returns `{ ecosystemIdentity, ecosystemPRs }`
+- Wire S9 result into summary generator, add "Solana ecosystem developer" language when detected
+- Wire S10 into `externalContributions`, increment count + add note distinguishing ecosystem PRs
 - Extend locked schema TypeScript interface with optional `web3` block (null by default)
 - Unit tests: protocol contributor (Anchor PRs, no wallet), dApp dev (web3.js repos, no wallet), non-web3 dev
 
-**Phase 2 — Stack Fingerprint (S13)**
+**Phase 2, Stack Fingerprint (S13)**
 
 Deliverable: Stack section live on recruiter card. Languages + detected tools shown for all profiles.
 
-- Extend GitHub fetcher: read root `package.json` and `Cargo.toml` per repo — dependency keys only
-- Build `StackFingerprintService` — takes dependency key lists, returns `{ languages, tools }`
+- Extend GitHub fetcher: read root `package.json` and `Cargo.toml` per repo, dependency keys only
+- Build `StackFingerprintService`, takes dependency key lists, returns `{ languages, tools }`
 - Maintain tool detection map as a typed constant (see Section 8.4)
 - Wire S13 output into `stack` block in result schema
-- Stack block is display-only — wire into card renderer, not into any scoring logic
+- Stack block is display-only, wire into card renderer, not into any scoring logic
 - Unit tests: repo with BullMQ → tools includes "BullMQ"; Rust repo with anchor-lang → tools includes "Anchor"; repo with no recognisable deps → tools: []
 - Benchmark: manifest fetch adds < 1s to total pipeline time
 
-**Phase 3 — Three-Mode Input & Job Routing**
+**Phase 3, Three-Mode Input & Job Routing**
 
 Deliverable: API accepts all three input modes. Routing logic dispatches to correct fetcher combination.
 
-- Extend POST /analysis body schema: `{ githubUsername?, walletAddress? }` — at least one required
+- Extend POST /analysis body schema: `{ githubUsername?, walletAddress? }`, at least one required
 - Add input validation: Solana base58 address format check on `walletAddress`
 - Add job routing in `analysis.processor`: `github-only | github+wallet | wallet-only`
 - Wallet-only mode: skip GitHub fetcher entirely; signal extractor receives null for S1–S10
@@ -869,14 +869,14 @@ Deliverable: API accepts all three input modes. Routing logic dispatches to corr
 - Extend cache key logic to include `walletAddress` when present
 - Integration tests: verify all three input modes reach correct processor branch
 
-**Phase 4 — On-Chain Program Ownership + Traction (S11)**
+**Phase 4, On-Chain Program Ownership + Traction (S11)**
 
 Deliverable: Program ownership and traction live. Wallet-only profiles produce valid output. Confidence upgrade rules active.
 
 - Install/confirm `@solana/web3.js` in package.json
 - Build `SolanaAdapterService`:
-  - `fetchProgramsByAuthority(walletAddress)` — getProgramAccounts filtered by upgrade authority offset 13
-  - `fetchProgramTraction(programId)` — getSignaturesForAddress capped at 500, deduplicate feePayer, return `{ uniqueCallers, isActive }`
+  - `fetchProgramsByAuthority(walletAddress)`, getProgramAccounts filtered by upgrade authority offset 13
+  - `fetchProgramTraction(programId)`, getSignaturesForAddress capped at 500, deduplicate feePayer, return `{ uniqueCallers, isActive }`
 - Wire program ownership count into `ownership.deployedPrograms`
 - Implement confidence upgrade rules in `Web3MergeService`: Rust stack + deployed programs → backend confidence +1 tier
 - Wire active programs with callers into activityLevel upgrade consideration
@@ -884,11 +884,11 @@ Deliverable: Program ownership and traction live. Wallet-only profiles produce v
 - Graceful failure: RPC timeout → log, continue, wallet signals null, GitHub profile unaffected
 - Unit tests: wallet with programs, wallet with no programs, RPC timeout handling
 
-**Phase 5 — Achievement Signals (S12)**
+**Phase 5, Achievement Signals (S12)**
 
 Deliverable: Colosseum wins and Superteam bounty completions surface as verifiable credentials.
 
-- Build `AchievementWhitelistService` — loads `colosseum-mints.json` and `superteam-mints.json` from config
+- Build `AchievementWhitelistService`, loads `colosseum-mints.json` and `superteam-mints.json` from config
 - Seed initial whitelists with known Colosseum winner and Superteam completion credential mint authorities
 - Build NFT scan: `getAssetsByOwner` via Helius DAS API → filter against whitelists → extract label + year from metadata
 - Wire achievements into `web3.achievements` array in result schema
@@ -896,7 +896,7 @@ Deliverable: Colosseum wins and Superteam bounty completions surface as verifiab
 - Document quarterly whitelist review process in README
 - Unit tests: wallet with Colosseum NFT, wallet with Superteam NFT, wallet with neither
 
-**Phase 6 — Validation**
+**Phase 6, Validation**
 
 Deliverable: End-to-end validated across all three modes and all new signals.
 
@@ -911,44 +911,44 @@ Deliverable: End-to-end validated across all three modes and all new signals.
 
 ---
 
-### Stage 4 — CV Replacement & Decision Layer
+### Stage 4, CV Replacement & Decision Layer
 
-- `DecisionCardGenerator` — PROCEED / REVIEW / REJECT based on capability scores + confidence levels
-- `GapAnalysisEngine` — runs at apply-time against a job description; DEALBREAKER / SIGNIFICANT / MINOR severity
-- `JobDescriptionParser` — Google API; extracts required capabilities and stack; HR confirmation before saving
-- `InterviewProbeLibrary` — STAR-format questions generated from gap severity; mandatory for DEALBREAKERs
-- `ApplicationsModule` — POST /api/jobs/:id/apply → freeze DecisionCard + GapReport at apply time
-- HR Application Views — ranked list with DecisionCard + summary card; full detail with GapReport + interview probes
-- Candidate self-gap view — GET /api/me/gap-preview?jobId=:id — sees gaps without interview probes
-- Rescore queue — triggered on job description weight change
+- `DecisionCardGenerator`, PROCEED / REVIEW / REJECT based on capability scores + confidence levels
+- `GapAnalysisEngine`, runs at apply-time against a job description; DEALBREAKER / SIGNIFICANT / MINOR severity
+- `JobDescriptionParser`, Google API; extracts required capabilities and stack; HR confirmation before saving
+- `InterviewProbeLibrary`, STAR-format questions generated from gap severity; mandatory for DEALBREAKERs
+- `ApplicationsModule`, POST /api/jobs/:id/apply → freeze DecisionCard + GapReport at apply time
+- HR Application Views, ranked list with DecisionCard + summary card; full detail with GapReport + interview probes
+- Candidate self-gap view, GET /api/me/gap-preview?jobId=:id, sees gaps without interview probes
+- Rescore queue, triggered on job description weight change
 - AI-generated summaries replace rule-based SummaryGenerator (Stage 4 enhancement, not MVP)
 
 **Deliverable:** Full CV replacement loop. HR sees DecisionCard first. STAR-format probes live.
 
 ---
 
-### Stage 5 — Outcomes, ROI & Fairness
+### Stage 5, Outcomes, ROI & Fairness
 
-- `HireOutcome` — POST /api/outcomes; capture decision snapshot + 90-day performance rating
-- Calibration analytics — capability score → performance correlation; which signals predict real outcomes
-- ROI dashboard — GET /api/hr/orgs/:orgId/roi; cold-start shows industry benchmarks
-- Fairness report — pass/reject rate by confidence tier; score distribution by ecosystem; contestation volume
-- GDPR deletion — DELETE /api/me hard delete; soft anonymise applications; flush Redis
+- `HireOutcome`, POST /api/outcomes; capture decision snapshot + 90-day performance rating
+- Calibration analytics, capability score → performance correlation; which signals predict real outcomes
+- ROI dashboard, GET /api/hr/orgs/:orgId/roi; cold-start shows industry benchmarks
+- Fairness report, pass/reject rate by confidence tier; score distribution by ecosystem; contestation volume
+- GDPR deletion, DELETE /api/me hard delete; soft anonymise applications; flush Redis
 - Load test (k6): 100 concurrent analysis events; p95 < 2.5s
-- Solana Attestation Service integration — revisit if adoption has grown sufficiently
+- Solana Attestation Service integration, revisit if adoption has grown sufficiently
 - @sentry/node initialised; correlationId via AsyncLocalStorage; BullMQ duration_ms logging
 
 **Deliverable:** Feedback loop live. GDPR compliant. Fairness reporting. ROI dashboard operational.
 
 ---
 
-### Stage 6 — ATS & Commercial
+### Stage 6, ATS & Commercial
 
-- ATS connectors — Greenhouse (OAuth 2.0, two-way), Lever (OAuth 2.0, two-way), Workday (OAuth/SOAP push)
-- POST /api/hr/orgs/:orgId/ats/connect — OAuth flow
-- POST /api/hr/orgs/:orgId/ats/sync — manual sync trigger
+- ATS connectors, Greenhouse (OAuth 2.0, two-way), Lever (OAuth 2.0, two-way), Workday (OAuth/SOAP push)
+- POST /api/hr/orgs/:orgId/ats/connect, OAuth flow
+- POST /api/hr/orgs/:orgId/ats/sync, manual sync trigger
 - Multi-tenancy load test: 20 concurrent orgs; RLS isolation verified under load
-- GDPR DPA endpoint — DELETE /api/admin/orgs/:orgId permanently removes all applicant data on DPA termination
+- GDPR DPA endpoint, DELETE /api/admin/orgs/:orgId permanently removes all applicant data on DPA termination
 - E2E test suite: full analysis → gap report → DecisionCard → ATS sync → ROI → fairness
 
 **Deliverable:** ATS-integrated commercial product. Multi-tenant verified. Commercially ready.
@@ -965,7 +965,7 @@ Deliverable: End-to-end validated across all three modes and all new signals.
 | Average analysis time (cache miss) | < 10s GitHub only / < 12s GitHub + wallet | Lightweight fetcher is sufficient; pipeline is not over-engineered |
 | Profile share rate: % who actively share Colosseum profile | > 40% | Candidates perceive the profile as a net positive CV replacement |
 | Cache hit rate after first wave of users | > 60% | Cache is serving real traffic and protecting GitHub API limits |
-| Confidence qualifier accuracy | Statistically significant | The confidence system is calibrated — it accurately signals uncertainty |
+| Confidence qualifier accuracy | Statistically significant | The confidence system is calibrated, it accurately signals uncertainty |
 | Zero-effort rate: % of profiles generated with no candidate input | 100% | The zero-manual-input goal is maintained end to end |
 | Web3 developer ecosystem recognition rate | > 90% of Solana devs correctly tagged | S9/S10 ecosystem classifier covers the full developer population |
 | Stack fingerprint accuracy | < 5% false positive tool detection | Manifest scan is tight enough; no noise introduced by over-matching |

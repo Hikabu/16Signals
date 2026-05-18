@@ -1,4 +1,4 @@
-# 16signals — FRONTEND CONTEXT
+# 16signals, FRONTEND CONTEXT
 
 ## Product Overview
 

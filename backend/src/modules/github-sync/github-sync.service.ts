@@ -30,7 +30,7 @@ export class GithubSyncService {
   // ─── Connect step 1: generate state, return OAuth URL ────────────
   async startConnect(userId: string): Promise<string> {
     const state = crypto.randomBytes(16).toString('hex');
-    // Store userId against state for 5 minutes — same as link flow
+    // Store userId against state for 5 minutes, same as link flow
     await this.redis.set(`github_sync_state:${state}`, userId, 'EX', 300);
 
     const clientId = this.config.get('GITHUB_CLIENT_ID');
@@ -51,7 +51,7 @@ export class GithubSyncService {
     },
     state: string,
   ) {
-    // Recover userId from Redis state — same pattern as linkOAuth
+    // Recover userId from Redis state, same pattern as linkOAuth
     const userId = await this.redis.get(`github_sync_state:${state}`);
     if (!userId) {
       throw new UnauthorizedException(

@@ -275,7 +275,7 @@ function EscrowManagement({
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         </span>
-        <p className="text-sm text-emerald-400 font-medium">Escrow funded — waiting for release</p>
+        <p className="text-sm text-emerald-400 font-medium">Escrow funded, waiting for release</p>
       </div>
       <div className="flex gap-2">
         <Button disabled={isReleasing} onClick={onRelease} className="flex-1 h-10 cursor-pointer rounded-xl bg-emerald-600 text-sm font-medium text-white hover:bg-emerald-500">
@@ -294,7 +294,7 @@ function EscrowManagement({
         <svg className="h-3.5 w-3.5 text-emerald-400" viewBox="0 0 16 16" fill="none">
           <path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        Settled — {status}
+        Settled, {status}
       </span>
     </div>
   )

@@ -707,7 +707,7 @@ export class AuthCandidateService {
     );
 
     if (localAccount) {
-      // Existing password — require currentPassword verification
+      // Existing password, require currentPassword verification
       if (!dto.currentPassword) {
         throw new BadRequestException(
           'currentPassword is required to change an existing password',
@@ -726,7 +726,7 @@ export class AuthCandidateService {
         data: { passwordHash: hash },
       });
     } else {
-      // No local account — create one (set password for the first time)
+      // No local account, create one (set password for the first time)
       const hash = await bcrypt.hash(dto.newPassword, this.passwordHashRounds);
       await this.prisma.authAccount.create({
         data: {

@@ -111,7 +111,7 @@ export class ApplicantsService {
       hrView: buildHrView(app),
       technicalView: buildTechnicalView(app),
 
-      // Full detail fields (HR only — never returned on candidate endpoints)
+      // Full detail fields (HR only, never returned on candidate endpoints)
       pipelineStageHistory: (app as any).pipelineStageHistory ?? [],
       interviewQuestions: (app as any).interviewQuestions ?? [],
 

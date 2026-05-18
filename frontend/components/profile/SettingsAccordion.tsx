@@ -208,7 +208,7 @@ function MfaSetupFlow({
         <div className="flex flex-col gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
           <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            2FA activated — save these recovery codes
+            2FA activated, save these recovery codes
           </div>
           <div className="grid grid-cols-2 gap-1">
             {setupData.recoveryCodes.map((code: string) => (
@@ -335,7 +335,7 @@ export function SettingsAccordion() {
   }, [syncStatusData, isGithubSyncing, queryClient, toast])
 
   // --- WALLET ---
-  // Reuses the same ['wallet'] key that ProfileClient uses — always in sync
+  // Reuses the same ['wallet'] key that ProfileClient uses, always in sync
   const { data: walletData } = useQuery({
     queryKey: ['wallet'],
     queryFn: getLinkedWallet,
@@ -364,7 +364,7 @@ export function SettingsAccordion() {
 
   const githubLinked = securityInfo?.linkedProviders?.includes('GITHUB') ?? false
   const googleLinked = securityInfo?.linkedProviders?.includes('GOOGLE') ?? false
-  // GitHub username from sync profile — shown as a display hint when available
+  // GitHub username from sync profile, shown as a display hint when available
   const githubUsername = (githubData as any)?.username as string | undefined
 
   const mfaEnabled = securityInfo?.mfaEnabled ?? false

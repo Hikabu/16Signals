@@ -136,7 +136,7 @@ export class SignalComputeProcessor extends WorkerHost {
           await this.cacheService.set(cacheKey, result);
         }
 
-        // S15 — Vouch signal (Live)
+        // S15, Vouch signal (Live)
         result = await this.applyVouchSignal(result, {
           githubUsername,
           walletAddress,
@@ -262,7 +262,7 @@ let result: AnalysisResult = {
         await this.cacheService.set(cacheKey, result);
       }
 
-      // S15 — Vouch signal (Live)
+      // S15, Vouch signal (Live)
       result = await this.applyVouchSignal(result, {
         githubUsername,
         walletAddress,
@@ -347,7 +347,7 @@ let result: AnalysisResult = {
   ): Promise<AnalysisResult> {
     const now = new Date();
 
-    // Resolve candidateId from job data — vouches are candidate-scoped, not github-scoped
+    // Resolve candidateId from job data, vouches are candidate-scoped, not github-scoped
     let candidate;
 
     // 1. GitHub path

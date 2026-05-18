@@ -30,7 +30,7 @@ model Company {
   isVerifiedPayer Boolean   @default(false)
   trustScore      Int       @default(0) // 0–100, application-maintained derived value
 
-  // Denormalised counters — incremented by application logic, never by DB triggers
+  // Denormalised counters, incremented by application logic, never by DB triggers
   totalJobsPosted      Int @default(0)
   totalEscrowsFunded   Int @default(0)
   totalEscrowsReleased Int @default(0)
@@ -200,7 +200,7 @@ model Shortlist {
   behaviorPattern BehaviorPattern?
   fitTier         FitTier          @default(PASS)
 
-  // Frozen snapshots — captured at apply-time, never mutated
+  // Frozen snapshots, captured at apply-time, never mutated
   frozenScorecard Json? // Full AnalysisResult snapshot
   decisionCard    Json? // { verdict, strengths[], risks[], reputationNote }
   gapReport       Json? // GapReport object
@@ -245,7 +245,7 @@ model User {
   email    String? @unique
   username String? @unique
 
-  // Display name — stored on User so it is accessible without joining Candidate
+  // Display name, stored on User so it is accessible without joining Candidate
   firstName String?
   lastName  String?
   name      String?
@@ -309,7 +309,7 @@ model Candidate {
   // Career path bitmask: 1 = DEVELOPER (extend as new paths are added)
   careerPath Int @default(1)
 
-  // AI scorecard — path-agnostic, shape evolves per careerPath bitmask
+  // AI scorecard, path-agnostic, shape evolves per careerPath bitmask
   // Current shape (developer): { roleType, seniorityLevel, signals: Record<string, unknown>, overallFit }
   scorecard Json?
 
@@ -329,7 +329,7 @@ model Candidate {
 
 // ─── DEVELOPER PROFILE ────────────────────────────────────────────────────────
 // Owned 1-to-1 by Candidate. All developer-specific signals and scoring live here.
-// Linked by candidateId (Candidate.id) — not by userId — to keep the FK chain clean.
+// Linked by candidateId (Candidate.id), not by userId, to keep the FK chain clean.
 
 model DeveloperProfile {
   id          String    @id @default(uuid())
@@ -410,11 +410,11 @@ model Web3Profile {
 model Vouch {
   id String @id @default(uuid())
 
-  // FK to Candidate, not to GithubProfile — vouches survive profile resets
+  // FK to Candidate, not to GithubProfile, vouches survive profile resets
   candidateId String
   candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
-  // Voucher identity — wallet proving on-chain identity
+  // Voucher identity, wallet proving on-chain identity
   voucherWallet String
   message       String @db.VarChar(500)
   txSignature   String @unique
@@ -467,13 +467,13 @@ model CachedResult {
 }
 
 // ─── EMPLOYER LAUNCH WAITLIST ─────────────────────────────────────────────────
-// Intentionally no FK to User — works for both guests and authenticated users.
+// Intentionally no FK to User, works for both guests and authenticated users.
 // The userId field links a signup to an account when known (nullable).
 
 model EmployerLaunchWaitlist {
   id        String   @id @default(uuid())
   email     String   @unique
-  userId    String?  // nullable — set when signed-in candidate subscribes
+  userId    String? // nullable, set when signed-in candidate subscribes
   createdAt DateTime @default(now())
 
   @@map("employer_launch_waitlist")

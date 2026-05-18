@@ -64,7 +64,7 @@ interface CandidateAuthCardProps {
   onPasswordResetSuccess?: () => void;
 }
 
-// ─── Google icon (inline SVG — no extra dep) ──────────────────────────────────
+// ─── Google icon (inline SVG, no extra dep) ──────────────────────────────────
 
 function GoogleIcon() {
   return (

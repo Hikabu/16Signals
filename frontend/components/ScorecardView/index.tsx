@@ -497,7 +497,7 @@ const itemVariants = {
             {achievements.length === 0 ? (
               <p className="text-xs text-muted-foreground leading-relaxed italic">
                 {web3 == null
-                  ? 'No wallet linked — connect a Solana wallet to surface on-chain activity.'
+                  ? 'No wallet linked, connect a Solana wallet to surface on-chain activity.'
                   : 'No on-chain achievements found for this wallet.'}
               </p>
             ) : (

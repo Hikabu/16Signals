@@ -115,7 +115,7 @@ function AuthPageContent() {
           router.push(routeForRole(role));
         }
       } catch {
-        // Token expired or invalid — clear auth and stay on this page.
+        // Token expired or invalid, clear auth and stay on this page.
         if (!cancelled) {
           logout();
           setIsValidating(false);
@@ -126,7 +126,7 @@ function AuthPageContent() {
     validateAndRedirect();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount — intentionally omit reactive deps
+  }, []); // Only run once on mount, intentionally omit reactive deps
 
   useEffect(() => {
     if (searchParams.get("clear_session") === "true") {

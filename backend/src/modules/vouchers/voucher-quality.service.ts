@@ -28,7 +28,7 @@ export class VoucherQualityService {
         return cached as VoucherWeight;
       }
     } catch {
-      // Non-fatal — proceed without cache
+      // Non-fatal, proceed without cache
     }
 
     const usingDevnet = this.config.get<string>('USING_DEVNET') === 'true';
@@ -39,7 +39,7 @@ export class VoucherQualityService {
 
     if (!rpcUrl) {
       this.logger.warn(
-        'SOLANA_RPC_URL not configured — defaulting to standard',
+        'SOLANA_RPC_URL not configured, defaulting to standard',
       );
       return 'standard';
     }
@@ -78,9 +78,9 @@ export class VoucherQualityService {
     } catch (err) {
       this.logger.warn(
         { walletAddress, err: (err as Error).message },
-        'assessVoucherWallet_rpc_error — failing open',
+        'assessVoucherWallet_rpc_error, failing open',
       );
-      return 'standard'; // fail open — don't penalise voucher for RPC outage
+      return 'standard'; // fail open, don't penalise voucher for RPC outage
     }
   }
 
@@ -92,7 +92,7 @@ export class VoucherQualityService {
     try {
       await this.redis.set(CACHE_KEY(walletAddress), weight, 'EX', CACHE_TTL);
     } catch {
-      // Non-fatal — cache miss is acceptable
+      // Non-fatal, cache miss is acceptable
     }
     return weight;
   }

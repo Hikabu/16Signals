@@ -21,7 +21,7 @@ export default function ShareButton({ username, displayName }: ShareButtonProps)
         await navigator.share({ title, url })
         return
       } catch {
-        // User cancelled or API unavailable — fall through to clipboard
+        // User cancelled or API unavailable, fall through to clipboard
       }
     }
 

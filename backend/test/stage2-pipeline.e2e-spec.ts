@@ -108,7 +108,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     throw new Error(`Job ${jobId} timed out`);
   };
 
-  describe('TEST E1 — Happy path', () => {
+  describe('TEST E1, Happy path', () => {
     it('should complete analysis for alex-backend', async () => {
       // console.log("first test");
       const res = await request(app.getHttpServer())
@@ -166,7 +166,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     });
   });
 
-  describe('TEST E2 — Cache hit path', () => {
+  describe('TEST E2, Cache hit path', () => {
     it('should return cached job immediately and avoid re-fetch', async () => {
       // First request already done in E1
       // console.log("second test");
@@ -189,7 +189,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     });
   });
 
-  describe('TEST E3 — Zero public data → graceful failure', () => {
+  describe('TEST E3, Zero public data → graceful failure', () => {
     // console.log("test 3");
     it('should fail with Insufficient public data', async () => {
       const res = await request(app.getHttpServer())
@@ -203,7 +203,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     });
   });
 
-  describe('TEST E4 — Private-heavy profile', () => {
+  describe('TEST E4, Private-heavy profile', () => {
     it('should include private work note and low devops confidence for maya-devops', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
@@ -224,7 +224,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     });
   });
 
-  describe('TEST E5 — Confidence levels map correctly', () => {
+  describe('TEST E5, Confidence levels map correctly', () => {
     it('should only use low, medium, high confidence values', async () => {
       const usernames = [
         'alex-backend',
@@ -268,7 +268,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     });
   });
 
-  describe('TEST E6 — Progress stages in correct order', () => {
+  describe('TEST E6, Progress stages in correct order', () => {
     it('should transition through stages in order with non-decreasing percentages', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/analysis')
@@ -320,7 +320,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     });
   });
 
-  describe('TEST E7 — Recompute endpoint', () => {
+  describe('TEST E7, Recompute endpoint', () => {
     it('should bypass cache when force=true', async () => {
       mockGithubAdapter.fetchRawData.mockClear();
 
@@ -363,7 +363,7 @@ describe('Colosseum Stage 2 Pipeline (E2E)', () => {
     });
   });
 
-  describe('TEST E8 — Schema contract', () => {
+  describe('TEST E8, Schema contract', () => {
     it('should verify contract for all 5 fixtures', async () => {
       const fixtures = [
         'alex-backend',

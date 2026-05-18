@@ -259,7 +259,7 @@ export class VouchesController {
    * Receives Helius Enhanced Transaction webhook payloads.
    *
    * Design decisions:
-   *  - Always returns HTTP 200 — a non-200 would cause Helius to retry (up to
+   *  - Always returns HTTP 200, a non-200 would cause Helius to retry (up to
    *    3×), risking duplicate-confirm attempts and quota waste.
    *  - Verifies the shared secret header first; on mismatch we still return
    *    200 with { ok: false } to silently drain spoofed requests without
@@ -284,10 +284,10 @@ export class VouchesController {
   ): Promise<void> {
     const expected = this.config.get<string>('HELIUS_WEBHOOK_SECRET');
 
-    // 1. Verify secret — reject spoofed requests
+    // 1. Verify secret, reject spoofed requests
     if (!expected || secret !== expected) {
       this.logger.warn({ reason: 'bad_secret' }, 'helius_webhook_bad_secret');
-      // Return 200 anyway — 401 would trigger Helius retries
+      // Return 200 anyway, 401 would trigger Helius retries
       res.status(200).json({ ok: false, reason: 'bad_secret' });
       return;
     }
@@ -298,7 +298,7 @@ export class VouchesController {
       return;
     }
 
-    // 3. Respond to Helius immediately — must reply before processing begins
+    // 3. Respond to Helius immediately, must reply before processing begins
     res.status(200).json({ ok: true, received: payload.length });
 
     // 4. Process in background after response is flushed

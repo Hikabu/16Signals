@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import bs58 from 'bs58';
 import { VouchesService } from './vouches.service';
 
-/** Memo Program v2 (SPL Memo) — the one Helius reports in `instructions` */
+/** Memo Program v2 (SPL Memo), the one Helius reports in `instructions` */
 const MEMO_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
 
 /**
@@ -11,7 +11,7 @@ const MEMO_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
  */
 export interface HeliusTx {
   signature: string;
-  /** Fee payer == the wallet that signed and paid — i.e. the voucher's wallet */
+  /** Fee payer == the wallet that signed and paid, i.e. the voucher's wallet */
   feePayer: string;
   instructions?: Array<{
     programId: string;
@@ -36,7 +36,7 @@ export class HeliusWebhookService {
    * Extracts the raw memo string from a Helius Enhanced Transaction.
    *
    * Priority:
-   *   1. `tx.memo`  — Helius pre-decodes it for us.
+   *   1. `tx.memo` , Helius pre-decodes it for us.
    *   2. Walk `tx.instructions`, find the Memo program, and decode its
    *      base58-encoded data as a UTF-8 string.
    *
@@ -83,7 +83,7 @@ export class HeliusWebhookService {
       try {
         memo = JSON.parse(rawMemo) as Record<string, unknown>;
       } catch {
-        // Not JSON — not our vouch format
+        // Not JSON, not our vouch format
         continue;
       }
 
@@ -102,7 +102,7 @@ export class HeliusWebhookService {
         'helius_vouch_tx_received',
       );
 
-      // 4. Confirm via VouchesService — never throws natively, but errors are caught defensively
+      // 4. Confirm via VouchesService, never throws natively, but errors are caught defensively
       try {
         await vouchesService.confirmVouchFromWebhook({
           txSignature: tx.signature,

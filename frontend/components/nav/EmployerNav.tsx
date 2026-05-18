@@ -72,7 +72,7 @@ export function EmployerNav({ companyName, onLogout }: EmployerNavProps) {
   return (
     <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-full flex items-center gap-4">
-        {/* Logo — amber dot for employer accent */}
+        {/* Logo, amber dot for employer accent */}
         <Link
           href="/hr/jobs/new"
           className="flex items-center gap-2 shrink-0"
@@ -89,7 +89,7 @@ export function EmployerNav({ companyName, onLogout }: EmployerNavProps) {
           </span>
         </Link>
 
-        {/* Center nav links — desktop only */}
+        {/* Center nav links, desktop only */}
         <nav className="hidden md:flex items-center gap-1 ml-4">
           {NAV_LINKS.map((link) => (
             <Link
@@ -110,7 +110,7 @@ export function EmployerNav({ companyName, onLogout }: EmployerNavProps) {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Avatar dropdown — desktop, amber accent */}
+        {/* Avatar dropdown, desktop, amber accent */}
         <div className="hidden md:flex items-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
