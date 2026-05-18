@@ -5703,12 +5703,16 @@
           "rolesHiring": {
             "example": [
               "Frontend Developer",
-              "Backend Developer"
+              "Designer"
             ],
             "type": "array",
             "items": {
               "type": "string"
             }
+          },
+          "otherRolesText": {
+            "type": "string",
+            "example": "Legal, Finance, Operations"
           },
           "usesGithub": {
             "type": "boolean",
@@ -5717,6 +5721,10 @@
           "evalTools": {
             "type": "string",
             "example": "Greenhouse, Notion, Loom"
+          },
+          "needsOtherRoleTools": {
+            "type": "boolean",
+            "example": true
           },
           "companyTypes": {
             "example": [

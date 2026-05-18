@@ -29,13 +29,20 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const ROLES = [
+const ENG_ROLES = [
   "Frontend Developer",
   "Backend Developer",
   "Full-Stack Developer",
   "Data / ML Engineer",
-  "Smart Contract / Web3",
-  "Other",
+  "Web3 / Smart Contract",
+];
+
+const OTHER_ROLES = [
+  "Designer",
+  "Product Manager",
+  "DevRel",
+  "Marketing / GTM",
+  "Sales",
 ];
 
 const COMPANY_TYPES = [
@@ -55,8 +62,10 @@ interface FormData {
   companyName: string;
   website: string;
   rolesHiring: string[];
+  otherRolesText: string;
   usesGithub: boolean;
   evalTools: string;
+  needsOtherRoleTools: boolean;
   companyTypes: string[];
   teamSize: string;
   socialLinks: string;
@@ -152,8 +161,10 @@ function EmployerWaitlistWizard({
     companyName: "",
     website: "",
     rolesHiring: [],
+    otherRolesText: "",
     usesGithub: false,
     evalTools: "",
+    needsOtherRoleTools: false,
     companyTypes: [],
     teamSize: "",
     socialLinks: "",
@@ -193,8 +204,10 @@ function EmployerWaitlistWizard({
           companyName: data.companyName,
           website: data.website || undefined,
           rolesHiring: data.rolesHiring.length ? data.rolesHiring : undefined,
+          otherRolesText: data.otherRolesText || undefined,
           usesGithub: data.usesGithub || undefined,
           evalTools: data.evalTools || undefined,
+          needsOtherRoleTools: data.needsOtherRoleTools || undefined,
           companyTypes: data.companyTypes.length ? data.companyTypes : undefined,
           teamSize: data.teamSize || undefined,
           socialLinks: data.socialLinks || undefined,
@@ -378,54 +391,134 @@ function EmployerWaitlistWizard({
       <CardContent className="space-y-6">
         <StepProgress step={2} />
 
-        {/* Roles hiring */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Roles you're looking to hire</Label>
-          <div className="flex flex-wrap gap-2">
-            {ROLES.map((r) => (
+        {/* ── Roles: Engineering ─────────────────────────────────────── */}
+        <div className="space-y-3">
+          <div>
+            <Label className="text-sm font-medium">What roles are you hiring?</Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">Select all that apply — helps us prioritise our roadmap.</p>
+          </div>
+
+          {/* Engineering row */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              Engineering
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {ENG_ROLES.map((r) => (
+                <Chip
+                  key={r}
+                  label={r}
+                  selected={data.rolesHiring.includes(r)}
+                  onClick={() =>
+                    setData((d) => ({ ...d, rolesHiring: toggle(d.rolesHiring, r) }))
+                  }
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Other roles row */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              Other roles
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {OTHER_ROLES.map((r) => (
+                <Chip
+                  key={r}
+                  label={r}
+                  selected={data.rolesHiring.includes(r)}
+                  onClick={() =>
+                    setData((d) => ({ ...d, rolesHiring: toggle(d.rolesHiring, r) }))
+                  }
+                />
+              ))}
+              {/* "Other" chip — reveals free text */}
               <Chip
-                key={r}
-                label={r}
-                selected={data.rolesHiring.includes(r)}
+                label="+ Other"
+                selected={data.otherRolesText.length > 0}
                 onClick={() =>
-                  setData((d) => ({ ...d, rolesHiring: toggle(d.rolesHiring, r) }))
+                  setData((d) => ({
+                    ...d,
+                    otherRolesText: d.otherRolesText.length > 0 ? "" : " ",
+                  }))
                 }
               />
-            ))}
+            </div>
+            {/* Inline text input for "Other" */}
+            {(data.rolesHiring.includes("+ Other") || data.otherRolesText.trim().length >= 0 && data.otherRolesText.length > 0) && (
+              <Input
+                autoFocus
+                type="text"
+                placeholder="Which role? (e.g. Legal, Finance, Operations…)"
+                value={data.otherRolesText.trim() === "" && data.otherRolesText.length > 0 ? "" : data.otherRolesText}
+                onChange={(e) => setData((d) => ({ ...d, otherRolesText: e.target.value }))}
+                className="mt-1"
+              />
+            )}
           </div>
         </div>
 
-        {/* GitHub + other tools */}
+        {/* ── Evaluation tools ────────────────────────────────────────── */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium">Developer evaluation tools</Label>
-          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-border/80">
+          <div>
+            <Label className="text-sm font-medium">How do you evaluate candidates?</Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">Helps us understand what signals matter most to you.</p>
+          </div>
+
+          {/* GitHub checkbox */}
+          <label
+            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-border/70"
+            onClick={() => setData((d) => ({ ...d, usesGithub: !d.usesGithub }))}
+          >
             <div
               className={cn(
                 "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all",
-                data.usesGithub
-                  ? "border-primary bg-primary"
-                  : "border-border bg-transparent"
+                data.usesGithub ? "border-primary bg-primary" : "border-border bg-transparent"
               )}
-              onClick={() => setData((d) => ({ ...d, usesGithub: !d.usesGithub }))}
             >
               {data.usesGithub && (
-                <svg viewBox="0 0 12 12" className="h-3 w-3 fill-white">
+                <svg viewBox="0 0 12 12" className="h-3 w-3">
                   <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
             </div>
             <Github className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-foreground">
-              We use GitHub activity to evaluate engineers
-            </span>
+            <span className="text-sm text-foreground">We review GitHub activity / code to evaluate engineers</span>
           </label>
+
+          {/* Free text for other engineer tools */}
           <Input
             id="emp-eval-tools"
             type="text"
-            placeholder="Other tools (e.g. Greenhouse, Loom, take-home tests…)"
+            placeholder="Other tools for engineers (e.g. assignments, Loom, Greenhouse…)"
             value={data.evalTools}
             onChange={(e) => setData((d) => ({ ...d, evalTools: e.target.value }))}
           />
+
+          {/* Tools-for-other-roles checkbox — only show if they selected non-eng roles */}
+          {(data.rolesHiring.some((r) => OTHER_ROLES.includes(r)) || data.otherRolesText.trim().length > 0) && (
+            <label
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-border/70"
+              onClick={() => setData((d) => ({ ...d, needsOtherRoleTools: !d.needsOtherRoleTools }))}
+            >
+              <div
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all",
+                  data.needsOtherRoleTools ? "border-primary bg-primary" : "border-border bg-transparent"
+                )}
+              >
+                {data.needsOtherRoleTools && (
+                  <svg viewBox="0 0 12 12" className="h-3 w-3">
+                    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm text-foreground">
+                Also interested in tools to evaluate non-engineering roles
+              </span>
+            </label>
+          )}
         </div>
 
         {/* Company type (multi-select) */}
@@ -445,7 +538,7 @@ function EmployerWaitlistWizard({
           </div>
         </div>
 
-        {/* Team size (optional select) */}
+        {/* Team size (optional) */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">
             Team size{" "}
@@ -458,10 +551,7 @@ function EmployerWaitlistWizard({
                 label={s}
                 selected={data.teamSize === s}
                 onClick={() =>
-                  setData((d) => ({
-                    ...d,
-                    teamSize: d.teamSize === s ? "" : s,
-                  }))
+                  setData((d) => ({ ...d, teamSize: d.teamSize === s ? "" : s }))
                 }
               />
             ))}

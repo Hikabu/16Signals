@@ -23,11 +23,16 @@ export class RegisterEmployerWaitlistDto {
 
   // ── Step 2 ICP signals (all optional) ──────────────────────────────────────
 
-  @ApiPropertyOptional({ type: [String], example: ['Frontend Developer', 'Backend Developer'] })
+  @ApiPropertyOptional({ type: [String], example: ['Frontend Developer', 'Designer'] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   rolesHiring?: string[];
+
+  @ApiPropertyOptional({ example: 'Legal, Finance, Operations' })
+  @IsOptional()
+  @IsString()
+  otherRolesText?: string;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
@@ -38,6 +43,11 @@ export class RegisterEmployerWaitlistDto {
   @IsOptional()
   @IsString()
   evalTools?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  needsOtherRoleTools?: boolean;
 
   @ApiPropertyOptional({ type: [String], example: ['Startup', 'Web3 / Crypto'] })
   @IsOptional()

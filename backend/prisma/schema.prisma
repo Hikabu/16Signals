@@ -490,12 +490,14 @@ model EmployerWaitlist {
   website     String?
 
   // ICP signals (all optional — collected in step 2 of onboarding)
-  rolesHiring  String[] @default([]) // e.g. ["Frontend Developer", "Backend Developer"]
-  usesGithub   Boolean  @default(false) // whether they already use GitHub to evaluate engineers
-  evalTools    String?  // free-text: other tools they use (Notion, Linear, etc.)
-  companyTypes String[] @default([]) // multi-select: ["Startup", "Web3 / Crypto"]
-  teamSize     String?  // e.g. "11–50"
-  socialLinks  String?  // free-text: LinkedIn / Twitter URLs
+  rolesHiring      String[] @default([]) // all selected role chips (eng + non-eng)
+  otherRolesText   String?  // free-text when "Other" chip is selected
+  usesGithub       Boolean  @default(false) // already use GitHub to evaluate engineers
+  evalTools        String?  // free-text: other tools for engineer evaluation
+  needsOtherRoleTools Boolean @default(false) // also wants tools for non-engineering roles
+  companyTypes     String[] @default([]) // multi-select: ["Startup", "Web3 / Crypto"]
+  teamSize         String?  // e.g. "11–50"
+  socialLinks      String?  // free-text: LinkedIn / Twitter URLs
 
   createdAt DateTime @default(now())
 
