@@ -139,7 +139,7 @@ function GuestWaitlistForm({
   onSuccess?: () => void;
 }) {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "duplicate" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -155,6 +155,10 @@ function GuestWaitlistForm({
           body: JSON.stringify({ email }),
         },
       );
+      if (res.status === 409) {
+        setStatus("duplicate");
+        return;
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message ?? "Something went wrong.");
@@ -167,18 +171,14 @@ function GuestWaitlistForm({
     }
   }
 
-//  if (status === "done") {
-//   return (
-//     <div className="flex justify-center">
-//       <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
-//         <CheckCircle2 className="h-4 w-4 shrink-0" />
-//         <span>
-//           You're on the list, we'll email you when employers go live.
-//         </span>
-//       </div>
-//     </div>
-//   );
-// }
+  if (status === "duplicate") {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+        <BellRing className="h-4 w-4 shrink-0" />
+        <span>This email is already on the waitlist — we'll reach out when employers go live.</span>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -199,8 +199,7 @@ className="flex w-full max-w-[300px] gap-5"
         type="submit"
         disabled={status === "loading"}
 className="h-10 shrink-0 w-[120px] rounded-lg bg-primary px-4 text-sm font-medium"      
->
-        {status === "loading" ? (
+>        {status === "loading" ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Bell className="h-4 w-4" />
@@ -214,6 +213,7 @@ className="h-10 shrink-0 w-[120px] rounded-lg bg-primary px-4 text-sm font-mediu
   );
 }
 
+
 // ---------------------------------------------------------------------------
 // Employer launch waitlist, AUTH flow (one-click button)
 // ---------------------------------------------------------------------------
@@ -225,7 +225,37 @@ function AuthWaitlistButton({
   userEmail?: string | null;
   onSuccess?: () => void;
 }) {
-    const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  // "checking" while we determine existing registration status on mount.
+  const [status, setStatus] = useState<"checking" | "idle" | "loading" | "done" | "error">("checking");
+
+  // On mount, check if the user is already on the waitlist.
+  useEffect(() => {
+    let cancelled = false;
+    async function checkStatus() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/me/user/waitlist`,
+          { credentials: "include" },
+        );
+        if (!cancelled && res.ok) {
+          const body = await res.json();
+          if (body?.registered) {
+            setStatus("done");
+            onSuccess?.();
+          } else {
+            setStatus("idle");
+          }
+        } else if (!cancelled) {
+          setStatus("idle");
+        }
+      } catch {
+        if (!cancelled) setStatus("idle");
+      }
+    }
+    checkStatus();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleClick() {
     setStatus("loading");
@@ -235,6 +265,7 @@ function AuthWaitlistButton({
         { method: "POST", credentials: "include" },
       );
       if (!res.ok) throw new Error();
+      // Both new registrations and already-registered cases resolve to "done".
       setStatus("done");
       onSuccess?.();
     } catch {
@@ -242,11 +273,24 @@ function AuthWaitlistButton({
     }
   }
 
+  if (status === "checking") {
+    return (
+      <Button
+        id="auth-waitlist-btn"
+        disabled
+        className="h-10 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Checking…
+      </Button>
+    );
+  }
+
 return (
   <Button
     id="auth-waitlist-btn"
     onClick={handleClick}
-    disabled={status === "loading"}
+    disabled={status === "loading" || status === "done"}
 className="
   h-10
   rounded-lg

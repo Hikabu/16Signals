@@ -541,13 +541,19 @@ where: {
    * Guest (unauthenticated) sign-up.
    * Stores the email and queues a confirmation email that also encourages
    * account creation.
+   * Returns 409 Conflict if the email is already registered (no duplicate email sent).
    */
   async registerWaitlistGuest(email: string) {
-    // Idempotent, second call for same email is a no-op
-    await this.prisma.employerLaunchWaitlist.upsert({
+    const existing = await this.prisma.employerLaunchWaitlist.findUnique({
       where: { email },
-      update: {},
-      create: { email },
+    });
+
+    if (existing) {
+      throw new ConflictException('This email has already been registered on the waitlist.');
+    }
+
+    await this.prisma.employerLaunchWaitlist.create({
+      data: { email },
     });
 
     await this.emailQueue.add('send', {
@@ -560,9 +566,35 @@ where: {
   }
 
   /**
+   * Check whether an authenticated user is already on the waitlist.
+   */
+  async getWaitlistStatus(userId: string): Promise<{ registered: boolean }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user?.email) {
+      return { registered: false };
+    }
+
+    const existing = await this.prisma.employerLaunchWaitlist.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: user.email },
+        ],
+      },
+    });
+
+    return { registered: !!existing };
+  }
+
+  /**
    * Authenticated candidate sign-up.
    * Looks up the user's email from the DB, upserts with userId, and queues
    * a confirmation that nudges them to build their scorecard.
+   * Returns { alreadyRegistered: true } if already on the waitlist (no duplicate email sent).
    */
   async registerWaitlistAuth(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -577,10 +609,30 @@ where: {
       throw new NotFoundException('User email not found');
     }
 
-    await this.prisma.employerLaunchWaitlist.upsert({
-      where: { email: user.email },
-      update: { userId },
-      create: { email: user.email, userId },
+    // Check for existing registration by userId OR email (covers the case where
+    // a guest previously registered with the same email before creating an account).
+    const existing = await this.prisma.employerLaunchWaitlist.findFirst({
+      where: {
+        OR: [
+          { userId },
+          { email: user.email },
+        ],
+      },
+    });
+
+    if (existing) {
+      // Link the userId if not yet set (guest → auth upgrade path)
+      if (!existing.userId) {
+        await this.prisma.employerLaunchWaitlist.update({
+          where: { id: existing.id },
+          data: { userId },
+        });
+      }
+      return { alreadyRegistered: true, message: "You're already on the list! We'll notify you when employers go live." };
+    }
+
+    await this.prisma.employerLaunchWaitlist.create({
+      data: { email: user.email, userId },
     });
 
     const hasScorecard = !!user.candidate?.scorecard;
@@ -591,7 +643,7 @@ where: {
       html: this.buildAuthWaitlistEmail(user.email, hasScorecard),
     });
 
-    return { message: "You're on the list! We'll notify you when employers go live." };
+    return { alreadyRegistered: false, message: "You're on the list! We'll notify you when employers go live." };
   }
 
   // ─── Email templates ─────────────────────────────────────────────────────

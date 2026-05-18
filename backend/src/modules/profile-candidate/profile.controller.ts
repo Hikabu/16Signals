@@ -158,14 +158,24 @@ async uploadAvatar(
 
   // ───────────── EMPLOYER LAUNCH WAITLIST ─────────────
 
+  @Get('waitlist')
+  @ApiOperation({
+    summary: 'Get employer launch waitlist status (authenticated)',
+    description: 'Returns whether the authenticated user is already on the employer launch waitlist.',
+  })
+  @ApiOkResponse({ description: '{ registered: boolean }' })
+  getWaitlistStatus(@Req() req: any) {
+    return this.profileService.getWaitlistStatus(req.user.id);
+  }
+
   @Post('waitlist')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Join employer launch waitlist (authenticated)',
     description:
-      'Reads email from the authenticated user record; no body required. Queues a confirmation email. Idempotent.',
+      'Reads email from the authenticated user record; no body required. Returns alreadyRegistered flag. No duplicate email is sent.',
   })
-  @ApiOkResponse({ type: SimpleMessageResponseDto })
+  @ApiOkResponse({ description: '{ alreadyRegistered: boolean, message: string }' })
   registerWaitlistAuth(@Req() req: any) {
     return this.profileService.registerWaitlistAuth(req.user.id);
   }

@@ -23,6 +23,8 @@ export const AUTH_ROUTES = {
  */
 export const ROUTE_ACCESS_RULES: RouteAccessRule[] = [
   { prefix: "/profile", access: "candidate" },
+  
+  { prefix: "/browse", access: "public" },
 
   // Employer pages can be developed under /hr and are protected by default.
   { prefix: "/hr", access: "employer" },

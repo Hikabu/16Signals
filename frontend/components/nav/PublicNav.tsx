@@ -98,7 +98,7 @@ const isActive = (href: string) => {
             <Link href="/auth">Sign in</Link>
           </Button>
           <Button variant="default" size="sm" asChild>
-            <Link href="/auth">Get started</Link>
+            <Link href="/browse">Get started</Link>
           </Button>
         </div>
 
@@ -136,7 +136,7 @@ const isActive = (href: string) => {
                 <Link href="/auth">Sign in</Link>
               </Button>
               <Button variant="default" size="sm" asChild>
-                <Link href="/auth">Get started</Link>
+                <Link href="/browse">Get started</Link>
               </Button>
             </div>
           </SheetContent>

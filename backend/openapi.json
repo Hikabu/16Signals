@@ -3175,20 +3175,32 @@
       }
     },
     "/me/user/waitlist": {
+      "get": {
+        "description": "Returns whether the authenticated user is already on the employer launch waitlist.",
+        "operationId": "ProfileController_getWaitlistStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "{ registered: boolean }"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get employer launch waitlist status (authenticated)",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      },
       "post": {
-        "description": "Reads email from the authenticated user record; no body required. Queues a confirmation email. Idempotent.",
+        "description": "Reads email from the authenticated user record; no body required. Returns alreadyRegistered flag. No duplicate email is sent.",
         "operationId": "ProfileController_registerWaitlistAuth",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimpleMessageResponseDto"
-                }
-              }
-            }
+            "description": "{ alreadyRegistered: boolean, message: string }"
           }
         },
         "security": [

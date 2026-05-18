@@ -75,7 +75,7 @@ function Navigation() {
             <Link href={routes.auth}>Sign in</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link href={routes.auth}>Get started</Link>
+            <Link href={routes.browse}>Get started</Link>
           </Button>
         </div>
       </div>
@@ -191,8 +191,13 @@ function HeroSection() {
             size="lg"
             className="h-13 px-8 text-base text-muted-foreground"
           >
+              <Link href="#how-it-works">
+
             See how it works
+                          </Link>
+
             <ArrowRight className="ml-2 size-4" />
+
           </Button>
         </motion.div>
 
