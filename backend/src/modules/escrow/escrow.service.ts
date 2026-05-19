@@ -14,6 +14,17 @@ import {
 } from './dto/escrow.dto';
 import { jobUuidToEscrowId } from './escrow.util';
 
+function calculateTrustScore(funded: number, released: number): number {
+  if (funded === 0) return 0;
+  const releaseRate = released / funded;
+  const volumeConfidence = 1 - (1 / (funded + 1));
+  return Math.round(releaseRate * volumeConfidence * 100);
+}
+
+function calculateIsVerifiedPayer(funded: number, score: number): boolean {
+  return funded >= 2 && score >= 70;
+}
+
 @Injectable()
 export class EscrowService {
   constructor(
@@ -83,13 +94,33 @@ export class EscrowService {
       );
     }
 
-    const updated = await this.prisma.jobPost.update({
-      where: { id: job.id },
-      data: {
-        escrowId,
-        escrowAddress: derivedAddress,
-        escrowStatus: EscrowStatus.FUNDED,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedJob = await tx.jobPost.update({
+        where: { id: job.id },
+        data: {
+          escrowId,
+          escrowAddress: derivedAddress,
+          escrowStatus: EscrowStatus.FUNDED,
+          escrowFundedAt: job.escrowStatus === EscrowStatus.UNFUNDED ? new Date() : undefined,
+        },
+      });
+
+      if (job.escrowStatus === EscrowStatus.UNFUNDED) {
+        const funded = job.company.totalEscrowsFunded + 1;
+        const released = job.company.totalEscrowsReleased;
+        const score = calculateTrustScore(funded, released);
+
+        await tx.company.update({
+          where: { id: companyId },
+          data: {
+            totalEscrowsFunded: funded,
+            trustScore: score,
+            isVerifiedPayer: calculateIsVerifiedPayer(funded, score),
+          },
+        });
+      }
+
+      return updatedJob;
     });
 
     return this.serializeJob(updated);
@@ -188,9 +219,28 @@ export class EscrowService {
       throw new BadRequestException('Escrow is not resolved on-chain');
     }
 
-    const updated = await this.prisma.jobPost.update({
-      where: { id: job.id },
-      data: { escrowStatus: status },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedJob = await tx.jobPost.update({
+        where: { id: job.id },
+        data: { escrowStatus: status },
+      });
+
+      if (status === EscrowStatus.RELEASED && job.escrowStatus !== EscrowStatus.RELEASED) {
+        const funded = job.company.totalEscrowsFunded;
+        const released = job.company.totalEscrowsReleased + 1;
+        const score = calculateTrustScore(funded, released);
+
+        await tx.company.update({
+          where: { id: companyId },
+          data: {
+            totalEscrowsReleased: released,
+            trustScore: score,
+            isVerifiedPayer: calculateIsVerifiedPayer(funded, score),
+          },
+        });
+      }
+
+      return updatedJob;
     });
 
     return this.serializeJob(updated);
@@ -247,10 +297,21 @@ export class EscrowService {
     const profile = await this.prisma.web3Profile.findFirst({
       where: {
         solanaAddress: candidateWallet,
-        user: { role: UserRole.CANDIDATE },
-        devCandidate: { candidate: { is: {} } },
+        developerProfile: {
+          candidate: {
+            user: { role: UserRole.CANDIDATE },
+          },
+        },
       },
-      select: { userId: true },
+      select: {
+        developerProfile: {
+          select: {
+            candidate: {
+              select: { userId: true },
+            },
+          },
+        },
+      },
     });
 
     if (!profile) {

@@ -28,7 +28,34 @@ export class JobResultResponseDto {
 
   @ApiProperty({
     description: 'Final computed analysis result',
-    example: { summary: 'Strong backend engineer...' },
+    example: {
+      summary: 'Full-stack developer with strong backend capability.',
+      capabilities: {
+        backend: { score: 0.82, confidence: 'high' },
+        frontend: { score: 0.68, confidence: 'medium' },
+        devops: { score: 0.44, confidence: 'medium' },
+      },
+      ownership: {
+        ownedProjects: 5,
+        activelyMaintained: 3,
+        confidence: 'medium',
+      },
+      impact: {
+        activityLevel: 'high',
+        consistency: 'strong',
+        externalContributions: 12,
+        confidence: 'high',
+      },
+      reputation: null,
+      privateWorkNote: null,
+      organizations: [],
+      interactionProfile: null,
+      stack: {
+        languages: ['TypeScript'],
+        tools: ['NestJS', 'PostgreSQL'],
+      },
+      web3: null,
+    },
     required: false,
   })
   result?: any;

@@ -14,7 +14,7 @@ describe('Signal Extraction Integration (Checkpoint A)', () => {
     service = new SignalExtractorService();
   });
 
-  describe('CHECKPOINT A1 — alex-backend', () => {
+  describe('CHECKPOINT A1, alex-backend', () => {
     it('should extract correct signals for a senior backend developer', () => {
       const signals = service.extract(ALEX_BACKEND);
 
@@ -33,7 +33,7 @@ describe('Signal Extraction Integration (Checkpoint A)', () => {
     });
   });
 
-  describe('CHECKPOINT A2 — sarah-fullstack', () => {
+  describe('CHECKPOINT A2, sarah-fullstack', () => {
     it('should extract correct signals for a fullstack developer', () => {
       const signals = service.extract(SARAH_FULLSTACK);
 
@@ -44,7 +44,7 @@ describe('Signal Extraction Integration (Checkpoint A)', () => {
     });
   });
 
-  describe('CHECKPOINT A3 — maya-devops', () => {
+  describe('CHECKPOINT A3, maya-devops', () => {
     it('should detect private work indicators for a sparse profile', () => {
       const signals = service.extract(MAYA_DEVOPS);
 
@@ -57,7 +57,7 @@ describe('Signal Extraction Integration (Checkpoint A)', () => {
     });
   });
 
-  describe('CHECKPOINT A4 — new-dev', () => {
+  describe('CHECKPOINT A4, new-dev', () => {
     it('should handle small datasets and young accounts correctly', () => {
       const signals = service.extract(NEW_DEV);
 
@@ -67,7 +67,7 @@ describe('Signal Extraction Integration (Checkpoint A)', () => {
     });
   });
 
-  describe('CHECKPOINT A5 — ghost-profile', () => {
+  describe('CHECKPOINT A5, ghost-profile', () => {
     it('should handle empty profiles with minimal noise', () => {
       const signals = service.extract(GHOST_PROFILE);
 

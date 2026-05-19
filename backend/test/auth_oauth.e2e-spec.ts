@@ -85,9 +85,9 @@ describe('Auth OAuth (e2e)', () => {
       await request(app.getHttpServer())
         .post('/auth/candidate/register')
         .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
-        .expect(302);
+        .expect(202);
 
-      const loginRes = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/auth/candidate/login')
         .send({ identifier: email, password: 'StrongPassword123!' })
         .expect(302);
@@ -127,7 +127,7 @@ describe('Auth OAuth (e2e)', () => {
       await request(app.getHttpServer())
         .post('/auth/candidate/register')
         .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
-        .expect(302);
+        .expect(202);
 
       // 2. External provider returns same email
       const authService = app.get(AuthCandidateService);

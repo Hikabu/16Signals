@@ -22,6 +22,9 @@ const mockPrismaService = {
     create: jest.fn(),
     findUnique: jest.fn(),
   },
+  candidate: {
+    create: jest.fn(),
+  },
 };
 
 const mockJwtService = {
@@ -115,8 +118,9 @@ describe('AuthCandidateService', () => {
         3600,
       );
       expect(result).toEqual({
-        type: 'NEEDS_VERIFICATION',
-        data: { email: 'test@example.com' },
+        success: true,
+        message:
+          'If an account can be created with these details, you will receive a verification email.',
       });
     });
     it('should login and check MFA requirement', async () => {
@@ -134,7 +138,7 @@ describe('AuthCandidateService', () => {
 
       expect(result).toEqual({
         type: 'MFA_REQUIRED',
-        data: { mfaToken: 'mock_token' },
+        data: { mfaToken: 'mock_token', userId: 'user_1' },
       });
     });
   });

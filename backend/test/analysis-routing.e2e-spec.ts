@@ -167,6 +167,15 @@ describe('Analysis Routing & Flows (E2E)', () => {
         },
       ],
     });
+    for (const userId of [
+      'test-user-id',
+      'test-user-both',
+      'test-user-github',
+      'test-user-wallet',
+      'test-user-none',
+    ]) {
+      await prisma.candidate.create({ data: { userId } });
+    }
     await redis.flushall();
   });
 

@@ -1,32 +1,32 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Headers,
-  UseGuards,
-  Res,
-} from '@nestjs/common';
+import { Controller, Post, UseGuards, Res, Req, Logger } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
-  ApiBody,
   ApiOkResponse,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
-  ApiHeader,
 } from '@nestjs/swagger';
-import { Response } from 'express';
+import { CookieOptions, Request, Response } from 'express';
 
 import { AuthEmployerService } from './auth.employer.service';
-import { LoginDto } from './dto/login.dto';
 import { BaseController } from '../../shared/base.controller';
 import { Public } from './decorators/public.decorator';
-import { AppException } from '../../shared/app.exception';
 import { AuthGuard } from '@nestjs/passport/dist/auth.guard';
+import { verifyPrivyToken } from './verify-privy-token';
 
 class LoginResponseDto {
+  token: string;
   accessToken: string;
+  role: 'employer';
+  username: string;
+  user: {
+    id: string;
+    name: string;
+    email: string | null;
+    walletAddress: string | null;
+    privyUserId: string;
+  };
 }
 
 class AuthEmplErrorResponseDto {
@@ -38,16 +38,24 @@ class AuthEmplErrorResponseDto {
 @ApiTags('Auth (Employer)')
 @Controller('auth/employer')
 export class AuthEmployerController extends BaseController {
+  private readonly logger = new Logger(AuthEmployerController.name);
+
   constructor(private readonly authService: AuthEmployerService) {
     super();
   }
 
-  private authCookieOptions() {
-    return {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-    };
+  private readonly authCookieOptions: CookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  };
+
+  private setAuthCookies(
+    res: Response,
+    result: { accessToken: string; refreshToken: string },
+  ) {
+    res.cookie('access_token', result.accessToken, this.authCookieOptions);
+    res.cookie('refresh_token', result.refreshToken, this.authCookieOptions);
   }
 
   // ---------------- LOGIN ----------------
@@ -58,20 +66,7 @@ export class AuthEmployerController extends BaseController {
   @ApiOperation({
     summary: 'Login with Privy token',
     description:
-      'Verifies a Privy access token from frontend authentication and returns a signed JWT for API access. \nTESTING:\n 1. make sure .env > PRIVY_BYPASS="true"\n2. Bearer Token = debugtoken \n3. Authorization header = did:privy:test-user-123 ',
-  })
-  @ApiBody({
-    type: LoginDto,
-    description:
-      'Optional login metadata used during company creation or update',
-    examples: {
-      default: {
-        value: {
-          walletAddress: '0x123456789abcdef0123456789abcdef012345678',
-          smartAccountAddress: '0x123456789abcdef0123456789abcdef012345678',
-        },
-      },
-    },
+      'Verifies a Privy access token from Authorization header and returns an employer JWT.',
   })
   @ApiOkResponse({
     description: 'Successfully authenticated and returned application JWT',
@@ -85,23 +80,23 @@ export class AuthEmployerController extends BaseController {
     description: 'Missing authorization header or invalid request payload',
     type: AuthEmplErrorResponseDto,
   })
-  async login(
-    @Res() res: Response,
-    @Headers('authorization') authHeader: string,
-    @Body() loginDto: LoginDto,
-  ) {
-    if (!authHeader) {
-      throw new AppException('No authorization header found', 401);
+  async login(@Req() req: Request, @Res() res: Response) {
+    try {
+      const privyUser = await verifyPrivyToken(req);
+      this.logger.log(`Privy user verified: ${privyUser.privyUserId}`);
+      const result = await this.authService.login(privyUser);
+      this.setAuthCookies(res, result);
+      return res.json({
+        success: true,
+        message: 'Logged in successfully',
+        data: result,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Employer Privy login failed: ${errorMessage}`);
+      throw error;
     }
-    const token = authHeader.replace('Bearer ', '');
-
-    const result = await this.authService.login(token, loginDto);
-    res.cookie('access_token', result.accessToken, this.authCookieOptions());
-    return res.json({
-      success: true,
-      message: 'Logged in successfully',
-      data: result,
-    });
   }
 
   @Post('logout')
@@ -109,15 +104,35 @@ export class AuthEmployerController extends BaseController {
   @UseGuards(AuthGuard('jwt-employer'))
   @ApiOperation({
     summary: 'Logout user',
-    description: 'Invalidates the user session or JWT token.',
+    description: 'Invalidates the refresh token and clears session cookies.',
   })
-  async logout(@Res() res: Response) {
+  async logout(@Req() req: any, @Res() res: Response) {
+    await this.authService.logout(req.user.id);
+
     res.clearCookie('access_token');
     res.clearCookie('refresh_token');
     return res.json({
       success: true,
       message: 'Logged out successfully',
       data: null,
+    });
+  }
+
+  @Post('refresh')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('refresh-employer'))
+  @ApiOperation({
+    summary: 'Refresh employer tokens',
+    description:
+      'Rotates the employer refresh token and issues a new access token.',
+  })
+  async refresh(@Req() req: any, @Res() res: Response) {
+    const result = await this.authService.refresh(req.user);
+    this.setAuthCookies(res, result);
+    return res.json({
+      success: true,
+      message: 'Token refreshed successfully',
+      data: result,
     });
   }
 }

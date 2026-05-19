@@ -29,8 +29,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
-import { RawScorecard } from './contract/scorecard.schema';
-
+import { PrismaService } from 'src/prisma/prisma.service';
 /**
  * Request DTOs
  */
@@ -50,7 +49,10 @@ class ScorecardErrorResponseDto {
 @ApiTags('Scorecard')
 @Controller('api/scorecard')
 export class ScorecardController {
-  constructor(private readonly scorecardService: ScorecardService) {}
+  constructor(
+    private readonly scorecardService: ScorecardService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /**
    * ----------------------------------------
@@ -63,11 +65,7 @@ export class ScorecardController {
     description:
       'Generates a mock scorecard for a given GitHub username and returns a frontend-ready UI model. Requires internal API key.',
   })
-  @ApiHeader({
-    name: 'X-Internal-Key',
-    description: 'Internal API key (required)',
-    required: true,
-  })
+  
   @ApiBody({
     type: PreviewScorecardRequestDto,
     examples: {
@@ -87,6 +85,11 @@ export class ScorecardController {
     description: 'Missing or invalid internal API key',
     type: ScorecardErrorResponseDto,
   })
+  @ApiHeader({
+    name: 'X-Internal-Key',
+    description: 'Internal API key (required)',
+    required: true,
+  })
   @UseGuards(InternalKeyGuard)
   @HttpCode(HttpStatus.OK)
   @ZodResponse({ status: 200, type: ScorecardUiDto })
@@ -97,7 +100,8 @@ export class ScorecardController {
       request.githubUsername,
     );
 
-    return this.scorecardService.mapToUiModel(result);
+    const scoreResult = await this.scorecardService.mapToUiModel(result);
+    return scoreResult;
   }
 
   /**
@@ -153,56 +157,137 @@ export class ScorecardController {
   })
   async getMyScorecard(@Request() req) {
     const scorecard = await this.scorecardService.getScorecardForUser(
-      req.user.id,
+      {userId: req.user.id},
     );
 
+    console.log("scorecard? ", scorecard!!);
     if (!scorecard) {
       throw new NotFoundException(
         'No scorecard found. Trigger a sync first via POST /me/github/sync',
       );
     }
 
-    return this.scorecardService.mapToUiModel(scorecard);
+    const result = await this.scorecardService.mapToUiModel(scorecard, {userId: req.user.id});
+    return result;
   }
+/**
+ * ----------------------------------------
+ * PUBLIC SCORECARD BY APP USERNAME
+ * ----------------------------------------
+ *
+ * Example:
+ * GET /scorecards/user/arturo
+ *
+ * Flow:
+ * app username -> linked github username -> cached scorecard
+ */
+@Get('user/:username')
+@ApiOperation({
+  summary: 'Get public scorecard by app username',
+  description:
+    'Fetch a public scorecard using a registered platform username.',
+})
+@ApiParam({
+  name: 'username',
+  type: String,
+  example: 'arturo',
+  description: 'Registered platform username',
+})
+@ApiOkResponse({
+  description: 'Public scorecard',
+  type: ScorecardUiDto,
+})
+@ApiNotFoundResponse({
+  description: 'User or scorecard not found',
+  type: ScorecardErrorResponseDto,
+})
+async getPublicUserScorecard(
+  @Param('username') username: string,
+) {
+     const scorecard = await this.scorecardService.getScorecardForUser(
+      {username}
+    );
 
-  /**
-   * ----------------------------------------
-   * PUBLIC SCORECARD (UI)
-   * ----------------------------------------
-   */
-  @Get(':username')
-  @ApiOperation({
-    summary: 'Get public scorecard (UI)',
-    description:
-      'Fetch a cached scorecard for a GitHub username. Returns frontend-ready UI model.',
-  })
-  @ApiParam({
-    name: 'username',
-    type: String,
-    example: 'octocat',
-    description: 'GitHub username',
-  })
-  @ApiOkResponse({
-    description: 'Public scorecard',
-    type: ScorecardUiDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'No cached scorecard found. Must trigger analysis first.',
-    type: ScorecardErrorResponseDto,
-  })
-  async getPublicScorecard(@Param('username') username: string) {
-    const scorecard =
-      await this.scorecardService.getScorecardFromCache(username);
-
+    console.log("scorecard? ", scorecard!!);
     if (!scorecard) {
       throw new NotFoundException(
-        `No cached scorecard for ${username}. Trigger via POST /api/analysis`,
+        'No scorecard found. Trigger a sync first via POST /me/github/sync',
       );
     }
 
-    return this.scorecardService.mapToUiModel(scorecard);
+    const result = await this.scorecardService.mapToUiModel(scorecard, {username});
+    return result;
+}
+
+/**
+ * ----------------------------------------
+ * PUBLIC SCORECARD BY GITHUB USERNAME
+ * ----------------------------------------
+ *
+ * Example:
+ * GET /scorecards/github/octocat
+ *
+ * Flow:
+ * github username -> cached scorecard
+ */
+@Get('github/:githubUsername')
+@ApiOperation({
+  summary: 'Get public scorecard by GitHub username',
+  description:
+    'Fetch a public scorecard directly from a GitHub username.',
+})
+@ApiParam({
+  name: 'githubUsername',
+  type: String,
+  example: 'octocat',
+  description: 'GitHub username',
+})
+@ApiOkResponse({
+  description: 'Public scorecard',
+  type: ScorecardUiDto,
+})
+@ApiNotFoundResponse({
+  description: 'No cached scorecard found',
+  type: ScorecardErrorResponseDto,
+})
+async getPublicScorecardByGithub(
+  @Param('githubUsername') githubUsername: string,
+) {
+  const scorecard =
+    await this.scorecardService.getScorecardFromCache(
+      githubUsername,
+    );
+
+  if (!scorecard) {
+    throw new NotFoundException(
+      `No cached scorecard found for GitHub user "${githubUsername}".`,
+    );
   }
 
+  /**
+   * Optional:
+   * try finding linked platform user
+   */
+  const linkedUser = await this.prisma.user.findFirst({
+    where: {
+      candidate: {
+        devProfile: {
+          githubProfile: {
+            githubUsername,
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return this.scorecardService.mapToUiModel(
+    scorecard,
+    {userId: linkedUser?.id},
+  );
+}
   /**
    * ----------------------------------------
    * AUTHENTICATED USER SCORECARD (RAW)

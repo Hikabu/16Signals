@@ -32,15 +32,29 @@ export class JobsService {
       data.currency = dto.currency;
     }
 
-    if (dto.bonusAmount !== undefined) {
-      data.bonusAmount = dto.bonusAmount;
+    data.bonusAmount = dto.bonusAmount ?? 0;
+
+    if (dto.roleType) {
+      data.roleType = dto.roleType;
     }
 
     return this.prisma.jobPost.create({ data });
   }
-  async findMyJobs(companyId: string) {
+
+  async findMyJobs(
+    companyId: string,
+    status?: 'draft' | 'active' | 'all',
+  ) {
+    const where: { companyId: string; status?: JobStatus } = { companyId };
+
+    if (status === 'draft') {
+      where.status = JobStatus.DRAFT;
+    } else if (status === 'active') {
+      where.status = JobStatus.ACTIVE;
+    }
+
     return this.prisma.jobPost.findMany({
-      where: { companyId },
+      where,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -52,12 +66,23 @@ export class JobsService {
       throw new AppException('Job not found or access denied', 404);
     }
 
-    return this.prisma.jobPost.update({
-      where: { id },
-      data: {
-        status: JobStatus.ACTIVE,
-        publishedAt: new Date(),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const updatedJob = await tx.jobPost.update({
+        where: { id },
+        data: {
+          status: JobStatus.ACTIVE,
+          publishedAt: new Date(),
+        },
+      });
+
+      await tx.company.update({
+        where: { id: companyId },
+        data: {
+          totalJobsPosted: { increment: 1 },
+        },
+      });
+
+      return updatedJob;
     });
   }
 
@@ -74,6 +99,32 @@ export class JobsService {
         status: JobStatus.CLOSED,
         closedAt: new Date(),
       },
+    });
+  }
+
+  async updateDraft(id: string, companyId: string, dto: CreateJobDto) {
+    const job = await this.prisma.jobPost.findUnique({ where: { id } });
+
+    if (!job || job.companyId !== companyId) {
+      throw new AppException('Job not found or access denied', 404);
+    }
+    if (job.status !== JobStatus.DRAFT) {
+      throw new BadRequestException('Only DRAFT jobs can be updated');
+    }
+
+    const data: any = {
+      title: dto.title,
+      description: dto.description,
+      location: dto.location ?? null,
+      employmentType: dto.employmentType ?? null,
+      currency: dto.currency ?? job.currency,
+      bonusAmount: dto.bonusAmount ?? 0,
+      roleType: dto.roleType ?? null,
+    };
+
+    return this.prisma.jobPost.update({
+      where: { id },
+      data,
     });
   }
 
@@ -115,6 +166,8 @@ export class JobsService {
     seniority?: Seniority;
     skills?: string[];
     isWeb3?: any;
+    isEscrowFunded?: any;
+    isVerifiedPayer?: any;
     page?: number;
     limit?: number;
   }) {
@@ -124,6 +177,8 @@ export class JobsService {
       seniority,
       skills,
       isWeb3,
+      isEscrowFunded,
+      isVerifiedPayer,
       page = 1,
       limit = 20,
     } = query;
@@ -160,6 +215,23 @@ export class JobsService {
       where.isWeb3Role = isWeb3Bool ?? false;
     }
 
+    const isEscrowFundedBool =
+      isEscrowFunded === undefined ? undefined : isEscrowFunded === true || isEscrowFunded === 'true';
+
+    if (isEscrowFundedBool) {
+      where.escrowStatus = { in: ['FUNDED', 'RELEASED'] };
+    }
+
+    const isVerifiedPayerBool =
+      isVerifiedPayer === undefined ? undefined : isVerifiedPayer === true || isVerifiedPayer === 'true';
+
+    if (isVerifiedPayerBool) {
+      where.company = {
+        ...(where.company || {}),
+        isVerifiedPayer: true,
+      };
+    }
+
     const [jobs, total] = await Promise.all([
       this.prisma.jobPost.findMany({
         where,
@@ -172,11 +244,13 @@ export class JobsService {
           isWeb3Role: true,
           createdAt: true,
           publishedAt: true,
+          escrowStatus: true,
           company: {
             select: {
               name: true,
               logoUrl: true,
               website: true,
+              isVerifiedPayer: true,
             },
           },
         },

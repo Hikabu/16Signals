@@ -14,18 +14,28 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
       callbackURL: config.get('app.url') + config.get('auth.githubCallback'),
-      scope: ['read:user'],
+      // scope: ['read:user', 'user:email'],
+      scope: ['user:email'],
+      allRawEmails: true,
       //   allowSignup: true,
     });
   }
 
-  async validate(accessToken: string, refreshToken: string, profile: any) {
-    return {
-      githubId: profile.id,
-      username: profile.username,
-      email: profile.emails?.[0]?.value ?? null, // 👈 optional
-      email_verified: profile.emails?.[0]?.verified ?? false,
-      accessToken,
-    };
-  }
+ async validate(
+  accessToken: string,
+  refreshToken: string,
+  profile: any,
+) {
+  const primaryEmail =
+    profile.emails?.find((e: any) => e.primary) ||
+    profile.emails?.[0];
+
+  return {
+    githubId: profile.id,
+    username: profile.username,
+    email: primaryEmail?.value ?? null,
+    email_verified: primaryEmail?.verified ?? false,
+    accessToken,
+  };
+}
 }

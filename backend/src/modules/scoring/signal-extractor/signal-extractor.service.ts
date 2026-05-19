@@ -125,6 +125,10 @@ export class SignalExtractorService {
    * Merged external PR count.
    */
   private calculateS5(externalPRs: any): number {
+    if (Array.isArray(externalPRs)) {
+      return externalPRs.length;
+    }
+
     return externalPRs?.mergedExternalPRCount || 0;
   }
 

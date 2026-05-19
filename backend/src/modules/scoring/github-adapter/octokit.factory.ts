@@ -33,10 +33,21 @@ export class OctokitFactory {
 
   async forJob(userId: string | null): Promise<Octokit> {
     if (userId) {
-      const profile = await this.prisma.githubProfile.findUnique({
+      // Navigate through new schema: User -> Candidate -> DeveloperProfile -> GithubProfile
+      const candidate = await this.prisma.candidate.findUnique({
         where: { userId },
-        select: { encryptedToken: true },
+        select: {
+          devProfile: {
+            select: {
+              githubProfile: {
+                select: { encryptedToken: true },
+              },
+            },
+          },
+        },
       });
+
+      const profile = candidate?.devProfile?.githubProfile;
 
       if (profile?.encryptedToken) {
         try {
@@ -49,16 +60,18 @@ export class OctokitFactory {
 
           const token = decrypt(data, key);
           this.logger.debug({ userId }, 'octokit_using_user_token');
-          return new Octokit({
-            request: {
-              headers: {
-                authorization: `token ${token}`,
-                'X-GitHub-Api-Version': '2022-11-28',
-              },
-            },
-          });
+          const octokit = new Octokit({
+  auth: token,
+  request: {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  },
+});
+          (octokit as any).__githubTokenSource = 'user';
+          return octokit;
         } catch (err: any) {
-          // Token decrypt failed — fall through to system token
+          // Token decrypt failed, fall through to system token
           this.logger.warn(
             { userId, err: err.message },
             'octokit_token_decrypt_failed',
@@ -73,7 +86,7 @@ export class OctokitFactory {
     // but log clearly if it somehow does.
     if (!systemToken) {
       this.logger.error(
-        'GITHUB_SYSTEM_TOKEN is undefined at request time — making unauthenticated request',
+        'GITHUB_SYSTEM_TOKEN is undefined at request time, making unauthenticated request',
       );
       return new Octokit();
     }
@@ -86,13 +99,15 @@ export class OctokitFactory {
       },
       'octokit_using_system_token',
     );
-    return new Octokit({
-      request: {
-        headers: {
-          authorization: `token ${systemToken}`,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      },
-    });
+    const octokit = new Octokit({
+  auth: systemToken,
+  request: {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  },
+});
+    (octokit as any).__githubTokenSource = 'system';
+    return octokit;
   }
 }

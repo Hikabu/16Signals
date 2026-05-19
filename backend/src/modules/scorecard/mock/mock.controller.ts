@@ -2,6 +2,7 @@ import { Controller, Get, Header, Res, HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AnalysisResult } from '../../../modules/scoring/types/result.types';
+import { SCORING_SCHEMA_VERSION } from 'src/modules/scoring/constants';
 
 /** ─────────────────────────────────────────────────────────────
  *  Static fixture: GitHub-only developer (no wallet)
@@ -26,11 +27,14 @@ const MOCK_GITHUB_ONLY: AnalysisResult = {
     confidence: 'high',
   },
   reputation: null,
+  organizations: [],
+  interactionProfile: null,
   stack: {
     languages: ['TypeScript', 'Rust', 'Go'],
     tools: ['Docker', 'Anchor', 'Prisma', 'Redis'],
   },
   web3: null,
+  schemaVersion: SCORING_SCHEMA_VERSION
 };
 
 /** ─────────────────────────────────────────────────────────────
@@ -56,6 +60,8 @@ const MOCK_WALLET: AnalysisResult = {
     confidence: 'high',
   },
   reputation: null,
+  organizations: [],
+  interactionProfile: null,
   stack: {
     languages: ['Rust', 'TypeScript', 'Go'],
     tools: ['Anchor', 'Docker', 'Prisma', 'Redis'],
@@ -87,6 +93,7 @@ const MOCK_WALLET: AnalysisResult = {
       },
     ],
   },
+  schemaVersion: SCORING_SCHEMA_VERSION
 };
 
 /** ─────────────────────────────────────────────────────────────
@@ -116,6 +123,8 @@ const MOCK_WALLET_ONLY: AnalysisResult = {
     tools: ['Anchor'],
   },
   reputation: null,
+  organizations: [],
+  interactionProfile: null,
   web3: {
     ecosystem: 'solana',
     ecosystemPRs: 0,
@@ -129,6 +138,7 @@ const MOCK_WALLET_ONLY: AnalysisResult = {
       },
     ],
   },
+  schemaVersion: SCORING_SCHEMA_VERSION,
 };
 
 @ApiTags('Mock / Dev Reference')
@@ -186,7 +196,7 @@ export class MockController {
   @Get('viewer')
   @Header('Content-Type', 'text/html; charset=utf-8')
   @ApiOperation({
-    summary: '[MOCK] API Viewer — interactive reference page',
+    summary: '[MOCK] API Viewer, interactive reference page',
     description:
       'Serves a standalone HTML page that renders all mock API responses for frontend developers.',
   })
@@ -527,7 +537,7 @@ const VIEWER_HTML = /* html */ `<!DOCTYPE html>
     if (!d.web3) {
       return \`<div class="panel">
         <div class="panel-header"><span class="panel-title">⛓ Web3 / Solana</span></div>
-        <div class="web3-null">web3: null — GitHub-only mode</div>
+        <div class="web3-null">web3: null, GitHub-only mode</div>
       </div>\`;
     }
     const w = d.web3;

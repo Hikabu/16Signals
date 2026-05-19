@@ -4,6 +4,31 @@ import { GapReport } from '../gap-analysis/gap-analysis.service';
 
 describe('DecisionCardService', () => {
   let service: DecisionCardService;
+  const baseAnalysisResult = () =>
+    ({
+      summary: 'Strong backend engineer.',
+      impact: {
+        activityLevel: 'high',
+        consistency: 'strong',
+        externalContributions: 8,
+        confidence: 'high',
+      },
+      ownership: {
+        ownedProjects: 4,
+        activelyMaintained: 3,
+        confidence: 'high',
+      },
+      capabilities: {
+        backend: { score: 0.8, confidence: 'high' },
+        frontend: { score: 0.8, confidence: 'high' },
+        devops: { score: 0.8, confidence: 'high' },
+      },
+      reputation: null,
+      organizations: [],
+      interactionProfile: null,
+      stack: { languages: ['TypeScript'], tools: ['NestJS'] },
+      web3: null,
+    }) as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -35,17 +60,10 @@ describe('DecisionCardService', () => {
         },
       ],
     };
-    const mockAnalysisResult = {
-      impact: { confidence: 'high' },
-      ownership: { confidence: 'high' },
-      capabilities: {
-        backend: { score: 80 },
-        frontend: { score: 80 },
-        devops: { score: 80 },
-      },
-    } as any;
+    const mockAnalysisResult = baseAnalysisResult();
     const card = service.generate(gapReport, mockAnalysisResult);
     expect(card.verdict).toBeDefined();
+    expect(card.reviewOutcome).toBe('NEEDS_REVIEW');
     expect(card.strengths).toBeInstanceOf(Array);
   });
 
@@ -57,16 +75,7 @@ describe('DecisionCardService', () => {
       matchedTechnologies: ['Typescript', 'React'],
       gaps: [],
     };
-    const mockAnalysisResult = {
-      impact: { confidence: 'high' },
-      ownership: { confidence: 'high' },
-      overallFitScore: 90,
-      capabilities: {
-        backend: { score: 80 },
-        frontend: { score: 80 },
-        devops: { score: 80 },
-      },
-    } as any;
+    const mockAnalysisResult = baseAnalysisResult();
     const card = service.generate(gapReport, mockAnalysisResult);
     expect(card.hrSummary).toBeTruthy();
     expect(typeof card.hrSummary).toBe('string');
@@ -82,16 +91,7 @@ describe('DecisionCardService', () => {
       matchedTechnologies: ['Typescript', 'React', 'NodeJS'],
       gaps: [],
     };
-    const mockAnalysisResult = {
-      impact: { confidence: 'high' },
-      ownership: { confidence: 'high' },
-      overallFitScore: 85,
-      capabilities: {
-        backend: { score: 80 },
-        frontend: { score: 80 },
-        devops: { score: 80 },
-      },
-    } as any;
+    const mockAnalysisResult = baseAnalysisResult();
     const card = service.generate(gapReport, mockAnalysisResult);
     expect(card.technicalSummary).toBeTruthy();
     expect(typeof card.technicalSummary).toBe('string');
@@ -99,5 +99,37 @@ describe('DecisionCardService', () => {
     // and overall role fit score
     expect(card.technicalSummary).toMatch(/\b(80)\b/);
     expect(card.technicalSummary).toMatch(/techs matched/i); // technology fit score often mentioned
+  });
+
+  it('uses updated reputation and private work fields to move insufficient data to review', () => {
+    const gapReport: GapReport = {
+      overallVerdict: 'UNLIKELY_FIT',
+      technologyFitScore: 40,
+      missingTechnologies: ['Rust'],
+      matchedTechnologies: [],
+      gaps: [
+        {
+          dimension: 'Technology: Rust',
+          severity: 'DEALBREAKER',
+          expected: 'Required',
+          actual: 'Not detected',
+          mitigatingContext: 'Private work indicator detected.',
+          probeQuestion: 'Q?',
+        },
+      ],
+    };
+    const mockAnalysisResult = baseAnalysisResult();
+    mockAnalysisResult.privateWorkNote = 'Private work indicator detected.';
+    mockAnalysisResult.reputation = {
+      vouchCount: 1,
+      verifiedVouchCount: 1,
+      confidence: 'medium',
+      vouches: [],
+    };
+
+    const card = service.generate(gapReport, mockAnalysisResult);
+
+    expect(card.verdict).toBe('REVIEW');
+    expect(card.reviewOutcome).toBe('NEEDS_REVIEW');
   });
 });

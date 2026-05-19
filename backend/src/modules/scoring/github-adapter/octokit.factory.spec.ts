@@ -30,7 +30,7 @@ describe('OctokitFactory', () => {
         {
           provide: PrismaService,
           useValue: {
-            githubProfile: {
+            candidate: {
               findUnique: jest.fn(),
             },
           },
@@ -62,7 +62,7 @@ describe('OctokitFactory', () => {
           {
             provide: PrismaService,
             useValue: {
-              githubProfile: {
+              candidate: {
                 findUnique: jest.fn(),
               },
             },
@@ -85,15 +85,25 @@ describe('OctokitFactory', () => {
   });
 
   it('1. userId present, profile has encryptedToken -> decrypt called, Octokit created with decrypted token', async () => {
-    (prisma.githubProfile.findUnique as jest.Mock).mockResolvedValue({
-      encryptedToken: 'v1:encrypted-token',
+    (prisma.candidate.findUnique as jest.Mock).mockResolvedValue({
+      devProfile: {
+        githubProfile: { encryptedToken: 'v1:encrypted-token' },
+      },
     });
 
     const octokit = await factory.forJob('user-1');
 
-    expect(prisma.githubProfile.findUnique).toHaveBeenCalledWith({
+    expect(prisma.candidate.findUnique).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
-      select: { encryptedToken: true },
+      select: {
+        devProfile: {
+          select: {
+            githubProfile: {
+              select: { encryptedToken: true },
+            },
+          },
+        },
+      },
     });
     expect(Octokit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -111,8 +121,10 @@ describe('OctokitFactory', () => {
   });
 
   it('2. userId present, profile has no encryptedToken -> falls back to system token', async () => {
-    (prisma.githubProfile.findUnique as jest.Mock).mockResolvedValue({
-      encryptedToken: null,
+    (prisma.candidate.findUnique as jest.Mock).mockResolvedValue({
+      devProfile: {
+        githubProfile: { encryptedToken: null },
+      },
     });
 
     const octokit = await factory.forJob('user-1');
@@ -129,8 +141,10 @@ describe('OctokitFactory', () => {
   });
 
   it('3. userId present, decrypt throws -> logs warning, falls back to system token', async () => {
-    (prisma.githubProfile.findUnique as jest.Mock).mockResolvedValue({
-      encryptedToken: 'v1:bad-token',
+    (prisma.candidate.findUnique as jest.Mock).mockResolvedValue({
+      devProfile: {
+        githubProfile: { encryptedToken: 'v1:bad-token' },
+      },
     });
     const decryptMock = require('../../../shared/utils/crypto.utils').decrypt;
     decryptMock.mockImplementationOnce(() => {
@@ -159,7 +173,7 @@ describe('OctokitFactory', () => {
   it('4. userId null -> system token used immediately, no DB query made', async () => {
     const octokit = await factory.forJob(null);
 
-    expect(prisma.githubProfile.findUnique).not.toHaveBeenCalled();
+    expect(prisma.candidate.findUnique).not.toHaveBeenCalled();
     expect(Octokit).toHaveBeenCalledWith(
       expect.objectContaining({
         request: expect.objectContaining({

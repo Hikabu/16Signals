@@ -23,7 +23,6 @@ export class GithubSyncProcessor extends WorkerHost {
   async process(
     job: Job<{
       candidateId: string;
-      devCandidateId?: string;
       githubProfileId: string;
       userId?: string | null;
     }>,
@@ -40,19 +39,13 @@ export class GithubSyncProcessor extends WorkerHost {
 
     // (a) Load GithubProfile
     const profile = await this.prisma.githubProfile.findUnique({
-      where: { id: githubProfileId },
-      include: {
-        devCandidate: {
-          select: {
-            candidate: {
-              select: {
-                userId: true,
-              },
-            },
-          },
-        },
-      },
-    });
+  where: { id: githubProfileId },
+  select: {
+    id: true,
+    githubUsername: true,
+    developerProfileId: true,
+  },
+});
 
     if (!profile) {
       throw new Error(`GithubProfile ${githubProfileId} not found`);
@@ -63,66 +56,41 @@ export class GithubSyncProcessor extends WorkerHost {
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          syncStatus: SyncStatus.IN_PROGRESS,
-          syncProgress: JSON.stringify({
-            stage: 'fetching_repos',
-            percent: 20,
-          }),
+          syncStatus: SyncStatus.SYNC_REQUEST,
+          syncProgress: 20,
         },
       });
 
       // (c) Call consolidated fetcher
-      const resolvedUserId =
-        job.data.userId ??
-        profile.userId ??
-        profile.devCandidate.candidate.userId;
-      const octokit = await this.octokitFactory.forJob(resolvedUserId);
+      const resolvedUserId = job.data.userId;
+      const octokit = await this.octokitFactory.forJob(resolvedUserId ?? null);
       const rawData = await this.githubAdapter.fetchRawData(
         octokit,
         profile.githubUsername,
         jobId,
       );
+await this.prisma.$transaction([
+  this.prisma.developerProfile.update({
+    where: { id: profile.developerProfileId },
+    data: {
+      githubCooldownUntil: new Date(
+        Date.now() + 24 * 60 * 60 * 1000,
+      ),
+    },
+  }),
 
-      // (d) Set syncProgress = analyzing_projects (40% - interim)
-      // Note: We'll jump to 60% in signal-compute processor
-      await this.prisma.githubProfile.update({
-        where: { id: githubProfileId },
-        data: {
-          syncProgress: JSON.stringify({
-            stage: 'analyzing_projects',
-            percent: 40,
-          }),
-        },
-      });
-
-      // console.log(
-      //   'Fetched raw data for profile ',
-      //   githubProfileId,
-      //   ': ',
-      //   JSON.stringify(rawData, null, 2),
-      // );
-
-      // (e) Save raw data, keep status = IN_PROGRESS, lastSyncAt
-      await this.prisma.githubProfile.update({
-        where: { id: githubProfileId },
-        data: {
-          rawDataSnapshot: rawData as any,
-          lastSyncAt: new Date(),
-          syncError: null,
-        },
-      });
-
-      // (f) Enqueue signal-compute NOT ANYMORE!
-      //     await this.signalQueue.add('compute-signals', {
-      //         candidateId,
-      // githubProfileId,
-      // githubUsername: profile.githubUsername,
-      // cached: false,
-      //      },
-      //     {
-      //       attempts: process.env.NODE_ENV === 'test' ? 1 : 3,
-      //     });
-
+  this.prisma.githubProfile.update({
+    where: { id: githubProfileId },
+    data: {
+      rawDataSnapshot: rawData as any,
+      lastSyncAt: new Date(),
+      syncError: null,
+      syncStatus: SyncStatus.SYNC_SUCCESS,
+      syncProgress: 100,
+    },
+  }),
+]);
+     
       this.logger.log(
         {
           jobId,
@@ -135,11 +103,12 @@ export class GithubSyncProcessor extends WorkerHost {
         `GitHub sync failed for profile ${githubProfileId}: ${error.message}`,
       );
 
-      // (g) On error: set status = FAILED, syncError = error.message
+      // (g) On error: set status = FAILED, syncProgress = 0, syncError = error.message
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
-          syncStatus: SyncStatus.FAILED,
+          syncStatus: SyncStatus.SYNC_FAILED,
+          syncProgress: 0,
           syncError: error.message,
         },
       });

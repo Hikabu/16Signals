@@ -34,6 +34,14 @@ export class LinkWalletRequestDto {
   })
   @IsString()
   signature: string;
+
+  @ApiProperty({
+    description: 'The plaintext message that was signed',
+    example: 'Link Solana wallet to 16Signals\nUser: user123\nTimestamp: 1713940000000',
+    required: false,
+  })
+  @IsString()
+  message?: string;
 }
 
 /**

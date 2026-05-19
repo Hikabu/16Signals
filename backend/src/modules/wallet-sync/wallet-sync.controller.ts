@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Req, Delete } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiTags,
@@ -10,6 +10,7 @@ import {
   ApiUnauthorizedResponse,
   ApiNotFoundResponse,
   ApiBody,
+  ApiHeader,
 } from '@nestjs/swagger';
 
 import { WalletSyncService } from './wallet-sync.service';
@@ -19,6 +20,7 @@ import {
   LinkWalletResponseDto,
   WalletSyncErrorResponseDto,
 } from './dto/wallet-sync.dto';
+import { InternalKeyGuard } from '../scorecard/internal-key.guard';
 
 @ApiTags('Wallet Sync')
 @ApiBearerAuth()
@@ -56,6 +58,7 @@ export class WalletSyncController {
     const challenge = await this.walletSyncService.generateChallenge(
       req.user.id,
     );
+    console.log("Generated challenge for user", req.user.id, "challenge:", challenge);
 
     return { challenge };
   }
@@ -78,6 +81,7 @@ export class WalletSyncController {
         value: {
           walletAddress: '7Gg3...SolanaAddressExample...',
           signature: '5hK9...Base58Signature...',
+          message: 'link-wallet:user123:1713940000000:a1b2c3',
         },
       },
     },
@@ -121,10 +125,28 @@ export class WalletSyncController {
     @Req() req: any,
     @Body() body: LinkWalletRequestDto,
   ): Promise<LinkWalletResponseDto> {
+    console.log("Link wallet request for user", req.user.id, "walletAddress:", body.walletAddress);
+    console.log("Link wallet request for user", req.user.id, "message:", body.message);
+    console.log("Link wallet request for user", req.user.id, "signature:", body.signature);
     return this.walletSyncService.linkWallet(
       req.user.id,
       body.walletAddress,
       body.signature,
+      body.message,
     );
   }
+
+  @Delete('unsync')
+@ApiOperation({
+  summary: 'DEV ONLY - unlink wallet',
+})
+@ApiHeader({
+      name: 'X-Internal-Key',
+      description: 'Internal API key (required)',
+      required: true,
+    })
+  @UseGuards(InternalKeyGuard)
+async unsyncWallet(@Req() req: any) {
+  return this.walletSyncService.unsyncWallet(req.user.id)
+}
 }

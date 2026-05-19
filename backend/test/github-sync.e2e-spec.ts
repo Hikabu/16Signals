@@ -31,7 +31,6 @@ describe('GithubSync (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       providers: [
-        GithubSyncProcessor,
         {
           provide: OctokitFactory,
           useValue: { forJob: jest.fn().mockResolvedValue({}) },
@@ -84,11 +83,16 @@ describe('GithubSync (e2e)', () => {
 
     prisma = app.get<PrismaService>(PrismaService);
     jwt = app.get<JwtService>(JwtService);
-    processor = app.get<GithubSyncProcessor>(GithubSyncProcessor);
     signalQueueMock = app.get(getQueueToken('signal-compute'));
+    processor = new GithubSyncProcessor(
+      app.get(GithubAdapterService),
+      prisma,
+      signalQueueMock,
+      app.get(OctokitFactory),
+    );
 
     await prisma.githubProfile.deleteMany();
-    await prisma.developerCandidate.deleteMany();
+    await prisma.developerProfile.deleteMany();
     await prisma.candidate.deleteMany();
     await prisma.user.deleteMany();
   });
@@ -97,7 +101,7 @@ describe('GithubSync (e2e)', () => {
     // Cleanup
     if (prisma) {
       await prisma.githubProfile.deleteMany();
-      await prisma.developerCandidate.deleteMany();
+      await prisma.developerProfile.deleteMany();
       await prisma.candidate.deleteMany();
       await prisma.user.deleteMany();
       await prisma.$disconnect();
@@ -132,7 +136,7 @@ describe('GithubSync (e2e)', () => {
       },
     });
 
-    const devCandidate = await prisma.developerCandidate.create({
+    const devProfile = await prisma.developerProfile.create({
       data: {
         candidateId: testCandidate.id,
       },
@@ -145,12 +149,12 @@ describe('GithubSync (e2e)', () => {
 
     testGithubProfile = await prisma.githubProfile.create({
       data: {
-        devCandidateId: devCandidate.id,
+        developerProfileId: devProfile.id,
         githubUsername: 'testuser',
         githubUserId: '12345',
         encryptedToken,
         scopes: [],
-        syncStatus: SyncStatus.PENDING,
+        syncStatus: SyncStatus.NOT_SYNCED,
       },
     });
 
@@ -170,7 +174,7 @@ describe('GithubSync (e2e)', () => {
     const profile = await prisma.githubProfile.findUnique({
       where: { id: testGithubProfile.id },
     });
-    expect(profile?.syncStatus).toBe(SyncStatus.PENDING);
+    expect(profile?.syncStatus).toBe(SyncStatus.SYNC_REQUEST);
   });
 
   it('Step 4-5: Invoke processor and verify state', async () => {
@@ -189,12 +193,11 @@ describe('GithubSync (e2e)', () => {
     });
 
     // Check status - In stage 2, status remains IN_PROGRESS until signals are computed
-    expect(updatedProfile?.syncStatus).toBe(SyncStatus.IN_PROGRESS);
+    expect(updatedProfile?.syncStatus).toBe(SyncStatus.SYNC_SUCCESS);
 
     // Check JSON-encoded progress
-    const progress = JSON.parse(updatedProfile?.syncProgress || '{}');
-    expect(progress).toHaveProperty('stage', 'analyzing_projects');
-    expect(progress).toHaveProperty('percent', 40);
+    const progress = updatedProfile?.syncProgress;
+    expect(progress).toBe(100);
 
     expect(updatedProfile?.rawDataSnapshot).toBeDefined();
 
@@ -228,8 +231,7 @@ describe('GithubSync (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.syncStatus).toBe('IN_PROGRESS');
-    const progress = JSON.parse(response.body.syncProgress || '{}');
-    expect(progress.stage).toBe('analyzing_projects');
+    expect(response.body.syncStatus).toBe('SYNC_SUCCESS');
+    expect(response.body.syncProgress).toBe(100);
   });
 });

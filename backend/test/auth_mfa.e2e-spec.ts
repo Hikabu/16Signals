@@ -19,7 +19,7 @@ describe('Auth MFA (e2e)', () => {
     const regRes = await request(app.getHttpServer())
       .post('/auth/candidate/register')
       .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
-      .expect(302);
+      .expect(202);
 
     userId = await setup.prisma.user
       .findUnique({ where: { email } })
@@ -76,9 +76,9 @@ describe('Auth MFA (e2e)', () => {
       })
       .expect(302);
 
-    expect(loginRes.headers.location).toContain('/mfa?token=');
+    expect(loginRes.headers.location).toContain('mfa_token=');
     const mfaToken = new URL(loginRes.headers.location).searchParams.get(
-      'token',
+      'mfa_token',
     );
     expect(mfaToken).toBeDefined();
 

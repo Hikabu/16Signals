@@ -8,7 +8,7 @@ import {
   UseGuards,
   Query,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { CookieOptions, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthCandidateService } from './auth.candidate.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -52,76 +52,94 @@ export class AuthCandidateController {
     private readonly config: ConfigService,
   ) {}
 
-  private frontendUrl() {
-    return this.config.get<string>('app.frontendUrl');
-  }
+  private readonly authCookieOptions: CookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  };
 
-  private redirectOrJson(
-    res: Response,
-    path: string,
-    fallbackBody: Record<string, unknown>,
-  ) {
-    const frontendUrl = this.frontendUrl();
-    if (!frontendUrl) {
-      return res.status(200).json(fallbackBody);
-    }
-    return res.redirect(new URL(path, frontendUrl).toString());
-  }
-
-  private authCookieOptions() {
-    return {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-    };
+  private getFrontendUrl() {
+    return this.config.get<string>('FRONTEND_URL') || '';
   }
 
   private handleAuthResponse(
+    req: any,
     res: Response,
     result: any,
     successRedirect?: string,
   ) {
+    const wantsJson = req?.accepts?.(['html', 'json']) === 'json';
+
     switch (result.type) {
       case AuthState.SUCCESS: {
         res.cookie(
           'access_token',
           result.data.accessToken,
-          this.authCookieOptions(),
+          this.authCookieOptions,
         );
-        res.cookie('refresh_token', result.data.refreshToken, {
-          ...this.authCookieOptions(),
+        res.cookie(
+          'refresh_token',
+          result.data.refreshToken,
+          this.authCookieOptions,
+        );
+        if (successRedirect && !wantsJson) {
+          return res.redirect(successRedirect);
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            accessToken: result.data.accessToken,
+            role: 'candidate',
+          },
         });
-        return res.status(200).json({ success: true });
       }
 
       case AuthState.NEEDS_VERIFICATION:
-        return this.redirectOrJson(
-          res,
-          `/verify?email=${encodeURIComponent(result.data.email)}`,
-          { success: false, state: result.type, email: result.data.email },
+        if (wantsJson) {
+          return res.status(403).json({
+            code: 'email_verification_required',
+            email: result.data.email,
+            message: 'Email verification required.',
+          });
+        }
+
+        return res.redirect(
+          `${this.getFrontendUrl()}/auth?verify_email=${encodeURIComponent(result.data.email)}`,
         );
 
-      case AuthState.MFA_REQUIRED:
-        return this.redirectOrJson(
-          res,
-          `/mfa?token=${encodeURIComponent(result.data.mfaToken)}`,
-          {
-            success: false,
-            state: result.type,
+      case AuthState.MFA_REQUIRED: {
+        if (wantsJson) {
+          return res.status(401).json({
+            code: 'mfa_required',
             mfaToken: result.data.mfaToken,
-          },
+            userId: result.data.userId,
+            message: 'MFA verification required.',
+          });
+        }
+
+        const params = new URLSearchParams({
+          mfa_token: result.data.mfaToken,
+        });
+        if (result.data.userId) {
+          params.set('user_id', result.data.userId);
+        }
+        return res.redirect(
+          `${this.getFrontendUrl()}/auth?${params.toString()}`,
         );
+      }
 
       case AuthState.NEEDS_ONBOARDING:
-        res.cookie(
-          'temp_auth',
-          result.data.tempToken,
-          this.authCookieOptions(),
-        );
-        return this.redirectOrJson(res, '/onboarding', {
-          success: false,
-          state: result.type,
-        });
+        res.cookie('temp_auth', result.data.tempToken, this.authCookieOptions);
+        if (wantsJson) {
+          return res.status(202).json({
+            code: 'onboarding_required',
+            token: result.data.tempToken,
+            message: 'Onboarding required.',
+          });
+        }
+
+        return res.redirect(`${this.getFrontendUrl()}/auth?onboarding=1`);
 
       default:
         return res.status(401).json({ message: 'Invalid auth state' });
@@ -137,9 +155,9 @@ export class AuthCandidateController {
       'Registers a new user and starts email verification flow. May return auth state depending on verification status.',
   })
   @ApiBody({ type: RegisterDto })
-  async register(@Body() dto: RegisterDto, @Res() res: Response) {
+  async register(@Body() dto: any, @Res() res: Response) {
     const result = await this.authService.register(dto);
-    return this.handleAuthResponse(res, result);
+    return res.status(202).json(result);
   }
 
   // ---------------- EMAIL VERIFICATION ----------------
@@ -157,7 +175,7 @@ export class AuthCandidateController {
       example: { success: true },
     },
   })
-  async verifyEmail(@Body() dto: VerifyEmailDto) {
+  async verifyEmail(@Body() dto: any) {
     await this.authService.verifyEmail(dto.code);
     return { success: true };
   }
@@ -171,9 +189,13 @@ export class AuthCandidateController {
       'Validates credentials and returns auth state (tokens, MFA, onboarding, or verification).',
   })
   @ApiBody({ type: LoginDtoSchema })
-  async login(@Body() dto: LoginDtoSchema, @Res() res: Response) {
+  async login(
+    @Body() dto: any,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
     const result = await this.authService.login(dto);
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
   }
 
   // ---------------- LOGOUT ----------------
@@ -214,7 +236,12 @@ export class AuthCandidateController {
   })
   async githubCallback(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.oauthLogin(req.user, 'GITHUB');
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(
+      req,
+      res,
+      result,
+      `${this.getFrontendUrl()}/profile`,
+    );
   }
 
   @UseGuards(AuthGuard('google'))
@@ -229,7 +256,12 @@ export class AuthCandidateController {
   @SkipThrottle()
   async googleCallback(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.oauthLogin(req.user, 'GOOGLE');
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(
+      req,
+      res,
+      result,
+      `${this.getFrontendUrl()}/profile`,
+    );
   }
 
   // ---------------- ONBOARDING ----------------
@@ -243,7 +275,7 @@ export class AuthCandidateController {
   })
   @ApiBody({ type: OnboardingDto })
   async completeOnboarding(
-    @Body() dto: OnboardingDto,
+    @Body() dto: any,
     @Req() req: any,
     @Res() res: Response,
   ) {
@@ -251,7 +283,7 @@ export class AuthCandidateController {
       dto,
       req.onboarding,
     );
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
   }
 
   // ---------------- ACCOUNT LINKING ----------------
@@ -279,6 +311,7 @@ export class AuthCandidateController {
   })
   async linkGithubCallback(
     @Req() req: any,
+    @Res() res: Response,
     @Query() query: OAuthCallbackQueryDto,
   ) {
     await this.authService.linkOAuth(
@@ -287,7 +320,7 @@ export class AuthCandidateController {
       'GITHUB',
       query.state,
     );
-    return { success: true };
+    return res.redirect(`${this.getFrontendUrl()}/profile?linked=github`);
   }
 
   // ---------------- GOOGLE LINK ----------------
@@ -315,6 +348,7 @@ export class AuthCandidateController {
   })
   async linkGoogleCallback(
     @Req() req: any,
+    @Res() res: Response,
     @Query() query: OAuthCallbackQueryDto,
   ) {
     await this.authService.linkOAuth(
@@ -323,7 +357,7 @@ export class AuthCandidateController {
       'GOOGLE',
       query.state,
     );
-    return { success: true };
+    return res.redirect(`${this.getFrontendUrl()}/profile?linked=google`);
   }
 
   // ---------------- REFRESH ----------------
@@ -336,7 +370,36 @@ export class AuthCandidateController {
   })
   async refresh(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.refresh(req.user);
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
+  }
+
+  // ---------------- PASSWORD RESET ----------------
+
+  @Post('password-reset/request')
+  @ApiOperation({
+    summary: 'Request password reset',
+    description:
+      'Starts the password reset flow. Always returns a generic success response.',
+  })
+  @ApiBody({ type: RequestPasswordResetDto })
+  async requestPasswordReset(@Body() dto: any) {
+    await this.authService.requestPasswordReset(dto);
+    return {
+      success: true,
+      message:
+        'If an account exists with this email, you will receive a reset link.',
+    };
+  }
+
+  @Post('password-reset/confirm')
+  @ApiOperation({
+    summary: 'Confirm password reset',
+    description: 'Resets the password with a valid password reset token.',
+  })
+  @ApiBody({ type: ResetPasswordDto })
+  async resetPassword(@Body() dto: any) {
+    await this.authService.resetPassword(dto);
+    return { success: true };
   }
 
   // ---------------- MFA ----------------
@@ -352,25 +415,30 @@ export class AuthCandidateController {
   @Post('mfa/activate')
   @ApiBearerAuth()
   @ApiBody({ type: ActivateMfaDto })
-  activateMfa(@Req() req: any, @Body() dto: ActivateMfaDto) {
+  activateMfa(@Req() req: any, @Body() dto: any) {
     return this.authService.activateMfa(req.user.id, dto.code);
   }
 
   @Post('mfa/verify')
   @ApiBody({ type: VerifyMfaDto })
-  async verifyMfa(@Body() dto: VerifyMfaDto, @Res() res: Response) {
+  async verifyMfa(
+    @Body() dto: any,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
     const result = await this.authService.verifyMfa(
       dto.userId,
       dto.code,
       dto.mfaToken,
     );
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
   }
 
   @Post('mfa/verify-recovery')
   @ApiBody({ type: VerifyMfaRecoveryDto })
   async verifyMfaRecovery(
-    @Body() dto: VerifyMfaRecoveryDto,
+    @Body() dto: any,
+    @Req() req: any,
     @Res() res: Response,
   ) {
     const result = await this.authService.verifyMfaRecovery(
@@ -378,6 +446,52 @@ export class AuthCandidateController {
       dto.backupCode,
       dto.mfaToken,
     );
-    return this.handleAuthResponse(res, result);
+    return this.handleAuthResponse(req, res, result);
+  }
+
+  // ---------------- SECURITY INFO ----------------
+
+  @VerifiedAuth()
+  @Get('me/security')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get security settings',
+    description: 'Returns mfaEnabled status, hasPassword, and linkedProviders for the authenticated user.',
+  })
+  @ApiOkResponse({
+    description: 'Security info',
+    schema: {
+      example: {
+        mfaEnabled: false,
+        hasPassword: true,
+        linkedProviders: ['LOCAL', 'GITHUB'],
+      },
+    },
+  })
+  getSecurityInfo(@Req() req: any) {
+    return this.authService.getSecurityInfo(req.user.id);
+  }
+
+  // ---------------- CHANGE / SET PASSWORD ----------------
+
+  @VerifiedAuth()
+  @Post('me/change-password')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Change or set password',
+    description: 'If the user already has a local password, currentPassword is required. If not (OAuth-only user), sets a password without requiring currentPassword.',
+  })
+  @ApiBody({
+    schema: {
+      example: {
+        currentPassword: 'old-pass (only if hasPassword is true)',
+        newPassword: 'new-pass',
+      },
+    },
+  })
+  async changePassword(@Req() req: any, @Body() dto: any) {
+    await this.authService.changePassword(req.user.id, dto);
+    return { success: true };
   }
 }
+

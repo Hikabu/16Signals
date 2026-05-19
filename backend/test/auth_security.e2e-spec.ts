@@ -55,7 +55,7 @@ describe('Auth Security (e2e)', () => {
             password: 'StrongPassword123!',
             role: 'CANDIDATE',
           })
-          .expect(302);
+          .expect(202);
       }
 
       const res = await request(app.getHttpServer())
@@ -66,7 +66,7 @@ describe('Auth Security (e2e)', () => {
           role: 'CANDIDATE',
         });
 
-      expect(res.status).toBe(302);
+      expect(res.status).toBe(202);
     });
   });
 
@@ -76,7 +76,7 @@ describe('Auth Security (e2e)', () => {
       await request(app.getHttpServer())
         .post('/auth/candidate/register')
         .send({ email, password: 'StrongPassword123!', role: 'CANDIDATE' })
-        .expect(302);
+        .expect(202);
 
       const authService = app.get(AuthCandidateService);
 
@@ -97,7 +97,7 @@ describe('Auth Security (e2e)', () => {
       // 2. Refresh tokens (RT1 is used, RT2 is issued)
       const res2 = await request(app.getHttpServer())
         .post('/auth/candidate/refresh')
-        .set('Authorization', `Bearer ${rt1}`)
+        .set('Cookie', [`refresh_token=${rt1}`])
         .expect(200);
       const rt2 = getCookieValue(res2.headers['set-cookie'], 'refresh_token');
       expect(rt2).toBeDefined();
@@ -105,14 +105,14 @@ describe('Auth Security (e2e)', () => {
       // // 3. Attempt to reuse RT1 (Simulated attacker!)
       const res3 = await request(app.getHttpServer())
         .post('/auth/candidate/refresh')
-        .set('Authorization', `Bearer ${rt1}`);
+        .set('Cookie', [`refresh_token=${rt1}`]);
 
       expect(res3.status).toBe(401);
 
       // // 4. RT2 should now also be invalid because of reuse detection
       const res4 = await request(app.getHttpServer())
         .post('/auth/candidate/refresh')
-        .set('Authorization', `Bearer ${rt2}`);
+        .set('Cookie', [`refresh_token=${rt2}`]);
 
       expect(res4.status).toBe(401);
     });

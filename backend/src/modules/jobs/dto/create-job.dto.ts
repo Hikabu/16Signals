@@ -1,5 +1,6 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { RoleType } from '@prisma/client';
 
 export class CreateJobDto {
   @ApiProperty({ example: 'Senior NestJS Engineer' })
@@ -33,4 +34,13 @@ export class CreateJobDto {
   @IsString()
   @IsOptional()
   currency?: string;
+
+  @ApiProperty({
+    enum: RoleType,
+    required: false,
+    description: 'Primary role category for this opening.',
+  })
+  @IsOptional()
+  @IsEnum(RoleType)
+  roleType?: RoleType;
 }

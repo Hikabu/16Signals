@@ -1,11 +1,9 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider     = "prisma-client-js"
-  moduleFormat = "cjs"
+  provider      = "prisma-client-js"
+  moduleFormat  = "cjs"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
@@ -15,38 +13,51 @@ datasource db {
   directUrl     = env("DIRECT_URL")
 }
 
-// -- COMPANY USER ----
-model Company {
-  id                 String    @id @default(uuid())
-  name               String
-  legalName          String? // exact registered business name 
-  logoUrl      String?
-  website   String?
-  description String?
-  registrationNumber String?   @unique
-  country            String
-  isVerified         Boolean   @default(false)
-  verifiedAt         DateTime?
-  createdAt          DateTime  @default(now())
+// ─── COMPANY ──────────────────────────────────────────────────────────────────
 
+model Company {
+  id                 String  @id @default(uuid())
+  name               String
+  legalName          String? // exact registered business name
+  logoUrl            String?
+  website            String?
+  description        String?
+  registrationNumber String? @unique
+  country            String
+
+  // Trust & verification
+  isVerified      Boolean   @default(false)
+  verifiedAt      DateTime?
+  isVerifiedPayer Boolean   @default(false)
+  trustScore      Int       @default(0) // 0–100, application-maintained derived value
+
+  // Denormalised counters, incremented by application logic, never by DB triggers
+  totalJobsPosted      Int @default(0)
+  totalEscrowsFunded   Int @default(0)
+  totalEscrowsReleased Int @default(0)
+
+  // Identity / auth
   email               String? @unique
   walletAddress       String? @unique
   smartAccountAddress String? @unique
   privyId             String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   jobPosts JobPost[]
 
   @@map("companies")
 }
 
-//----------JOB POST --------------------
+// ─── JOB POST ─────────────────────────────────────────────────────────────────
 
 enum JobStatus {
   DRAFT
-  PENDING_PAYMENT // created, bonus not yet paid
-  ACTIVE // paid and live
-  CLOSED_PENDING // payment done but not published yet
-  CLOSED // finished, no longer accepting
+  PENDING_PAYMENT // created, escrow not yet funded
+  ACTIVE // funded and live
+  CLOSED_PENDING // payment done but not yet published
+  CLOSED // finished, no longer accepting applications
 }
 
 enum Seniority {
@@ -85,30 +96,31 @@ model JobPost {
   title          String
   description    String
   location       String?
-  employmentType String? // full-time, part-time, contract
+  employmentType String? // "full-time" | "part-time" | "contract"
   bonusAmount    Decimal    @db.Decimal(10, 2)
   currency       String     @default("USD")
   status         JobStatus  @default(DRAFT)
   roleType       RoleType?
   seniorityLevel Seniority?
-  
-  // Structured fields promoted from parsedRequirements at confirm-requirements time
-  requiredSkills        String[]   @default([])  // e.g. ["TypeScript", "NestJS", "Solana"]
+  isWeb3Role     Boolean    @default(false)
 
-  escrowId        BigInt?       @unique
-  escrowAddress   String?       @unique
-  candidateWallet String?
-  escrowStatus    EscrowStatus  @default(UNFUNDED)
-
-  publishedAt    DateTime?
-  closedAt       DateTime?
-  createdAt      DateTime   @default(now())
-
-  // Stage 4 Features
+  // Skills & requirements (structured at confirm-requirements time)
+  requiredSkills          String[]  @default([])
   parsedRequirements      Json?
   dynamicWeights          Json? // { collaborationWeight, ownershipWeight, innovationWeight }
-  isWeb3Role              Boolean   @default(false)
   requirementsConfirmedAt DateTime?
+
+  // Escrow
+  escrowId        BigInt?      @unique
+  escrowAddress   String?      @unique
+  candidateWallet String?
+  escrowStatus    EscrowStatus @default(UNFUNDED)
+  escrowFundedAt  DateTime?
+
+  publishedAt DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   company    Company     @relation(fields: [companyId], references: [id])
   shortlists Shortlist[]
@@ -117,8 +129,8 @@ model JobPost {
   @@map("job_posts")
 }
 
+// ─── APPLICATION / SHORTLIST ──────────────────────────────────────────────────
 
-//----APPLICATION----------------
 enum FraudTier {
   CLEAN
   FLAGGED
@@ -180,12 +192,8 @@ model Shortlist {
   jobPostId   String
   candidateId String
   status      ShortlistStatus @default(PENDING)
-  notes       String?
-  createdAt   DateTime        @default(now())
 
-  jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
-  candidate Candidate @relation(fields: [candidateId], references: [id])
-
+  // Scoring
   roleFitScore    Float            @default(0)
   fraudTier       FraudTier        @default(CLEAN)
   riskLevel       RiskLevel?
@@ -193,26 +201,33 @@ model Shortlist {
   behaviorPattern BehaviorPattern?
   fitTier         FitTier          @default(PASS)
 
+  // Frozen snapshots, captured at apply-time, never mutated
+  frozenScorecard Json? // Full AnalysisResult snapshot
+  decisionCard    Json? // { verdict, strengths[], risks[], reputationNote }
+  gapReport       Json? // GapReport object
+
+  // Pipeline tracking
+  pipelineStage        PipelineStage @default(APPLIED)
+  pipelineStageHistory Json? // append-only log: [{ stage, changedAt, changedBy }]
+  interviewQuestions   Json? // InterviewQuestionSet[]
+
+  // Notes
   candidateNote String? @db.VarChar(280)
   hrNotes       String?
 
   appliedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Stage 4 Features
-  frozenScorecard      Json? // Full AnalysisResult snapshot captured at apply-time. Never mutated.
-  decisionCard         Json? // frozen at apply-time: { verdict, strengths[], risks[], reputationNote }
-  gapReport            Json? // frozen at apply-time: GapReport object
-  pipelineStage        PipelineStage @default(APPLIED)
-  pipelineStageHistory Json? // array of { stage, changedAt, changedBy } — append-only log
-  interviewQuestions   Json? // array of InterviewQuestionSet
+  jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
+  candidate Candidate @relation(fields: [candidateId], references: [id])
 
-  @@unique([jobPostId, candidateId]) // one entry per candidate per job
-  //   @@index([jobPostId, roleFitScore])
+  @@unique([jobPostId, candidateId])
   @@index([jobPostId, roleFitScore(sort: Desc)])
   @@map("shortlists")
 }
 
-// ─── User Hierarchy CANDIDATES ──────────────────────────────────────────
+// ─── USER ─────────────────────────────────────────────────────────────────────
+
 enum UserRole {
   CANDIDATE
   HR
@@ -231,28 +246,31 @@ model User {
   email    String? @unique
   username String? @unique
 
+  // Display name, stored on User so it is accessible without joining Candidate
   firstName String?
   lastName  String?
+  name      String?
 
   role          UserRole      @default(CANDIDATE)
   accountStatus AccountStatus @default(ACTIVE)
 
+  // Auth & security
   isEmailVerified Boolean  @default(false)
   mfaEnabled      Boolean  @default(false)
-  mfaSecret       String? // Should be encrypted at rest
+  mfaSecret       String? // encrypted at rest (AES-256-GCM)
   mfaBackupCodes  String[] @default([])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  authAccounts  AuthAccount[]
-  candidate     Candidate?
-  web3Profile   Web3Profile?
-  githubProfile GithubProfile?
-  analysisJobs  AnalysisJob[]
+  authAccounts AuthAccount[]
+  candidate    Candidate?
+
+  @@map("users")
 }
 
-// ─── User AUTH  ──────────────────────────────────────────
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+
 enum AuthProvider {
   LOCAL
   GITHUB
@@ -264,107 +282,149 @@ model AuthAccount {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  provider   AuthProvider
-  providerId String
-
+  provider     AuthProvider
+  providerId   String
   passwordHash String?
 
   createdAt DateTime @default(now())
 
   @@unique([provider, providerId])
+  @@map("auth_accounts")
 }
 
-// ─── User Type: CANDIDATE  ──────────────────────────────────────────
+// ─── CANDIDATE ────────────────────────────────────────────────────────────────
+// Candidate holds profile data that is common to all career paths (bitmask).
+// Path-specific data lives in the corresponding profile model (DeveloperProfile).
 
 model Candidate {
-  id         String              @id @default(uuid())
-  userId     String              @unique
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio        String?             @db.VarChar(500)
-  careerPath Int                 @default(1) // bitmask: 1=DEVELOPER
-  devProfile DeveloperCandidate?
-  shortlist  Shortlist[]
-  scorecard  Json? // { roleType, seniorityLevel, signals: { key: value }, overallFit }
-  vouches    Vouch[]
-  createdAt  DateTime            @default(now())
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Public profile
+  avatarUrl String?
+  bio       String? @db.VarChar(500)
+  location  String? @db.VarChar(255)
+  website   String? @db.VarChar(255)
+
+  // Career path bitmask: 1 = DEVELOPER (extend as new paths are added)
+  careerPath Int @default(1)
+
+  // AI scorecard, path-agnostic, shape evolves per careerPath bitmask
+  // Current shape (developer): { roleType, seniorityLevel, signals: Record<string, unknown>, overallFit }
+  scorecard Json?
+
+  // Cooldown for AI scorecard generation (path-agnostic)
+  generateCooldownUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  devProfile   DeveloperProfile?
+  shortlist    Shortlist[]
+  analysisJobs AnalysisJob[]
+  vouches      Vouch[]
+
+  @@map("candidates")
 }
 
-model DeveloperCandidate {
-  id            String         @id @default(uuid())
-  candidateId   String         @unique
-  candidate     Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+// ─── DEVELOPER PROFILE ────────────────────────────────────────────────────────
+// Owned 1-to-1 by Candidate. All developer-specific signals and scoring live here.
+// Linked by candidateId (Candidate.id), not by userId, to keep the FK chain clean.
+
+model DeveloperProfile {
+  id          String    @id @default(uuid())
+  candidateId String    @unique
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Per-source sync cooldowns
+  githubCooldownUntil DateTime?
+  walletCooldownUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   githubProfile GithubProfile?
   web3Profile   Web3Profile?
-  createdAt     DateTime       @default(now())
+
+  @@map("developer_profiles")
 }
 
-// ─── GitHub Profile ──────────────────────────────────────────
+// ─── GITHUB PROFILE ───────────────────────────────────────────────────────────
+
 enum SyncStatus {
-  PENDING
-  IN_PROGRESS
-  RUNNING
-  DONE
-  FAILED
+  NOT_SYNCED
+  CONNECT_REQUEST // OAuth flow initiated
+  CONNECT_SUCCESS
+  SYNC_REQUEST
+  SYNC_FETCH_REQUEST
+  SYNC_FETCH_SUCCESS
+  SYNC_SUCCESS
+  SYNC_FAILED
 }
 
 model GithubProfile {
-  id             String             @id @default(uuid())
-  devCandidateId String             @unique
-  devCandidate   DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(uuid())
+  developerProfileId String           @unique
+  developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
 
-  userId String? @unique
-  user   User?   @relation(fields: [userId], references: [id])
+  githubUsername String   @unique
+  githubUserId   String   @unique
+  encryptedToken String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
+  scopes         String[] @default([])
 
-  githubUsername  String     @unique
-  githubUserId    String     @unique
-  encryptedToken  String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
-  scopes          String[]
-  lastSyncAt      DateTime?
-  syncStatus      SyncStatus @default(PENDING)
-  syncProgress    String     @default("0")
-  syncError       String?
+  syncStatus   SyncStatus @default(NOT_SYNCED)
+  syncProgress Int        @default(0)
+  syncError    String?
+  lastSyncAt   DateTime?
+
   rawDataSnapshot Json?
-  createdAt       DateTime   @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("github_profiles")
 }
 
-// ─── Web3 Profile (opt-in) ───────────────────────────────────
-// Wallet address submitted by candidate — no signature verification needed.
-// Solana signals use RPC-native methods; there is no Solana equivalent of Etherscan.
+// ─── WEB3 PROFILE ─────────────────────────────────────────────────────────────
+// Opt-in. Wallet submitted by the candidate.
+// Solana signals use RPC-native methods (no Etherscan equivalent for Solana).
 
 model Web3Profile {
-  id             String             @id @default(uuid())
-  devCandidateId String             @unique
-  devCandidate   DeveloperCandidate @relation(fields: [devCandidateId], references: [id], onDelete: Cascade)
-
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(uuid())
+  developerProfileId String           @unique
+  developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
 
   solanaAddress     String?
   // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
   verifiedContracts Json?
   onChainMetrics    Json?
-  createdAt         DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("web3_profiles")
 }
 
-//-----Vouchers ---------------------------
+// ─── VOUCHES ──────────────────────────────────────────────────────────────────
+
 model Vouch {
   id String @id @default(uuid())
 
-  // Candidate side — FK to Candidate, not GithubProfile
+  // FK to Candidate, not to GithubProfile, vouches survive profile resets
   candidateId String
   candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
-  // Voucher side — wallet proving identity on-chain
+  // Voucher identity, wallet proving on-chain identity
   voucherWallet String
   message       String @db.VarChar(500)
   txSignature   String @unique
 
   // Weight & lifecycle
-  weight   String  @default("standard") // 'verified' | 'standard' | 'new'
+  weight   String  @default("standard") // "verified" | "standard" | "new"
   isActive Boolean @default(true)
-  flag     String? // 'cluster_detected' | null
+  flag     String? // "cluster_detected" | null
 
-  // Timestamps
   confirmedAt DateTime  @default(now())
   expiresAt   DateTime
   revokedAt   DateTime?
@@ -372,27 +432,98 @@ model Vouch {
   @@unique([candidateId, voucherWallet])
   @@index([candidateId, isActive, expiresAt])
   @@index([voucherWallet, isActive, expiresAt])
+  @@map("vouches")
 }
 
-// ─── Cache Layer ──────────────────────────────────────────────
-model CachedResult {
-  id        String   @id @default(cuid())
-  cacheKey  String   @unique // format: 'analysis:{username}' or 'analysis:{username}:{walletAddress}'
-  result    Json
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
+// ─── ANALYSIS JOB ─────────────────────────────────────────────────────────────
+// Tracks async analysis tasks. Linked to Candidate by candidateId (Candidate.id).
 
 model AnalysisJob {
-  id        String   @id @default(uuid())
-  status    String   @default("pending")
-  input     Json // { githubUsername, walletAddress, mode, useGithubCache }
-  result    Json?
-  error     String?
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  id          String     @id @default(uuid())
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+
+  status   String  @default("pending") // "pending" | "processing" | "completed" | "failed"
+  progress Int     @default(0)
+  input    Json // { githubUsername, walletAddress, mode, useGithubCache }
+  result   Json?
+  error    String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("analysis_jobs")
+}
+
+// ─── CACHE ────────────────────────────────────────────────────────────────────
+
+model CachedResult {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique // "analysis:{username}" | "analysis:{username}:{walletAddress}"
+  result    Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("cached_results")
+}
+
+// ─── EMPLOYER LAUNCH WAITLIST (candidate side) ───────────────────────────────
+// Candidates who want to be notified when employers go live.
+// The userId field links a signup to an account when known (nullable).
+
+model EmployerLaunchWaitlist {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  userId    String? // nullable, set when signed-in candidate subscribes
+  createdAt DateTime @default(now())
+
+  @@map("employer_launch_waitlist")
+}
+
+// ─── EMPLOYER WAITLIST ────────────────────────────────────────────────────────
+// Companies that want early access to 16Signals hiring platform.
+// Collects ICP signals: roles hiring, eval tooling, company profile.
+
+model EmployerWaitlist {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  companyName String
+  website     String?
+
+  // ICP signals (all optional — collected in step 2 of onboarding)
+  rolesHiring      String[] @default([]) // all selected role chips (eng + non-eng)
+  otherRolesText   String?  // free-text when "Other" chip is selected
+  usesGithub       Boolean  @default(false) // already use GitHub to evaluate engineers
+  evalTools        String?  // free-text: other tools for engineer evaluation
+  needsOtherRoleTools Boolean @default(false) // also wants tools for non-engineering roles
+  companyTypes     String[] @default([]) // multi-select: ["Startup", "Web3 / Crypto"]
+  teamSize         String?  // e.g. "11–50"
+  socialLinks      String?  // free-text: LinkedIn / Twitter URLs
+
+  createdAt DateTime @default(now())
+
+  @@map("employer_waitlist")
+}
+
+
+
+// ─── NON-DEVELOPER CANDIDATE WAITLIST ────────────────────────────────────────
+// People who work in tech but are not (yet) developers — designers, PMs, etc.
+// Collected to plan roadmap expansion; emailed when their role/tools are supported.
+
+model CandidateInterestedWaitlist {
+  id    String @id @default(uuid())
+  email String @unique
+  name  String?  // optional display name
+
+  // Role signals
+  role      String?  // primary role chip selected (e.g. "Designer")
+  otherRole String?  // free-text when "Other" is chosen
+
+  // Tooling signals
+  tools String?  // free-text: tools they use day-to-day (Figma, Notion, etc.)
+
+  createdAt DateTime @default(now())
+
+  @@map("candidate_interested_waitlist")
 }

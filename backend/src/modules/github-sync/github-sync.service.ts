@@ -30,14 +30,14 @@ export class GithubSyncService {
   // ─── Connect step 1: generate state, return OAuth URL ────────────
   async startConnect(userId: string): Promise<string> {
     const state = crypto.randomBytes(16).toString('hex');
-    // Store userId against state for 5 minutes — same as link flow
+    // Store userId against state for 5 minutes, same as link flow
     await this.redis.set(`github_sync_state:${state}`, userId, 'EX', 300);
 
     const clientId = this.config.get('GITHUB_CLIENT_ID');
     const callbackUrl = `${this.config.get('app.url')}${this.config.get('auth.githubSyncConnectCallback')}`;
     // console.log('callback url: ', callbackUrl);
     const scopes = encodeURIComponent('read:user repo');
-
+    //TODO >>> START CONNECT 
     return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scopes}&state=${state}`;
   }
 
@@ -51,7 +51,7 @@ export class GithubSyncService {
     },
     state: string,
   ) {
-    // Recover userId from Redis state — same pattern as linkOAuth
+    // Recover userId from Redis state, same pattern as linkOAuth
     const userId = await this.redis.get(`github_sync_state:${state}`);
     if (!userId) {
       throw new UnauthorizedException(
@@ -76,10 +76,9 @@ export class GithubSyncService {
     const encryptedToken = encrypt(githubData.accessToken, key);
 
     await this.prisma.githubProfile.upsert({
-      where: { devCandidateId: devProfile.id },
+      where: { developerProfileId: devProfile.id },
       create: {
-        devCandidate: { connect: { id: devProfile.id } },
-        user: { connect: { id: userId } },
+        developerProfile: { connect: { id: devProfile.id } },
         githubUsername: githubData.username,
         githubUserId: githubData.githubId,
         encryptedToken,
@@ -89,11 +88,10 @@ export class GithubSyncService {
         // Rotate token on re-connect (expired or user re-authorized)
         githubUsername: githubData.username,
         githubUserId: githubData.githubId,
-        user: { connect: { id: userId } },
         encryptedToken,
         scopes: githubData.scopes,
-        syncStatus: SyncStatus.PENDING,
-        syncProgress: '0',
+        syncStatus: SyncStatus.CONNECT_SUCCESS,
+        syncProgress: 0,
         syncError: null,
       },
     });
@@ -116,29 +114,34 @@ export class GithubSyncService {
       });
     }
 
-    // Rate limit: 24h (skip if called internally from connectGithub — lastSyncAt is null on first sync)
-    if (githubProfile.lastSyncAt) {
-      const diffHours =
-        (Date.now() - new Date(githubProfile.lastSyncAt).getTime()) /
-        (1000 * 60 * 60);
+    // Rate limit check using DeveloperProfile.githubCooldownUntil
+    if (devProfile?.githubCooldownUntil && devProfile.githubCooldownUntil > new Date()) {
+      const diffMs = devProfile.githubCooldownUntil.getTime() - Date.now();
+      const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
 
-      if (diffHours < 24) {
-        throw new HttpException(
-          {
-            code: 'RATE_LIMITED',
-            message: 'You can only sync once every 24 hours.',
-            retryAfter: Math.ceil(24 - diffHours),
-          },
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
+      throw new HttpException(
+        {
+          code: 'RATE_LIMITED',
+          message: `You can only sync once every 24 hours.`,
+          cooldownUntil: devProfile.githubCooldownUntil,
+          retryAfter: diffHours,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
+
+    // Set new cooldown (24 hours from now)
+    // const cooldownUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // await this.prisma.developerProfile.update({
+    //   where: { id: devProfile.id },
+    //   data: { githubCooldownUntil: cooldownUntil },
+    // });
 
     const updated = await this.prisma.githubProfile.update({
       where: { id: githubProfile.id },
       data: {
-        syncStatus: SyncStatus.PENDING,
-        syncProgress: '0',
+        syncStatus: SyncStatus.SYNC_REQUEST,
+        syncProgress: 0,
         syncError: null,
       },
     });
@@ -147,7 +150,6 @@ export class GithubSyncService {
 
     await this.githubSyncQueue.add('sync-profile', {
       candidateId: devProfile.candidateId,
-      devCandidateId: devProfile.id,
       githubProfileId: githubProfile.id,
       userId,
     });
@@ -160,21 +162,53 @@ export class GithubSyncService {
 
   // ─── Status ───────────────────────────────────────────────────────
   async getSyncStatus(userId: string) {
-    const profile = await this.prisma.githubProfile.findFirst({
-      where: { devCandidate: { candidate: { userId } } },
-      select: {
-        syncStatus: true,
-        syncProgress: true,
-        lastSyncAt: true,
-        syncError: true,
-        githubUsername: true,
-      },
-    });
-
-    if (!profile) {
-      return { syncStatus: null, code: 'GITHUB_NOT_CONNECTED' };
-    }
-
-    return profile;
+  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+  
+  if (!devProfile?.githubProfile) {
+    return {
+      isLinked: false,
+      syncStatus: 'NOT_SYNCED',
+    };
   }
+
+    const profile = devProfile.githubProfile;
+    return {
+      isLinked: true,
+      syncStatus: profile.syncStatus,
+      syncProgress: profile.syncProgress,
+      lastSyncAt: profile.lastSyncAt,
+      error: profile.syncError,
+      githubUsername: profile.githubUsername,
+      cooldownUntil: devProfile.githubCooldownUntil,
+    };
+  }
+///ONLY TESTING - DELETE TODO
+
+  async unsyncGithub(userId: string) {
+  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+
+  if (!devProfile?.githubProfile) {
+    return {
+      ok: true,
+      message: 'Already unsynced',
+    };
+  }
+
+  // reset github profile
+ await this.prisma.githubProfile.delete({
+  where: { id: devProfile.githubProfile.id },
+});
+
+await this.prisma.developerProfile.update({
+  where: { id: devProfile.id },
+  data: {
+    githubCooldownUntil: null,
+  },
+});
+
+  return {
+    ok: true,
+    message: 'GitHub unsynced successfully',
+  };
+}
 }

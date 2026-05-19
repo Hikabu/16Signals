@@ -1,8 +1,9 @@
 export function buildHrView(shortlist: any): object {
   const dc = shortlist.decisionCard ?? {};
   return {
-    // Summary — plain language, readable by non-technical HR
+    // Summary, plain language, readable by non-technical HR
     verdict: dc.verdict ?? null,
+    reviewOutcome: dc.reviewOutcome ?? null,
     hrSummary: dc.hrSummary ?? null,
     reputationNote: dc.reputationNote ?? null,
 
@@ -27,9 +28,12 @@ export function buildTechnicalView(shortlist: any): object {
   const dc = shortlist.decisionCard ?? {};
   const sc = shortlist.frozenScorecard ?? {}; // source of truth for technical detail
   const gap = shortlist.gapReport ?? {};
+  const stack = sc.stack ?? { languages: [], tools: [] };
+  const matchedTechnologies = gap.matchedTechnologies ?? [];
+  const missingTechnologies = gap.missingTechnologies ?? [];
 
   return {
-    // Deep technical — for CTO / technical interviewers
+    // Deep technical, for CTO / technical interviewers
     technicalSummary: dc.technicalSummary ?? null,
     strengths: dc.strengths ?? [],
     risks: dc.risks ?? [],
@@ -41,11 +45,22 @@ export function buildTechnicalView(shortlist: any): object {
     fraudTier: shortlist.fraudTier ?? sc.fraudTier ?? 'CLEAN',
     behaviorPattern: shortlist.behaviorPattern ?? sc.behaviorPattern ?? null,
 
-    // GitHub breakdown (from freeze — NOT live)
-    languagesUsed: sc.languagesUsed ?? [],
-    topRepositories: sc.topRepositories ?? [],
-    contributionStats: sc.contributionStats ?? null,
-    dimensions: sc.dimensions ?? [],
+    // Final scorecard breakdown (from freeze, NOT live)
+    scorecard: {
+      summary: sc.summary ?? null,
+      capabilities: sc.capabilities ?? {},
+      ownership: sc.ownership ?? null,
+      impact: sc.impact ?? null,
+      reputation: sc.reputation ?? null,
+      privateWorkNote: sc.privateWorkNote ?? null,
+      organizations: sc.organizations ?? [],
+      interactionProfile: sc.interactionProfile ?? null,
+      stack,
+      web3: sc.web3 ?? null,
+    },
+
+    // Kept for older clients while the frontend migrates to scorecard.stack.
+    languagesUsed: stack.languages ?? [],
 
     // Web3 (if applicable)
     web3: sc.web3 ?? null,
@@ -60,6 +75,15 @@ export function buildTechnicalView(shortlist: any): object {
         description: g.description,
         probeQuestion: g.probeQuestion ?? null, // visible to CTO view, hidden in candidate responses
       })),
+    },
+
+    skillsGap: {
+      requiredSkills: [...matchedTechnologies, ...missingTechnologies],
+      matchedTechnologies,
+      missingTechnologies,
+      gaps: (gap.gaps ?? []).filter((g: any) =>
+        g.dimension?.startsWith('Technology: '),
+      ),
     },
   };
 }

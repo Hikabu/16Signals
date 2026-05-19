@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { InteractionProfile } from './interaction-profile.service';
 
 export const SOLANA_TOPICS = [
   'solana',
@@ -38,9 +39,12 @@ export interface EcosystemSignals {
 export class EcosystemClassifierService {
   detectEcosystemIdentity(
     repos: { name?: string; topics?: string[]; description?: string | null }[],
+    interactionProfile: InteractionProfile | null = null,
   ): 'solana' | null {
     if (!repos || !Array.isArray(repos)) {
-      return null;
+      return interactionProfile?.ecosystemAffinity === 'solana'
+        ? 'solana'
+        : null;
     }
 
     for (const repo of repos) {
@@ -51,6 +55,10 @@ export class EcosystemClassifierService {
           }
         }
       }
+    }
+
+    if (interactionProfile?.ecosystemAffinity === 'solana') {
+      return 'solana';
     }
 
     return null;

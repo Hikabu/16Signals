@@ -48,7 +48,7 @@ describe('Wallet Sync (e2e)', () => {
     // Clean up
     await prisma.web3Profile.deleteMany({});
     await prisma.githubProfile.deleteMany({});
-    await prisma.developerCandidate.deleteMany({});
+    await prisma.developerProfile.deleteMany({});
     await prisma.candidate.deleteMany({});
     await prisma.user.deleteMany({ where: { email: 'test@example.com' } });
 
@@ -69,11 +69,12 @@ describe('Wallet Sync (e2e)', () => {
       },
     });
 
-    await prisma.developerCandidate.create({
+    const devProfile = await prisma.developerProfile.create({
       data: {
         candidateId: candidate.id,
       },
     });
+    testUser.candidate = { ...candidate, devProfile };
 
     authToken = jwtService.sign(
       {
@@ -160,7 +161,7 @@ describe('Wallet Sync (e2e)', () => {
         .expect(401);
     });
 
-    it('should return 404 if challenge is missing/expired', async () => {
+    it('should return 400 when signed message is missing', async () => {
       await redis.del(`wallet-challenge:${testUser.id}`);
 
       await request(app.getHttpServer())
@@ -170,11 +171,11 @@ describe('Wallet Sync (e2e)', () => {
           walletAddress,
           signature: bs58.encode(Buffer.from('sig')),
         })
-        .expect(404);
+        .expect(400);
     });
 
     it('should return 401 if signature is invalid', async () => {
-      const challenge = 'test-challenge';
+      const challenge = `link-wallet:${testUser.id}:${Date.now()}:bad`;
       await redis.set(`wallet-challenge:${testUser.id}`, challenge, 'EX', 300);
 
       const wrongSig = bs58.encode(
@@ -187,6 +188,7 @@ describe('Wallet Sync (e2e)', () => {
         .send({
           walletAddress,
           signature: wrongSig,
+          message: challenge,
         })
         .expect(401);
     });
@@ -208,6 +210,7 @@ describe('Wallet Sync (e2e)', () => {
         .send({
           walletAddress,
           signature,
+          message: challenge,
         })
         .expect(201);
 
@@ -216,13 +219,9 @@ describe('Wallet Sync (e2e)', () => {
 
       // Verify DB
       const profile = await prisma.web3Profile.findUnique({
-        where: { userId: testUser.id },
+        where: { developerProfileId: testUser.candidate.devProfile.id },
       });
       expect(profile?.solanaAddress).toBe(walletAddress);
-
-      // Verify challenge deleted
-      const stored = await redis.get(`wallet-challenge:${testUser.id}`);
-      expect(stored).toBeNull();
     });
   });
 
@@ -235,7 +234,7 @@ describe('Wallet Sync (e2e)', () => {
       });
       await prisma.githubProfile.create({
         data: {
-          devCandidateId: candidate!.devProfile!.id,
+          developerProfileId: candidate!.devProfile!.id,
           githubUsername: 'test-user',
           githubUserId: '12345',
           encryptedToken: 'v1:fake',

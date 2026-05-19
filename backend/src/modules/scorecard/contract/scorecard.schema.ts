@@ -31,6 +31,28 @@ export const RawScorecardSchema = z.object({
     externalContributions: z.number(),
     confidence: z.string(),
   }),
+
+  reputation: z
+    .object({
+      vouchCount: z.number(),
+      verifiedVouchCount: z.number(),
+      confidence: z.string(),
+      vouches: z.array(z.any()),
+    })
+    .nullable()
+    .optional(),
+
+  privateWorkNote: z.string().optional(),
+  organizations: z.array(z.any()).optional(),
+  interactionProfile: z.any().nullable().optional(),
+  stack: z
+    .object({
+      languages: z.array(z.string()),
+      tools: z.array(z.string()),
+    })
+    .optional(),
+  web3: z.any().nullable().optional(),
+  schemaVersion: z.string()
 });
 
 export type RawScorecard = z.infer<typeof RawScorecardSchema>;
@@ -95,6 +117,18 @@ export const ScorecardUiSchema = z.object({
       externalContributions: z.number(),
       confidence: z.string(),
     }),
+
+    reputation: z.any().nullable().optional(),
+    privateWorkNote: z.string().optional(),
+    organizations: z.array(z.any()).optional(),
+    interactionProfile: z.any().nullable().optional(),
+    stack: z
+      .object({
+        languages: z.array(z.string()),
+        tools: z.array(z.string()),
+      })
+      .optional(),
+    web3: z.any().nullable().optional(),
   }),
 });
 

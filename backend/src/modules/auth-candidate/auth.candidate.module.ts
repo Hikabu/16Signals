@@ -15,7 +15,8 @@ import { GoogleLinkStrategy } from './strategies/google.link.strategy';
 import { GithubSyncConnectStrategy } from './strategies/github.sync.connect.strategy';
 
 const githubAuthProviders =
-  process.env.GITHUB_AUTH_ENABLED === 'true'
+  process.env.GITHUB_AUTH_ENABLED !== 'false' &&
+  Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET)
     ? [GithubStrategy, GithubLinkStrategy, GithubSyncConnectStrategy]
     : [];
 

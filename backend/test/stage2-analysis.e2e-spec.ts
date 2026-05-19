@@ -161,7 +161,7 @@ describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {
     // Clean DB
     await prisma.cachedResult.deleteMany();
     await prisma.githubProfile.deleteMany();
-    await prisma.developerCandidate.deleteMany();
+    await prisma.developerProfile.deleteMany();
     await prisma.candidate.deleteMany();
     await prisma.user.deleteMany();
 

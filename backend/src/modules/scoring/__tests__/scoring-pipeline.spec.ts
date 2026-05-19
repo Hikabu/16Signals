@@ -3,6 +3,8 @@ import { ScoringService } from '../scoring-service/scoring.service';
 import { SignalExtractorService } from '../signal-extractor/signal-extractor.service';
 import { SummaryGeneratorService } from '../summary-generator/summary-generator.service';
 import { EcosystemClassifierService } from '../signal-extractor/ecosystem-clarifier.service';
+import { InteractionProfileService } from '../signal-extractor/interaction-profile.service';
+import { OrgAnalyserService } from '../signal-extractor/org-analyser.service';
 import { StackFingerprintService } from '../signal-extractor/stack-fingerprint.service';
 import {
   ALEX_BACKEND,
@@ -23,6 +25,8 @@ describe('Scoring Pipeline Integration (Checkpoint B)', () => {
         SignalExtractorService,
         SummaryGeneratorService,
         EcosystemClassifierService,
+        InteractionProfileService,
+        OrgAnalyserService,
         StackFingerprintService,
       ],
     }).compile();
@@ -65,6 +69,8 @@ describe('Scoring Pipeline Integration (Checkpoint B)', () => {
 
       expect(result.impact).toBeDefined();
       expect(['low', 'medium', 'high']).toContain(result.impact.activityLevel);
+      expect(result.organizations).toEqual(expect.any(Array));
+      expect(result).toHaveProperty('interactionProfile');
 
       // Verify no NaN or undefined values in scores
       const roles = [

@@ -7,6 +7,17 @@ import { ConfigService } from '@nestjs/config';
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private config: ConfigService) {
     // console.log("GOOGLE STRATEGY CALLBAKC:",config.get('app.url') + config.get('auth.googleCallback') );
+      console.log('GOOGLE ENV DEBUG');
+  console.log({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret:
+      process.env.GOOGLE_CLIENT_SECRET?.slice(0, 15),
+    appUrl: config.get('app.url'),
+    callback: config.get('auth.googleCallback'),
+    fullCallback:
+      config.get('app.url') +
+      config.get('auth.googleCallback'),
+  });
     super({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,

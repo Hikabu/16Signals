@@ -81,21 +81,19 @@ describe('Vouch Lifecycle (e2e)', () => {
       create: { userId },
     });
 
-    const devProfile = await prisma.developerCandidate.upsert({
+    const devProfile = await prisma.developerProfile.upsert({
       where: { candidateId: candidate.id },
       update: {},
       create: { candidateId: candidate.id },
     });
 
     await prisma.web3Profile.upsert({
-      where: { userId },
+      where: { developerProfileId: devProfile.id },
       update: {
-        devCandidateId: devProfile.id,
         solanaAddress: wallet,
       },
       create: {
-        userId,
-        devCandidateId: devProfile.id,
+        developerProfileId: devProfile.id,
         solanaAddress: wallet,
       },
     });
@@ -157,7 +155,7 @@ describe('Vouch Lifecycle (e2e)', () => {
         },
       },
     });
-    await prisma.developerCandidate.deleteMany({
+    await prisma.developerProfile.deleteMany({
       where: {
         OR: [
           { id: 'dev_vouch_1' },
@@ -199,13 +197,12 @@ describe('Vouch Lifecycle (e2e)', () => {
         userId: user.id,
       },
     });
-    await prisma.developerCandidate.create({
+    await prisma.developerProfile.create({
       data: {
         id: 'dev_vouch_1',
         candidateId: candidate.id,
         web3Profile: {
           create: {
-            userId: user.id,
             solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX',
           },
         },
@@ -244,7 +241,7 @@ describe('Vouch Lifecycle (e2e)', () => {
       await prisma.web3Profile.deleteMany({
         where: { solanaAddress: { in: [VOUCHER_WALLET, VOUCHER_WALLET_NEW] } },
       });
-      await prisma.developerCandidate.deleteMany({
+      await prisma.developerProfile.deleteMany({
         where: {
           candidate: { userId: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } },
         },
@@ -255,7 +252,7 @@ describe('Vouch Lifecycle (e2e)', () => {
       await prisma.user.deleteMany({
         where: { id: { in: [VOUCHER_USER_ID, VOUCHER_NEW_USER_ID] } },
       });
-      await prisma.developerCandidate.deleteMany({
+      await prisma.developerProfile.deleteMany({
         where: { id: 'dev_vouch_1' },
       });
       await prisma.candidate.deleteMany({ where: { id: 'cand_vouch_1' } });
@@ -386,7 +383,7 @@ describe('Vouch Lifecycle (e2e)', () => {
 
     it('3. Self-vouch -> 400', async () => {
       await prisma.web3Profile.updateMany({
-        where: { devCandidateId: 'dev_vouch_1' },
+        where: { developerProfileId: 'dev_vouch_1' },
         data: { solanaAddress: VOUCHER_WALLET },
       });
       mockTx(VOUCHER_WALLET, 'Self', true);
@@ -405,7 +402,7 @@ describe('Vouch Lifecycle (e2e)', () => {
 
       // Revert wallet
       await prisma.web3Profile.updateMany({
-        where: { devCandidateId: 'dev_vouch_1' },
+        where: { developerProfileId: 'dev_vouch_1' },
         data: { solanaAddress: 'CandidateWalletXXXXXXXXXXXXXXXXX' },
       });
     });
@@ -648,6 +645,7 @@ describe('Vouch Lifecycle (e2e)', () => {
       await request(app.getHttpServer())
         .delete(`/vouch/${vouchId}`)
         .set('Authorization', 'Bearer voucher_standard')
+        .set('X-Internal-Key', 'test-internal-key')
         .send({ signedMessage: 'dummy' })
         .expect(HttpStatus.NO_CONTENT);
 
@@ -660,6 +658,7 @@ describe('Vouch Lifecycle (e2e)', () => {
       await request(app.getHttpServer())
         .delete(`/vouch/${vouchId}`)
         .set('Authorization', 'Bearer voucher_new') // this uses VOUCHER_WALLET_NEW instead of VOUCHER_WALLET
+        .set('X-Internal-Key', 'test-internal-key')
         .send({ signedMessage: 'dummy' })
         .expect(HttpStatus.NOT_FOUND);
     });
@@ -673,6 +672,7 @@ describe('Vouch Lifecycle (e2e)', () => {
       const res = await request(app.getHttpServer())
         .delete(`/vouch/${vouchId}`)
         .set('Authorization', 'Bearer voucher_standard')
+        .set('X-Internal-Key', 'test-internal-key')
         .send({ signedMessage: 'dummy' });
 
       expect(res.status).toBe(HttpStatus.BAD_REQUEST);
@@ -697,7 +697,9 @@ describe('Vouch Lifecycle (e2e)', () => {
     });
 
     it('16. 1 verified vouch -> reputation stats match', async () => {
-      const c = await prisma.candidate.findFirst({ include: { user: true } });
+      const c = await prisma.candidate.findFirstOrThrow({
+        where: { user: { username: mockCandidateUsername } },
+      });
       await prisma.vouch.create({
         data: {
           candidateId: c.id,
@@ -733,7 +735,9 @@ describe('Vouch Lifecycle (e2e)', () => {
     });
 
     it('17. 2 verified vouches -> confidence upgraded, capabilities.backend unchanged', async () => {
-      const c = await prisma.candidate.findFirst({ include: { user: true } });
+      const c = await prisma.candidate.findFirstOrThrow({
+        where: { user: { username: mockCandidateUsername } },
+      });
       await prisma.vouch.create({
         data: {
           candidateId: c.id,

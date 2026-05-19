@@ -2,20 +2,24 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
   UseGuards,
   NotFoundException,
   HttpCode,
-  HttpStatus,
   Req,
   BadRequestException,
   UsePipes,
   ValidationPipe,
   UnauthorizedException,
   InternalServerErrorException,
+  Inject,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { Queue } from 'bullmq';
+import Redis from 'ioredis';
 import { InjectQueue } from '@nestjs/bullmq';
 import { CacheService } from '../cache/cache.service';
 import { InternalKeyGuard } from '../../scorecard/internal-key.guard';
@@ -65,6 +69,7 @@ export class AnalysisController {
     private readonly signalExtractor: SignalExtractorService,
     private readonly scoringService: ScoringService,
     private readonly web3MergeService: Web3MergeService,
+    @Inject('REDIS') private readonly redis: Redis,
   ) {}
 
   @Post()
@@ -105,37 +110,22 @@ Optional if authenticated.
     let walletAddress: string | null = null;
     let useGithubCache = false;
 
-    //     if (req.user) {
-    //       const userId = req.user.id;
-    //     //   const githubProfile = await this.prisma.githubProfile.findUnique({
-    //     //     where: { userId },
-    //     //   });
-    // 	const { devProfile } = await this.profileResolver.ensureDevStack(userId);
-
-    // const githubProfile = devProfile?.githubProfile;
-    // const web3Profile = devProfile?.web3Profile;
-    // console.log('devProfile:', devProfile);
-    // console.log('githubProfile:', githubProfile);
-    //     //   const web3Profile = await this.prisma.web3Profile.findUnique({
-    //     //     where: { userId },
-    //     //   });
-
-    //       if (!githubProfile && !web3Profile) {
-    //         throw new BadRequestException(
-    //           'No linked accounts. Use POST /sync/github or POST /sync/wallet first.',
-    //         );
-    //       }
-
-    //       githubUsername = githubProfile?.githubUsername ?? null;
-    //       walletAddress = web3Profile?.solanaAddress ?? null;
-
-    //       if (githubProfile?.lastSyncAt) {
-    //         useGithubCache =
-    //           githubProfile.lastSyncAt.getTime() > Date.now() - 86_400_000;
-    //       }
-    //     }
     if (req.user) {
-      const input = await this.resolveInputFromUser(req.user.id);
+      const userId = req.user.id;
+      
+      // Cooldown Check
+      const candidate = await this.prisma.candidate.findUnique({
+        where: { userId },
+        select: { generateCooldownUntil: true },
+      });
+
+      const nextCooldown = new Date(Date.now() + 60 * 60 * 1000);
+      await this.prisma.candidate.update({
+        where: { userId },
+        data: { generateCooldownUntil: nextCooldown },
+      });
+
+      const input = await this.resolveInputFromUser(userId);
 
       githubUsername = input.githubUsername;
       walletAddress = input.walletAddress;
@@ -174,6 +164,11 @@ Optional if authenticated.
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         const result = await this.withFreshVouchSignal(cacheKey, cached);
+        if (req.user?.id) {
+      this.syncCachedResultToUser(req.user.id, result);
+    }
+
+
         return { jobId: `cached-${cacheKey}`, cached: true, result };
       }
     }
@@ -182,7 +177,7 @@ Optional if authenticated.
       data: {
         status: 'pending',
         input: { githubUsername, walletAddress, mode, useGithubCache } as any,
-        userId: req.user?.id ?? null,
+        candidateId: req.user?.id ? (await this.prisma.candidate.findUnique({ where: { userId: req.user.id } }))?.id ?? null : null,
       },
     });
 
@@ -195,6 +190,11 @@ Optional if authenticated.
         useGithubCache,
       });
     } else {
+      const delay = await this.getSystemTokenQueueDelay(
+        req.user?.id ?? null,
+        Boolean(githubUsername),
+      );
+      console.log("aanalyzing");
       await this.signalQueue.add(
         'analyze',
         {
@@ -205,7 +205,7 @@ Optional if authenticated.
           useGithubCache,
           userId: req.user?.id ?? null,
         },
-        { attempts: 1 },
+        { attempts: 1, ...(delay > 0 ? { delay } : {}) },
       );
     }
 
@@ -266,6 +266,8 @@ Use this for admin/system reprocessing.
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         const result = await this.withFreshVouchSignal(cacheKey, cached);
+      this.syncCachedResultToUser(userId, result);
+
         return { jobId: `cached-${cacheKey}`, cached: true, result };
       }
     }
@@ -279,7 +281,7 @@ Use this for admin/system reprocessing.
           mode: input.mode,
           useGithubCache: input.useGithubCache ?? false,
         } as any,
-        userId, // ✅ ALWAYS SET
+        candidateId: (await this.prisma.candidate.findUnique({ where: { userId } }))?.id ?? null,
       },
     });
 
@@ -292,14 +294,22 @@ Use this for admin/system reprocessing.
         useGithubCache: input.useGithubCache,
       });
     } else {
-      await this.signalQueue.add('analyze', {
-        jobId: jobRecord.id,
-        githubUsername: input.githubUsername,
-        walletAddress: input.walletAddress,
-        mode: input.mode,
-        useGithubCache: input.useGithubCache,
+      const delay = await this.getSystemTokenQueueDelay(
         userId,
-      });
+        Boolean(input.githubUsername),
+      );
+      await this.signalQueue.add(
+        'analyze',
+        {
+          jobId: jobRecord.id,
+          githubUsername: input.githubUsername,
+          walletAddress: input.walletAddress,
+          mode: input.mode,
+          useGithubCache: input.useGithubCache,
+          userId,
+        },
+        delay > 0 ? { delay } : undefined,
+      );
     }
 
     return { jobId: jobRecord.id };
@@ -346,6 +356,55 @@ Use this for admin/system reprocessing.
       useGithubCache,
       mode,
     };
+  }
+
+  private async getSystemTokenQueueDelay(
+    userId: string | null,
+    hasGithubUsername: boolean,
+  ): Promise<number> {
+    if (!hasGithubUsername) {
+      return 0;
+    }
+
+    if (userId) {
+      // Navigate through new schema: User -> Candidate -> DeveloperProfile -> GithubProfile
+      const candidate = await this.prisma.candidate.findUnique({
+        where: { userId },
+        select: {
+          devProfile: {
+            select: {
+              githubProfile: {
+                select: { encryptedToken: true },
+              },
+            },
+          },
+        },
+      });
+
+      const profile = candidate?.devProfile?.githubProfile;
+      if (profile?.encryptedToken) {
+        return 0;
+      }
+    }
+
+    const counter = await this.redis.get(this.getCurrentSystemRateLimitKey());
+    if (Number(counter ?? 0) > 4800) {
+      return 30_000;
+    }
+
+    return 0;
+  }
+
+  private getCurrentSystemRateLimitKey(): string {
+    const now = new Date();
+    return (
+      'ratelimit:github:system:' +
+      `${now.getUTCFullYear()}` +
+      `${String(now.getUTCMonth() + 1).padStart(2, '0')}` +
+      `${String(now.getUTCDate()).padStart(2, '0')}` +
+      `${String(now.getUTCHours()).padStart(2, '0')}` +
+      `${String(now.getUTCMinutes()).padStart(2, '0')}`
+    );
   }
 
   private async processAnalysisInlineForE2E(input: {
@@ -396,6 +455,8 @@ Use this for admin/system reprocessing.
             confidence: 'low',
           },
           reputation: null,
+          organizations: [],
+          interactionProfile: null,
           stack: { languages: [], tools: [] },
           summary:
             'On-chain developer profile. Insufficient public GitHub data to assess software capabilities.',
@@ -607,11 +668,11 @@ Use this for admin/system reprocessing.
           githubUsername: input.githubUsername,
           walletAddress: input.walletAddress,
         } as any,
-        result: result,
+        result: result as any,
       },
       update: {
         status: 'completed',
-        result: result,
+        result: result as any,
       },
     });
   }
@@ -657,7 +718,7 @@ Use this for admin/system reprocessing.
 
     if (job.status === 'processing') {
       stage = 'analyzing_projects'; // you can refine later
-      progress = 50; // placeholder unless you persist progress
+      progress = job.progress > 0 ? job.progress : 50; // Use persisted progress
     }
 
     if (job.status === 'completed') {
@@ -752,4 +813,77 @@ Use this for admin/system reprocessing.
     }
     return 0;
   }
+
+  private async syncCachedResultToUser(
+  userId: string,
+  result: any
+) {
+  try {
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { userId },
+    });
+
+    if (!candidate) return;
+await this.prisma.candidate.update({
+    where: { id: candidate.id },
+    data: {
+      scorecard: result as any,
+    },
+  });
+  } catch (err) {
+    console.error('Failed to sync cached scorecard:', err);
+  }
+}
+
+@Delete('reset')
+@ApiHeader({
+    name: 'X-Internal-Key',
+    description: 'Internal API key (required)',
+    required: true,
+  })
+  @UseGuards(InternalKeyGuard, OptionalJwtAuthGuard)
+async resetAnalysis(@Req() req: any) {
+  const candidate = await this.prisma.candidate.findUnique({
+    where: { userId: req.user.id },
+    include: { devProfile: { include: { githubProfile: true, web3Profile: true } } },
+  });
+
+  if (!candidate) throw new NotFoundException();
+
+  const githubUsername = candidate.devProfile?.githubProfile?.githubUsername;
+  const walletAddress = candidate.devProfile?.web3Profile?.solanaAddress;
+
+  // 1. reset jobs
+  await this.prisma.analysisJob.updateMany({
+    where: { candidateId: candidate.id },
+    data: {
+      status: 'pending',
+      progress: 0,
+      result: Prisma.DbNull,
+      error: null,
+    },
+  });
+
+  // 2. clear scorecard
+  await this.prisma.candidate.update({
+    where: { id: candidate.id },
+    data: { 
+      scorecard: Prisma.DbNull,
+      generateCooldownUntil: null
+     },
+  });
+
+  console.log("githubusername: ", githubUsername);
+  console.log("wallet address:", walletAddress);
+  // 3. clear cache
+  const keys = [
+    this.cacheService.buildCacheKey(githubUsername ?? undefined, walletAddress ?? undefined),
+    this.cacheService.buildCacheKey(githubUsername ?? undefined, undefined),
+    this.cacheService.buildCacheKey(undefined, walletAddress ?? undefined),
+  ];
+
+  await Promise.all(keys.map(k => this.cacheService.del(k)));
+
+  return { ok: true };
+}
 }

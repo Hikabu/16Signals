@@ -1,0 +1,34 @@
+2
+Section breakdown
+Content
+Step 1: title, description, salary, location, job type
+Step 2: paste JD → parseJobDescription → auto-fill requirements
+Step 3: editable requirements table (add/delete/edit rows)
+Interaction
+Step indicator at top (Step X of 5)
+Draft auto-saved at step 1 → jobId persisted in state
+Step 2: 500ms min spinner. Skip link available.
+Step 3: inline table editing, add/delete row buttons
+Data deps
+POST /jobs/draftPOST /jobs/:id/parse-jdPOST /jobs/:id/confirm-requirements
+Content
+Header: "Attach escrow" + Solana logo + "Powered by Solana" badge
+Subtext: "Lock SOL as proof of commitment. Released when you hire."
+Wallet connection → SOL amount input → escrow address shown → paste txSignature → confirm
+"Skip for now" link always visible
+Hierarchy + Interaction
+Visually distinct: Solana purple/teal accent on card border
+Sub-states: NOT_CONNECTED → CONNECTED → FUNDED
+Tx link on success: "View on Solana Explorer"
+Skip: proceeds to step 5 without escrow state
+Data deps
+POST /escrow/confirm-fundedGET /escrow/status/:jobPostId
+Content
+Summary card: title, salary, requirement count
+Escrow badge: "X SOL locked" (green) or "No escrow" (muted)
+"Publish job" CTA. "Back to edit" link.
+Interaction
+Publish → publishJob(jobId) → redirect to /hr/jobs/:id
+If escrow funded: tx link shown on confirmation
+Data deps
+POST /jobs/:id/publish

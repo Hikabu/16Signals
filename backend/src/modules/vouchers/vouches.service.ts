@@ -55,15 +55,25 @@ export class VouchesService {
     const { candidateIdentifier, message, txSignature } = input;
 
     // ── Resolve caller's wallet ───────────────────────────────────────────
-    const web3user = await this.prisma.web3Profile.findUnique({
+    const candidate = await this.prisma.candidate.findUnique({
       where: { userId },
+      select: {
+        devProfile: {
+          select: {
+            web3Profile: {
+              select: { solanaAddress: true },
+            },
+          },
+        },
+      },
     });
-    if (!web3user || !web3user.solanaAddress)
+    const web3Profile = candidate?.devProfile?.web3Profile;
+    if (!web3Profile?.solanaAddress)
       throw new UnauthorizedException(
         'No linked wallet found for this account',
       );
 
-    const voucherWallet: string = web3user.solanaAddress;
+    const voucherWallet: string = web3Profile.solanaAddress;
 
     // ── Idempotency fast-path (before the expensive RPC call) ────────────
     const existing = await this.prisma.vouch.findUnique({
@@ -72,7 +82,7 @@ export class VouchesService {
     if (existing) {
       this.logger.log(
         { txSignature },
-        'vouch_already_confirmed — idempotent return',
+        'vouch_already_confirmed, idempotent return',
       );
       return existing;
     }
@@ -96,7 +106,7 @@ export class VouchesService {
       throw new BadRequestException('Cannot vouch for yourself');
     }
 
-    // ── Step 1: On-chain verification (Web UI must verify — tx from frontend) ──
+    // ── Step 1: On-chain verification (Web UI must verify, tx from frontend) ──
     await this.verifyOnChainTx(
       txSignature,
       voucherWallet,
@@ -118,7 +128,7 @@ export class VouchesService {
   /**
    * Called by the Helius webhook handler after the transaction has already
    * been verified on-chain by Helius.  Skips the RPC getTransaction call.
-   * Never throws — always returns null on error so the webhook returns 200
+   * Never throws, always returns null on error so the webhook returns 200
    * and Helius does not retry.
    */
   async confirmVouchFromWebhook(params: {
@@ -200,7 +210,7 @@ export class VouchesService {
     if (existing) {
       this.logger.log(
         { txSignature },
-        'vouch_already_confirmed — idempotent return',
+        'vouch_already_confirmed, idempotent return',
       );
       return existing;
     }
@@ -317,7 +327,7 @@ export class VouchesService {
 
     if (!rpcUrl) {
       throw new BadRequestException(
-        'SOLANA_RPC_URL not configured — cannot verify transaction',
+        'SOLANA_RPC_URL not configured, cannot verify transaction',
       );
     }
 
@@ -420,7 +430,7 @@ export class VouchesService {
   }
 
   /**
-   * Async cluster detection — flags a batch of recent vouches as
+   * Async cluster detection, flags a batch of recent vouches as
    * 'cluster_detected' when ≥ 3 new-wallet vouches hit the same candidate
    * within 24 h.
    */

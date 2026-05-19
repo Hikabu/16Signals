@@ -4,6 +4,7 @@ import { GapReport } from '../gap-analysis/gap-analysis.service';
 
 export interface DecisionCard {
   verdict: 'PROCEED' | 'REVIEW' | 'REJECT';
+  reviewOutcome: 'OK' | 'NEEDS_REVIEW' | 'INSUFFICIENT';
   strengths: string[];
   risks: string[];
   reputationNote: string | null;
@@ -31,12 +32,21 @@ export class DecisionCardService {
 
     return {
       verdict,
+      reviewOutcome: this.mapReviewOutcome(verdict),
       strengths,
       risks,
       reputationNote,
       hrSummary,
       technicalSummary,
     };
+  }
+
+  private mapReviewOutcome(
+    verdict: DecisionCard['verdict'],
+  ): DecisionCard['reviewOutcome'] {
+    if (verdict === 'PROCEED') return 'OK';
+    if (verdict === 'REVIEW') return 'NEEDS_REVIEW';
+    return 'INSUFFICIENT';
   }
 
   private computeVerdict(
@@ -49,23 +59,28 @@ export class DecisionCardService {
     const hasDealbreaker = gapReport.gaps.some(
       (g) => g.severity === 'DEALBREAKER',
     );
-    // dataCompleteness is not explicitly in AnalysisResult but in ExtractedSignals. Based on instructions, we assume it's available or inferred.
-    // If not in result, we check if there's any low confidence impact/ownership.
+    const hasVerifiedReputation =
+      (analysisResult.reputation?.verifiedVouchCount ?? 0) > 0;
+    const hasPrivateWorkContext = Boolean(analysisResult.privateWorkNote);
+    const hasOrgContribution = Boolean(
+      analysisResult.organizations?.some((org) => org.confirmedContributor),
+    );
     const isDataCompletenessLow =
       analysisResult.impact.confidence === 'low' ||
       analysisResult.ownership.confidence === 'low';
+    const hasMitigatingSignal =
+      hasVerifiedReputation || hasPrivateWorkContext || hasOrgContribution;
 
-    if (
-      gapReport.overallVerdict === 'UNLIKELY_FIT' ||
-      (hasLowConfidence && hasDealbreaker)
-    ) {
+    if (gapReport.overallVerdict === 'UNLIKELY_FIT' && !hasMitigatingSignal) {
       return 'REJECT';
     }
 
     if (
+      gapReport.overallVerdict === 'UNLIKELY_FIT' ||
       gapReport.overallVerdict === 'POSSIBLE_FIT' ||
       isDataCompletenessLow ||
-      hasLowConfidence
+      hasLowConfidence ||
+      hasDealbreaker
     ) {
       return 'REVIEW';
     }
@@ -78,8 +93,9 @@ export class DecisionCardService {
 
     // 1. Capability score ≥ 70
     Object.entries(analysisResult.capabilities).forEach(([dim, cap]) => {
-      if (cap.score >= 70 && cap.confidence !== 'low') {
-        strengths.push(`High ${dim} capability (${cap.score}/100)`);
+      const score = this.toPercentScore(cap.score);
+      if (score >= 70 && cap.confidence !== 'low') {
+        strengths.push(`High ${dim} capability (${score}/100)`);
       }
     });
 
@@ -94,6 +110,16 @@ export class DecisionCardService {
       strengths.push(
         `Strong external contribution record (${analysisResult.impact.externalContributions} PRs)`,
       );
+    }
+
+    if ((analysisResult.reputation?.verifiedVouchCount ?? 0) >= 2) {
+      strengths.push(
+        `${analysisResult.reputation?.verifiedVouchCount} verified developer vouches`,
+      );
+    }
+
+    if (analysisResult.organizations?.some((org) => org.confirmedContributor)) {
+      strengths.push('Confirmed organization contribution history');
     }
 
     return strengths.slice(0, 3);
@@ -163,23 +189,32 @@ export class DecisionCardService {
     analysisResult: AnalysisResult,
   ): string {
     const caps = analysisResult.capabilities;
-    const b = caps.backend.score || 'N/A';
-    const f = caps.frontend.score || 'N/A';
-    const d = caps.devops.score || 'N/A';
+    const b = caps.backend ? this.toPercentScore(caps.backend.score) : 'N/A';
+    const f = caps.frontend ? this.toPercentScore(caps.frontend.score) : 'N/A';
+    const d = caps.devops ? this.toPercentScore(caps.devops.score) : 'N/A';
 
     const matched = gapReport.matchedTechnologies.length;
     const total = matched + gapReport.missingTechnologies.length;
     const deploys = analysisResult.web3?.deployedPrograms.length || 0;
+    const verifiedVouches = analysisResult.reputation?.verifiedVouchCount ?? 0;
 
     // Aggregate confidence
-    const confLevels = Object.values(caps).map((c) => c.confidence);
+    const confLevels = [
+      ...Object.values(caps).map((c) => c.confidence),
+      analysisResult.ownership.confidence,
+      analysisResult.impact.confidence,
+    ];
     const overallConf = confLevels.includes('low')
       ? 'low'
       : confLevels.includes('medium')
         ? 'medium'
         : 'high';
 
-    return `backend:${b} frontend:${f} devops:${d} | ${matched}/${total} techs matched | ${deploys} deploys | confidence:${overallConf}`;
+    return `backend:${b} frontend:${f} devops:${d} | ${matched}/${total} techs matched | ${deploys} deploys | ${verifiedVouches} verified vouches | confidence:${overallConf}`;
+  }
+
+  private toPercentScore(score: number): number {
+    return score <= 1 ? Math.round(score * 100) : Math.round(score);
   }
 }
 

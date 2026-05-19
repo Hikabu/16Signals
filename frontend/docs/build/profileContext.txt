@@ -1,0 +1,79 @@
+2
+Section breakdown
+Purpose + Content
+Avatar (initials fallback), display name, username
+Bio, location, website, inline editable
+"Edit" toggle on/off
+Public profile URL copy badge
+"Scorecard public" toggle
+Visual hierarchy + Interaction
+Largest name element on page
+Edit mode: fields become shadcn Input, save button appears
+Copy badge: click → clipboard + toast
+Public toggle: shadcn Switch
+Motion: edit mode transition 150ms height animation
+Data deps
+GET /me/userGET /me/user/candidatePATCH /me/userPATCH /me/user/candidate
+Purpose + Content
+GitHub sync status row: icon (linked/unlinked) + "Sync now" button
+Wallet status row: icon (linked/unlinked) + "Link wallet" button
+"Generate scorecard" CTA (primary, full width)
+Per-action 24hr cooldown: disabled button + "Available in Xh Ym" countdown when locked
+Hidden once scorecard state = DONE (collapsed/dismissed)
+Visual hierarchy + Interaction
+Card with subtle border. 3 rows stacked: GitHub / Wallet / Generate.
+Each row: left icon + status label, right action button
+Locked state: button disabled, amber "⏳ Xh Ym" badge replaces button text
+Sync triggers independent cooldown from Generate, can sync without triggering generate gate
+If neither GitHub nor wallet linked: Generate button disabled with tooltip "Sync at least one source first"
+Data deps
+GET /me/user/githubGET /me/user/walletPOST /sync/githubPOST /sync/walletPOST /api/analysisGET /api/analysis/cooldown
+Cooldown: server returns nextAvailableAt: ISO timestamp per action. Client derives countdown from this.
+
+Purpose + Content
+3 states: EMPTY / LOADING / DONE
+EMPTY: sync status check + generate CTA
+LOADING: AnalysisPoller progress bar + status msg
+DONE: ScorecardView (score, bars, stack, web3)
+Regenerate + raw data toggle
+Visual hierarchy + Interaction
+DONE state: headline score badge is dominant (large number)
+Capability bars animate in on scroll-enter (Framer Motion)
+Stack chips: scrollable row on mobile
+Regenerate: confirmation dialog (destructive)
+Raw data: accordion, lazy fetch on open
+Data deps
+GET /api/scorecard/mePOST /api/analysisGET /api/analysis/:id/statusGET /api/analysis/:id/resultGET /api/scorecard/me/raw
+Purpose + Content
+Read-only list: voucher wallet, message, timestamp, tx link
+Empty state: "No vouches yet" + share public profile CTA
+Section header shows count badge
+Visual hierarchy + Interaction
+Each vouch is a card with subtle border
+Wallet address truncated (first 4 + last 4 chars)
+Tx link opens Solana explorer in new tab
+No interaction, read-only here
+Data deps
+Derived from scorecard response (scorecard.vouches[]). No additional API call, use React Query cache from S2.
+
+Purpose + Content
+List of applied jobs: title, company, applied date, stage badge
+Empty state with /jobs link
+Visual hierarchy + Interaction
+Compact table-like rows
+Stage badge color-coded (applied=gray, screening=blue, interview=amber, offer=green, rejected=red)
+Job title is a link to /jobs (opens slide-over)
+Data deps
+GET /applications/me
+Purpose + Content
+Linked Accounts (GitHub connect/disconnect, Google)
+Wallet address management (link/unlink)
+MFA Setup (QR + activate)
+Danger Zone (delete account)
+GitHub Sync and Generate are NOT here, see S1b above
+Visual hierarchy + Interaction
+shadcn Accordion, all items collapsed by default
+Each item has status icon in header (connected ✓ or not connected)
+Danger zone: red text, red border, requires typed confirmation
+Data deps
+GET /me/user/githubGET /me/user/walletGET /auth/candidate/mfa/setupDELETE /me/user

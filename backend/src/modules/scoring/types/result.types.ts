@@ -31,6 +31,20 @@ export interface ReputationBlock {
   vouches: VouchDisplay[]; // max 10, ordered by confirmedAt desc
 }
 
+export interface OrgAnalysisResult {
+  login: string;
+  description: string;
+  publicRepos: number;
+  confirmedContributor: boolean;
+  notableRepos: string[];
+}
+
+export interface InteractionProfile {
+  topicAffinity: string[];
+  languageAffinity: string[];
+  ecosystemAffinity: 'solana' | null;
+}
+
 export interface AnalysisResult {
   summary: string;
   capabilities: {
@@ -51,15 +65,20 @@ export interface AnalysisResult {
   };
   reputation: ReputationBlock | null; // null if vouchCount === 0
   privateWorkNote?: string;
+  organizations: OrgAnalysisResult[];
+  interactionProfile: InteractionProfile | null;
   stack: {
     languages: string[];
     tools: string[];
   };
   web3: {
     ecosystem: 'solana' | null;
+    ecosystemSource?: 'owned_repos' | 'interaction_affinity';
+    ecosystemReinforcedByInteraction?: boolean;
     ecosystemPRs: number;
     deployedPrograms: DeployedProgram[];
   } | null;
+  schemaVersion: string,
 }
 
 export interface ExtractedSignals {

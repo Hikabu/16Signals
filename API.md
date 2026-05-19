@@ -95,7 +95,7 @@ In a browser: **`http://localhost:<PORT>/api/docs`**.
 |--------|----------------------------|
 | **Base URL** | No path prefix; resources at `/auth/...`, `/jobs/...`, etc. |
 | **Content-Type** | JSON bodies: `application/json`. |
-| **Auth header** | `Authorization: Bearer <token>` — **Privy** token for `POST /auth/login`; **app JWT** for everything else. |
+| **Auth header** | `Authorization: Bearer <token>`, **Privy** token for `POST /auth/login`; **app JWT** for everything else. |
 | **Success envelope** | Most controllers: `{ success: true, message?, data?, meta? }`. **Exception:** `GET /` returns raw string. |
 | **Error envelope** | `AppException`: `{ success: false, message: string }` + HTTP status. Passport/validation may use Nest defaults (`statusCode`, `message`, `error`). |
 | **Status codes** | **200** OK; **201** Created (typical for `POST`); **400** validation; **401** auth; **404** not found / access denied (jobs). |
@@ -693,7 +693,7 @@ There is a second controller file `GET /company/me` under the tag **`company`**,
 
 # 5️⃣ END-TO-END USER FLOWS
 
-### Flow A — First-time employer login (Privy → app JWT)
+### Flow A, First-time employer login (Privy → app JWT)
 
 1. User completes **Privy** authentication; frontend holds **Privy access token**.  
 2. **`POST /auth/login`** with `Authorization: Bearer <privy>` + `{ walletAddress, smartAccountAddress? }`.  
@@ -701,7 +701,7 @@ There is a second controller file `GET /company/me` under the tag **`company`**,
 4. **`GET /companies/me`** with app JWT → show company name, wallet, job count.  
 5. Optional: **`GET /analytics/dashboard`** for dashboard numbers.
 
-### Flow B — Create and publish a job
+### Flow B, Create and publish a job
 
 1. **`POST /auth/login`** (if no valid app JWT).  
 2. **`POST /jobs`** with title, description, `bonusAmount`, etc. → receive job `id`, `status: DRAFT`.  
@@ -709,13 +709,13 @@ There is a second controller file `GET /company/me` under the tag **`company`**,
 4. **`GET /jobs/my`** to refresh list.  
 5. **`GET /analytics/dashboard`** → `activeJobs` / `totalJobs` update.
 
-### Flow C — Close a job
+### Flow C, Close a job
 
 1. App JWT ready.  
 2. **`POST /jobs/:id/close`** → `status: CLOSED`, `closedAt` set.  
 3. **`GET /jobs/my`** or **`GET /analytics/dashboard`** to reflect changes.
 
-### Flow D — Mock candidate UI (non-persistent shortlist in controller)
+### Flow D, Mock candidate UI (non-persistent shortlist in controller)
 
 1. App JWT ready.  
 2. **`GET /candidates`** → show mock list.  
@@ -764,7 +764,7 @@ For each endpoint, executable in Swagger UI.
 | Test case | Input | Expected result |
 |-----------|--------|-----------------|
 | Happy path | Valid app JWT | **200**, array of 2 mock candidates |
-| No token | — | **401** |
+| No token |, | **401** |
 
 ---
 
@@ -773,7 +773,7 @@ For each endpoint, executable in Swagger UI.
 | Test case | Input | Expected result |
 |-----------|--------|-----------------|
 | Happy path | Valid JWT, any two path segments | **200/201** (Nest default), mock `data` with `PENDING`, `TOP_MATCH` |
-| No token | — | **401** |
+| No token |, | **401** |
 
 ---
 
@@ -793,7 +793,7 @@ For each endpoint, executable in Swagger UI.
 | Happy path | `title`, `description`, `bonusAmount: 100` | **201**, `status: DRAFT` |
 | Missing `bonusAmount` | Omit number | **400** |
 | Invalid type | `bonusAmount: "100"` string | **400** (expects number) |
-| No JWT | — | **401** |
+| No JWT |, | **401** |
 
 ---
 
@@ -802,7 +802,7 @@ For each endpoint, executable in Swagger UI.
 | Test case | Input | Expected result |
 |-----------|--------|-----------------|
 | Happy path | Valid JWT | **200**, array of company’s jobs |
-| No JWT | — | **401** |
+| No JWT |, | **401** |
 
 ---
 
@@ -812,7 +812,7 @@ For each endpoint, executable in Swagger UI.
 |-----------|--------|-----------------|
 | Happy path | Valid `id` for own job | **200**, `status: ACTIVE`, `publishedAt` set |
 | Wrong company / unknown id | Random UUID | **404**, `success: false` (AppException shape) |
-| No JWT | — | **401** |
+| No JWT |, | **401** |
 
 ---
 
@@ -822,7 +822,7 @@ For each endpoint, executable in Swagger UI.
 |-----------|--------|-----------------|
 | Happy path | Valid own job id | **200**, `status: CLOSED`, `closedAt` set |
 | Not found | Random id | **404** |
-| No JWT | — | **401** |
+| No JWT |, | **401** |
 
 ---
 
@@ -831,7 +831,7 @@ For each endpoint, executable in Swagger UI.
 | Test case | Input | Expected result |
 |-----------|--------|-----------------|
 | Happy path | Valid JWT | **200**, numeric `totalJobs`, `activeJobs`, `totalCandidatesShortlisted` |
-| No JWT | — | **401** |
+| No JWT |, | **401** |
 
 ---
 

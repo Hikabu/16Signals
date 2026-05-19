@@ -95,13 +95,27 @@ export class InterviewQuestionService {
         'You are a senior engineer conducting a technical interview.';
     }
 
-    const { decisionCard = {}, gapReport = {} } = application;
+    const {
+      decisionCard = {},
+      gapReport = {},
+      frozenScorecard = {},
+    } = application;
 
     const payload = JSON.stringify({
       verdict: decisionCard.verdict,
       gaps: gapReport.gaps || [],
       strengths: decisionCard.strengths || [],
       risks: decisionCard.risks || [],
+      scorecard: {
+        summary: frozenScorecard.summary,
+        capabilities: frozenScorecard.capabilities,
+        ownership: frozenScorecard.ownership,
+        impact: frozenScorecard.impact,
+        reputation: frozenScorecard.reputation,
+        privateWorkNote: frozenScorecard.privateWorkNote,
+        stack: frozenScorecard.stack,
+        web3: frozenScorecard.web3,
+      },
     });
 
     const prompt = `

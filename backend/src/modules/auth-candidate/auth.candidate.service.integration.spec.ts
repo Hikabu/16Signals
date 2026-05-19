@@ -56,10 +56,16 @@ describe('AuthCandidateService (Integration)', () => {
 
       await service.register(dto);
 
-      // Attempting same email
-      await expect(
-        service.register({ ...dto, username: `user2-${testId}` }),
-      ).rejects.toThrow('Email already exists');
+      const result = await service.register({
+        ...dto,
+        username: `user2-${testId}`,
+      });
+
+      expect(result).toEqual({
+        success: true,
+        message:
+          'If an account can be created with these details, you will receive a verification email.',
+      });
     });
 
     it('should prevent duplicate username registration', async () => {
@@ -72,10 +78,16 @@ describe('AuthCandidateService (Integration)', () => {
 
       await service.register(dto);
 
-      // Attempting same username
-      await expect(
-        service.register({ ...dto, email: `user2-${testId}@example.com` }),
-      ).rejects.toThrow('Username already exists');
+      const result = await service.register({
+        ...dto,
+        email: `user2-${testId}@example.com`,
+      });
+
+      expect(result).toEqual({
+        success: true,
+        message:
+          'If an account can be created with these details, you will receive a verification email.',
+      });
     });
   });
 

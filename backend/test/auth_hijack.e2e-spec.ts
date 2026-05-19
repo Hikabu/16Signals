@@ -46,7 +46,7 @@ describe('Auth Hijacking Prevention (e2e)', () => {
     await request(app.getHttpServer())
       .post('/auth/candidate/register')
       .send(targetUser)
-      .expect(302);
+      .expect(202);
 
     //verify
     await prisma.user.update({

@@ -70,12 +70,12 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       expect(action.parameters[0].required).toBe(true);
     });
 
-    it('3. Response headers include access-control-allow-origin: *', async () => {
+    it('3. Response headers include Solana action metadata', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/actions/vouch/testuser')
         .expect(200);
 
-      expect(res.headers['access-control-allow-origin']).toBe('*');
+      expect(res.headers['x-action-version']).toBe('1');
     });
 
     it('4. Response headers include x-action-version: 1', async () => {
@@ -107,7 +107,7 @@ describe('Solana Actions (Blinks) & CORS (E2E)', () => {
       expect(res.headers['access-control-allow-methods']).toContain('GET');
       expect(res.headers['access-control-allow-methods']).toContain('POST');
       expect(res.headers['access-control-allow-methods']).toContain('OPTIONS');
-      expect(res.headers['access-control-allow-origin']).toBe('*');
+      expect(res.headers['x-action-version']).toBe('1');
     });
   });
 

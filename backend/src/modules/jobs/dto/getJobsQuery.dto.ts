@@ -49,6 +49,32 @@ export class GetJobsQueryDto {
   isWeb3?: boolean;
 
   @ApiPropertyOptional({
+    description: 'Filter jobs with escrow paid',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return undefined;
+  })
+  isEscrowFunded?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Filter jobs by companies with Verified employer history',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return undefined;
+  })
+  isVerifiedPayer?: boolean;
+
+  @ApiPropertyOptional({
     description: 'Page number (default: 1)',
     example: 1,
   })

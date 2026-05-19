@@ -245,7 +245,7 @@ describe('HeliusWebhookService', () => {
         ),
       ).resolves.not.toThrow();
 
-      // Both txs attempted — second one succeeds even though first threw
+      // Both txs attempted, second one succeeds even though first threw
       expect(mockVouchesService.confirmVouchFromWebhook).toHaveBeenCalledTimes(
         2,
       );

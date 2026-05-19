@@ -1,81 +1,119 @@
 import { Injectable } from '@nestjs/common';
+import { ManifestResult } from '../github-adapter/github-data.types';
 
-/**
- * TOOL_MAP defines the mapping between dependency keys and human-readable tool names.
- * Exact matches are used for most keys, with '@aws-sdk' handled via prefix matching.
- */
-const TOOL_MAP: Record<string, string> = {
+export interface StackFingerprint {
+  languages: string[];
+  tools: string[];
+}
+
+export const TOOL_DETECTION_MAP: Record<string, string> = {
   '@coral-xyz/anchor': 'Anchor',
   'anchor-lang': 'Anchor',
+  '@project-serum/anchor': 'Anchor',
   '@solana/web3.js': 'Solana web3.js',
+  '@solana/spl-token': 'Solana SPL Token',
+  '@solana/wallet-adapter-react': 'Solana Wallet Adapter',
   bullmq: 'BullMQ',
   bull: 'BullMQ',
   kafkajs: 'Kafka',
   'kafka-node': 'Kafka',
   amqplib: 'RabbitMQ',
+  '@nestjs/bullmq': 'BullMQ',
   'aws-sdk': 'AWS',
+  '@aws-sdk/*': 'AWS',
   '@clickhouse/client': 'ClickHouse',
   clickhouse: 'ClickHouse',
   '@graphprotocol/graph-ts': 'The Graph',
   hardhat: 'Hardhat',
+  '@nomicfoundation/hardhat-toolbox': 'Hardhat',
+  '@nomiclabs/hardhat-ethers': 'Hardhat',
   'forge-std': 'Foundry',
+  viem: 'Viem',
+  wagmi: 'Wagmi',
+  ethers: 'Ethers',
+  web3: 'Web3.js',
   prisma: 'Prisma',
   '@prisma/client': 'Prisma',
   typeorm: 'TypeORM',
+  sequelize: 'Sequelize',
   redis: 'Redis',
   ioredis: 'Redis',
   pg: 'PostgreSQL',
   postgres: 'PostgreSQL',
   mongoose: 'MongoDB',
+  mongodb: 'MongoDB',
+  mysql2: 'MySQL',
+  mysql: 'MySQL',
+  sqlite3: 'SQLite',
+  'better-sqlite3': 'SQLite',
+  express: 'Express',
+  fastify: 'Fastify',
+  '@nestjs/core': 'NestJS',
+  next: 'Next.js',
+  react: 'React',
+  vue: 'Vue',
+  svelte: 'Svelte',
+  tailwindcss: 'Tailwind CSS',
+  '@tanstack/react-query': 'TanStack Query',
+  graphql: 'GraphQL',
+  '@apollo/client': 'Apollo',
+  'apollo-server': 'Apollo',
+  jest: 'Jest',
+  vitest: 'Vitest',
+  playwright: 'Playwright',
+  cypress: 'Cypress',
+  dockerode: 'Docker',
+  '@pulumi/pulumi': 'Pulumi',
+  tokio: 'Tokio',
+  axum: 'Axum',
+  actix: 'Actix',
+  rocket: 'Rocket',
+  diesel: 'Diesel',
+  sqlx: 'SQLx',
+  serde: 'Serde',
+  clap: 'Clap',
 };
 
 @Injectable()
 export class StackFingerprintService {
-  /**
-   * Detects tools from flattened manifest keys across all repositories.
-   * deduplicates and sorts alphabetically.
-   */
-  detectTools(
-    manifestKeys: Record<string, string[]> | undefined | null,
-  ): string[] {
+  detectTools(manifests: ManifestResult[] | undefined | null): string[] {
     const tools = new Set<string>();
 
-    if (!manifestKeys) {
+    if (!manifests) {
       return [];
     }
 
-    // Flatten all dependency keys from all repositories
-    const allKeys = Object.values(manifestKeys).flat();
-
-    for (const key of allKeys) {
-      // 1. Prefix match for AWS
-      if (key.startsWith('@aws-sdk')) {
-        tools.add('AWS');
-        continue;
-      }
-
-      // 2. Exact match for others
-      const toolName = TOOL_MAP[key];
-      if (toolName) {
-        tools.add(toolName);
-      }
+    for (const key of manifests.flatMap((manifest) => manifest.deps)) {
+      const toolName = this.detectToolForDependency(key);
+      if (toolName) tools.add(toolName);
     }
 
     return Array.from(tools).sort((a, b) => a.localeCompare(b));
   }
 
-  /**
-   * Extracts the full stack fingerprint.
-   * @param manifestKeys Maps repo names or files to lists of dependency keys.
-   * @param languages Pre-extracted top languages to be passed through.
-   */
   extract(
-    manifestKeys: Record<string, string[]> | undefined | null,
+    manifests: ManifestResult[] | undefined | null,
     languages: string[],
-  ): { languages: string[]; tools: string[] } {
+  ): StackFingerprint {
     return {
       languages,
-      tools: this.detectTools(manifestKeys),
+      tools: this.detectTools(manifests),
     };
+  }
+
+  private detectToolForDependency(dependency: string): string | undefined {
+    const exactMatch = TOOL_DETECTION_MAP[dependency];
+    if (exactMatch) return exactMatch;
+
+    for (const [pattern, toolName] of Object.entries(TOOL_DETECTION_MAP)) {
+      if (
+        pattern.endsWith('*') &&
+        dependency.startsWith(pattern.slice(0, -1))
+      ) {
+        return toolName;
+      }
+    }
+
+    return undefined;
   }
 }

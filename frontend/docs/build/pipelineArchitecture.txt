@@ -1,0 +1,9 @@
+app/hr/jobs/[id]/page.tsx
+├── Left Rail (35%)
+│   └── ApplicationRow[]         ← getJobApplications
+└── Right Panel (65%)
+    ├── ScorecardView             ← SHARED, import from Phase 2
+    ├── GapReport
+    ├── InterviewQuestionsAccordion   ← lazy fetch
+    ├── StageDecisionControls
+    └── EscrowManagement          ← 4 states · polls every 5s when FUNDED

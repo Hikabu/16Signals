@@ -28,6 +28,28 @@ process.env.PRIVY_BYPASS ??= 'true';
 process.env.WALLET_CHALLENGE_SECRET ??= 'test-wallet-challenge-secret';
 process.env.HELIUS_WEBHOOK_SECRET ??= 'test-helius-webhook-secret';
 
+jest.mock('../src/modules/auth-employer/privyAuth', () => ({
+  verifyPrivyAccessToken: jest.fn(async (token: string) => {
+    if (!token || token === 'invalid') {
+      const { AppException } = jest.requireActual(
+        '../src/shared/app.exception',
+      );
+      throw new AppException('Invalid or expired Privy token', 401);
+    }
+
+    return {
+      privyUserId:
+        token === 'mock-token' ? 'test-privy-id' : 'did:privy:test-user-123',
+      email:
+        token === 'mock-token' ? 'test@example.com' : 'valeriia@test.com',
+      walletAddress:
+        token === 'mock-token'
+          ? '0x123'
+          : '0x123456789abcdef0123456789abcdef012345678',
+    };
+  }),
+}));
+
 jest.mock(
   'otplib',
   () => {

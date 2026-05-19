@@ -45,7 +45,7 @@ describe('Jobs Filtering E2E', () => {
       .post('/auth/employer/login')
       .set('Authorization', 'Bearer debugtoken')
       .send({ walletAddress: '0xJOBS_TESTER' });
-    appJwt = loginRes.body.data.accessToken;
+    appJwt = loginRes.body.data.token;
 
     // Seed jobs
     await prisma.jobPost.deleteMany();

@@ -77,8 +77,9 @@ describe('AuthCandidateController', () => {
         authUser: { id: 'user_1' },
         user: { id: 'user_1' }, // IMPORTANT: callback uses BOTH
       };
+      const res = { redirect: jest.fn() } as any;
 
-      await controller.linkGithubCallback(req, { state: 'mock_state' });
+      await controller.linkGithubCallback(req, res, { state: 'mock_state' });
 
       expect(authService.linkOAuth).toHaveBeenCalledWith(
         'user_1', // authUser.id
@@ -86,6 +87,7 @@ describe('AuthCandidateController', () => {
         'GITHUB',
         'mock_state',
       );
+      expect(res.redirect).toHaveBeenCalledWith('/profile?linked=github');
     });
   });
 

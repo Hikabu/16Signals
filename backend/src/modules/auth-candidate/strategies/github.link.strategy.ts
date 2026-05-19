@@ -13,6 +13,7 @@ export class GithubLinkStrategy extends PassportStrategy(
     //   'Initializing GithubLinkStrategy with callback URL: ',
     //   config.get('app.url') + config.get('auth.githubCallback'),
     // );
+
     super({
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,

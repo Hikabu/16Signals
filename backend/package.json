@@ -6,6 +6,9 @@
   "private": true,
   "license": "UNLICENSED",
   "type": "commonjs",
+  "prisma": {
+    "seed": "ts-node --transpile-only ./prisma/seed.ts"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -23,7 +26,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand",
     "test:e2e:stage2a": "NODE_ENV=test jest --config ./test/jest-e2e.json --testNamePattern=github-sync --runInBand",
-    "test:e2e:stage2": "NODE_ENV=test jest --config test/jest-e2e.json stage2-pipeline --runInBand",
+    "test:e2e:stage2": "NODE_ENV=test jest --config test/jest-e2e.json stage2-pipeline --runInBchand",
     "test:stage2:benchmark": "NODE_ENV=test jest --config test/jest-e2e.json test/fetcher-benchmark.e2e-spec.ts",
     "test:stage2:all": "jest 'signal-extraction|scoring-pipeline|stage2' --coverage",
     "test:stage2:unit": "jest src/scoring/__tests__/pipeline-unit.spec.ts src/scoring/__tests__/behavior-temporal.spec.ts src/scoring/capability-translator/capability-translator.service.spec.ts src/scoring/career-timeline-reconstructor/career-timeline-reconstructor.service.spec.ts src/scoring/claim-generator/claim-generator.service.spec.ts src/scoring/developer-snapshot-builder/developer-snapshot-builder.service.spec.ts",
@@ -32,8 +35,8 @@
     "preload:cache": "ts-node -r tsconfig-paths/register src/scripts/preload-cache.ts"
   },
   "dependencies": {
-    "@alchemy/aa-accounts": "^3.19.0",
-    "@alchemy/aa-core": "^3.19.0",
+    "@alchemy/aa-accounts": "^3.6.1",
+    "@alchemy/aa-core": "^3.6.1",
     "@anthropic-ai/sdk": "^0.91.1",
     "@google/genai": "^1.51.0",
     "@google/generative-ai": "^0.24.1",
@@ -58,13 +61,16 @@
     "bullmq": "^5.74.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
     "helmet": "^8.1.0",
     "ioredis": "^5.10.1",
     "jose": "^4.15.9",
+    "multer": "^2.1.1",
     "nestjs-pino": "^4.6.1",
     "nestjs-zod": "^5.3.0",
-    "octokit": "^2.1.0",
+    "octokit": "^5.0.5",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
@@ -72,18 +78,17 @@
     "pg": "^8.20.0",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
+    "pino-pretty": "^13.1.3",
+    "prisma": "^6.19.3",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.12.0",
     "rxjs": "^7.8.1",
+    "source-map-support": "^0.5.21",
     "swagger-ui-express": "^5.0.1",
     "tweetnacl": "^1.0.3",
     "viem": "^2.48.1",
-    "zod": "^4.3.6",
-    "prisma": "^6.19.3",
-    "source-map-support": "^0.5.21",
-    "pino-pretty": "^13.1.3",
-    "dotenv": "^17.4.2"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -92,8 +97,9 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
     "@types/cookie-parser": "^1.4.10",
-    "@types/express": "^5.0.0",
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.1.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.0.0",
@@ -129,6 +135,9 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    },
     "setupFiles": [
       "../test/setup.ts"
     ],

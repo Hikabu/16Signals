@@ -8,6 +8,8 @@ import { BullModule } from '@nestjs/bullmq';
 import { ScoringService } from './scoring-service/scoring.service';
 import { SignalExtractorService } from './signal-extractor/signal-extractor.service';
 import { EcosystemClassifierService } from './signal-extractor/ecosystem-clarifier.service';
+import { InteractionProfileService } from './signal-extractor/interaction-profile.service';
+import { OrgAnalyserService } from './signal-extractor/org-analyser.service';
 import { StackFingerprintService } from './signal-extractor/stack-fingerprint.service';
 import { SummaryGeneratorService } from './summary-generator/summary-generator.service';
 import { SolanaAdapterService } from './web3-adapter/solana-adapter.service';
@@ -27,9 +29,8 @@ import { ProfileResolverModule } from '../profile-candidate/profile-resolver.mod
     GapAnalysisModule,
     DecisionCardModule,
     ProfileResolverModule,
-    ...(process.env.NODE_ENV === 'test'
-      ? []
-      : [BullModule.registerQueue({ name: 'signal-compute' })]),
+
+    BullModule.registerQueue({ name: 'signal-compute' }),
   ],
   providers: [
     GithubAdapterService,
@@ -37,6 +38,8 @@ import { ProfileResolverModule } from '../profile-candidate/profile-resolver.mod
     ScoringService,
     SignalExtractorService,
     EcosystemClassifierService,
+    InteractionProfileService,
+    OrgAnalyserService,
     StackFingerprintService,
     SummaryGeneratorService,
     SolanaAdapterService,
@@ -49,7 +52,7 @@ import { ProfileResolverModule } from '../profile-candidate/profile-resolver.mod
     ScoringService,
     SolanaAdapterService,
     Web3MergeService,
-    ...(process.env.NODE_ENV === 'test' ? [] : [BullModule]),
+    BullModule,
   ],
 })
 export class ScoringModule {}

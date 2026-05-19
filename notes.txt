@@ -1,12 +1,12 @@
-> Get rid of nfts with super team... leave balnk achievement or delete all together...
+> what is this nav bar ?????  
 
-> refrsh automatic?
-> refressh fix...
 
-> weak /applications/hr/{appId}/scorecard
-Export candidate scorecard (HTML)
-	> can only see deciison card no more info?
+> analysis cooldown : retunr the dat for cooldown for wallet github and anaylis generate by checking latest in prisma
 
-> view simplified for fr vs for cto with in deth ? where is it at?
+> profile link incorrect
 
-> skill comparison ??? stage 5
+> no logout?
+
+> refersh token logic is strange... 
+
+> GENERRATL ERROR HANDLER ,...

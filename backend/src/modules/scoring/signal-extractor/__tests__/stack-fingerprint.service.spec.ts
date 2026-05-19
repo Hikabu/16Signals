@@ -18,56 +18,57 @@ describe('StackFingerprintService', () => {
 
   describe('detectTools', () => {
     it('detects bullmq and pg as BullMQ and PostgreSQL', () => {
-      const manifestKeys = {
-        repo1: ['bullmq', 'pg'],
-      };
-      const result = service.detectTools(manifestKeys);
+      const result = service.detectTools([
+        { repo: 'repo1', deps: ['bullmq', 'pg'], type: 'npm' },
+      ]);
       expect(result).toEqual(['BullMQ', 'PostgreSQL']);
     });
 
     it('detects anchor-lang and forge-std as Anchor and Foundry', () => {
-      const manifestKeys = {
-        repo1: ['anchor-lang', 'forge-std'],
-      };
-      const result = service.detectTools(manifestKeys);
+      const result = service.detectTools([
+        { repo: 'repo1', deps: ['anchor-lang', 'forge-std'], type: 'cargo' },
+      ]);
       expect(result).toEqual(['Anchor', 'Foundry']);
     });
 
     it('deduplicated AWS SDK clients to a single AWS entry', () => {
-      const manifestKeys = {
-        repo1: ['@aws-sdk/client-s3', '@aws-sdk/client-ec2'],
-      };
-      const result = service.detectTools(manifestKeys);
+      const result = service.detectTools([
+        {
+          repo: 'repo1',
+          deps: ['@aws-sdk/client-s3', '@aws-sdk/client-ec2'],
+          type: 'npm',
+        },
+      ]);
       expect(result).toEqual(['AWS']);
     });
 
     it('returns empty array for random libraries', () => {
-      const manifestKeys = {
-        repo1: ['some-random-lib'],
-      };
-      const result = service.detectTools(manifestKeys);
+      const result = service.detectTools([
+        { repo: 'repo1', deps: ['some-random-lib'], type: 'npm' },
+      ]);
       expect(result).toEqual([]);
     });
 
     it('deduplicates the same tool across multiple repos', () => {
-      const manifestKeys = {
-        repo1: ['prisma', 'bullmq'],
-        repo2: ['prisma', 'pg'],
-      };
-      const result = service.detectTools(manifestKeys);
+      const result = service.detectTools([
+        { repo: 'repo1', deps: ['prisma', 'bullmq'], type: 'npm' },
+        { repo: 'repo2', deps: ['prisma', 'pg'], type: 'npm' },
+      ]);
       expect(result).toEqual(['BullMQ', 'PostgreSQL', 'Prisma']);
     });
 
     it('handles empty input', () => {
-      expect(service.detectTools({})).toEqual([]);
+      expect(service.detectTools([])).toEqual([]);
     });
   });
 
   describe('extract', () => {
     it('passes through languages unchanged while detecting tools', () => {
-      const manifestKeys = { repo1: ['prisma'] };
+      const manifests = [
+        { repo: 'repo1', deps: ['prisma'], type: 'npm' as const },
+      ];
       const languages = ['Rust', 'TypeScript'];
-      const result = service.extract(manifestKeys, languages);
+      const result = service.extract(manifests, languages);
       expect(result).toEqual({
         languages: ['Rust', 'TypeScript'],
         tools: ['Prisma'],

@@ -33,11 +33,16 @@ describe('ApplicantsService', () => {
   };
 
   const mockGapAnalysisService = {
-    compute: jest.fn().mockReturnValue({ gaps: [] }),
+    compute: jest.fn().mockReturnValue({
+      gaps: [],
+      technologyFitScore: 100,
+      matchedTechnologies: [],
+      missingTechnologies: [],
+    }),
   };
 
   const mockDecisionCardService = {
-    generate: jest.fn().mockReturnValue({}),
+    generate: jest.fn().mockReturnValue({ reviewOutcome: 'OK' }),
   };
 
   const mockInterviewQuestionService = {
@@ -83,6 +88,31 @@ describe('ApplicantsService', () => {
   });
 
   describe('apply', () => {
+    const analysisResult = {
+      summary: 'Strong backend engineer.',
+      capabilities: {
+        backend: { score: 0.8, confidence: 'high' },
+        frontend: { score: 0.7, confidence: 'high' },
+        devops: { score: 0.4, confidence: 'medium' },
+      },
+      ownership: {
+        ownedProjects: 4,
+        activelyMaintained: 3,
+        confidence: 'high',
+      },
+      impact: {
+        activityLevel: 'high',
+        consistency: 'strong',
+        externalContributions: 6,
+        confidence: 'high',
+      },
+      reputation: null,
+      organizations: [],
+      interactionProfile: null,
+      stack: { languages: ['TypeScript'], tools: ['NestJS'] },
+      web3: null,
+    };
+
     it('cases 21-28: retains original apply logic checking duplicates, analyzing gaps, etc', async () => {
       mockPrisma.candidate.findUnique.mockResolvedValue({
         id: 'cand-1UUID',
@@ -94,10 +124,7 @@ describe('ApplicantsService', () => {
       });
       mockPrisma.shortlist.findFirst.mockResolvedValue(null);
       mockPrisma.analysisJob.findFirst.mockResolvedValue({
-        result: {
-          overallFitScore: 85,
-          fitTier: 'STRONG',
-        },
+        result: analysisResult,
       });
       mockPrisma.shortlist.create.mockResolvedValue({
         id: 'app-1',
@@ -120,7 +147,7 @@ describe('ApplicantsService', () => {
       });
       mockPrisma.shortlist.findFirst.mockResolvedValue(null);
       mockPrisma.analysisJob.findFirst.mockResolvedValue({
-        result: { overallFitScore: 85, fitTier: 'STRONG' },
+        result: analysisResult,
       });
 
       let createData: any;
@@ -148,7 +175,7 @@ describe('ApplicantsService', () => {
       });
       mockPrisma.shortlist.findFirst.mockResolvedValue(null);
       mockPrisma.analysisJob.findFirst.mockResolvedValue({
-        result: { overallFitScore: 85, fitTier: 'STRONG' },
+        result: analysisResult,
       });
 
       let createData: any;

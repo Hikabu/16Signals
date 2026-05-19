@@ -3,7 +3,6 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GithubRawDataSnapshot } from '../modules/scoring/github-adapter/types';
-import { SyncStatus } from '@prisma/client';
 import { AnalysisResult } from '../modules/scoring/types/result.types';
 import { ScoringService } from '../modules/scoring/scoring-service/scoring.service';
 import { SignalExtractorService } from '../modules/scoring/signal-extractor/signal-extractor.service';
@@ -12,6 +11,7 @@ import { CacheService } from '../modules/scoring/cache/cache.service';
 import { SolanaAdapterService } from '../modules/scoring/web3-adapter/solana-adapter.service';
 import { Web3MergeService } from '../modules/scoring/web3-merge/web3-merge.service';
 import { OctokitFactory } from '../modules/scoring/github-adapter/octokit.factory';
+import { SCORING_SCHEMA_VERSION } from '../modules/scoring/constants';
 
 @Processor('signal-compute', {
   concurrency: process.env.NODE_ENV === 'test' ? 1 : 10,
@@ -76,7 +76,7 @@ export class SignalComputeProcessor extends WorkerHost {
       if (mode !== 'wallet-only' && githubUsername) {
         profile = await this.prisma.githubProfile.findUnique({
           where: { githubUsername },
-          include: { devCandidate: true },
+          include: { developerProfile: true },
         });
 
         // If we want to use cache, check if snapshot exists
@@ -110,11 +110,13 @@ export class SignalComputeProcessor extends WorkerHost {
             confidence: 'low',
           },
           reputation: null,
+          organizations: [],
+          interactionProfile: null,
           stack: { languages: [], tools: [] },
           summary:
             'On-chain developer profile. Insufficient public GitHub data to assess software capabilities.',
           web3: web3Data,
-        };
+  schemaVersion: SCORING_SCHEMA_VERSION,        };
 
         if (web3Data && web3Data.deployedPrograms) {
           result = this.web3MergeService.applyWalletUpgrades(
@@ -134,11 +136,13 @@ export class SignalComputeProcessor extends WorkerHost {
           await this.cacheService.set(cacheKey, result);
         }
 
-        // S15 — Vouch signal (Live)
+        // S15, Vouch signal (Live)
         result = await this.applyVouchSignal(result, {
           githubUsername,
           walletAddress,
         });
+
+        await this.persistScorecard(userId ?? null, result);
 
         // Update AnalysisJob status to completed
         await this.prisma.analysisJob.update({
@@ -164,7 +168,7 @@ export class SignalComputeProcessor extends WorkerHost {
 
       // Modes involving GitHub: 'github-only' and 'github+wallet'
       if (!hasSnapshot && githubUsername) {
-        await this.updateProgress(profile?.id, 'fetching_repos', 20);
+        await this.updateProgress(recordId, 20);
 
         try {
           const resolvedUserId = userId ?? profile?.userId ?? null;
@@ -226,17 +230,19 @@ export class SignalComputeProcessor extends WorkerHost {
       }
 
       // Update progress: analyzing_projects (50%)
-      await this.updateProgress(profile?.id, 'analyzing_projects', 50);
+      await this.updateProgress(recordId, 50);
 
       // Extract signals
       const signals = this.signalExtractor.extract(rawData);
 
       // Update progress: building_profile (75%)
-      await this.updateProgress(profile?.id, 'building_profile', 75);
+      await this.updateProgress(recordId, 75);
 
       // Score
-      let result = this.scoringService.score(rawData, walletAddress);
-
+let result: AnalysisResult = {
+  ...this.scoringService.score(rawData, walletAddress),
+  schemaVersion: "v.0.0.1",
+};
       // Inject web3 data if present
       if (web3Data) {
         result = this.web3MergeService.applyWalletUpgrades(
@@ -256,34 +262,28 @@ export class SignalComputeProcessor extends WorkerHost {
         await this.cacheService.set(cacheKey, result);
       }
 
-      // S15 — Vouch signal (Live)
+      // S15, Vouch signal (Live)
       result = await this.applyVouchSignal(result, {
         githubUsername,
         walletAddress,
       });
 
-      // Update progress: complete (100%)
-      await this.updateProgress(profile?.id, 'complete', 100);
+      // // Update progress: complete (100%)
+      // await this.updateProgress(recordId, 100);
+
+      await this.persistScorecard(userId ?? null, result);
 
       // Update AnalysisJob
       await this.prisma.analysisJob.update({
         where: { id: recordId },
         data: {
+          
           status: 'completed',
+          progress:100,
           result: result as any,
         },
       });
 
-      // Update profile status
-      if (profile) {
-        await this.prisma.githubProfile.update({
-          where: { id: profile.id },
-          data: {
-            syncStatus: SyncStatus.DONE,
-            syncProgress: JSON.stringify({ stage: 'complete', percent: 100 }),
-          },
-        });
-      }
 
       this.logger.log(
         {
@@ -307,30 +307,11 @@ export class SignalComputeProcessor extends WorkerHost {
             where: { id: recordId },
             data: {
               status: 'failed',
+            progress: 0,
               error: (error as Error).message,
             },
           })
           .catch(() => {});
-      }
-
-      if (profile) {
-        try {
-          await this.prisma.githubProfile.update({
-            where: { id: profile.id },
-            data: {
-              syncStatus: SyncStatus.FAILED,
-              syncProgress: JSON.stringify({
-                stage: 'failed',
-                percent: 0,
-                error: (error as Error).message,
-              }),
-            },
-          });
-        } catch (updateError) {
-          this.logger.warn(
-            `Failed to update profile status on failure: ${updateError.message}`,
-          );
-        }
       }
 
       throw error;
@@ -338,17 +319,17 @@ export class SignalComputeProcessor extends WorkerHost {
   }
 
   private async updateProgress(
-    profileId: string | undefined,
-    stage: string,
+    recordId: string | undefined,
     percent: number,
   ): Promise<void> {
-    if (!profileId) return;
+    if (!recordId) return;
 
     try {
-      await this.prisma.githubProfile.update({
-        where: { id: profileId },
+      await this.prisma.analysisJob.update({
+      where: { id: recordId },
         data: {
-          syncProgress: JSON.stringify({ stage, percent }),
+          progress: percent,
+          status: 'processing'
         },
       });
     } catch (error) {
@@ -366,7 +347,7 @@ export class SignalComputeProcessor extends WorkerHost {
   ): Promise<AnalysisResult> {
     const now = new Date();
 
-    // Resolve candidateId from job data — vouches are candidate-scoped, not github-scoped
+    // Resolve candidateId from job data, vouches are candidate-scoped, not github-scoped
     let candidate;
 
     // 1. GitHub path
@@ -431,4 +412,21 @@ export class SignalComputeProcessor extends WorkerHost {
       activeVouches,
     );
   }
+
+  private async persistScorecard(userId: string | null, result: AnalysisResult) {
+    if (!userId) return;
+
+  const candidate = await this.prisma.candidate.findUnique({
+    where: { userId },
+  });
+
+  if (!candidate) return;
+
+  await this.prisma.candidate.update({
+    where: { id: candidate.id },
+    data: {
+      scorecard: result as any,
+    },
+  });
+}
 }

@@ -46,6 +46,32 @@ class InMemoryRedis {
     return this.store.delete(key) ? 1 : 0;
   }
 
+  eval(
+    _script: string,
+    _numKeys: number,
+    key: string,
+    expectedValue?: string,
+    nextValue?: string,
+    ttlSeconds?: string | number,
+  ) {
+    if (expectedValue !== undefined && nextValue !== undefined) {
+      const current = this.get(key);
+      if (!current) return -1;
+      if (current !== expectedValue) {
+        this.del(key);
+        return 0;
+      }
+      this.set(key, nextValue, 'EX', Number(ttlSeconds));
+      return 1;
+    }
+
+    const value = this.get(key);
+    if (value) {
+      this.del(key);
+    }
+    return value;
+  }
+
   exists(key: string) {
     this.purgeExpired(key);
     return this.store.has(key) ? 1 : 0;

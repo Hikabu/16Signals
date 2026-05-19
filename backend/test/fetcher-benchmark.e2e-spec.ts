@@ -7,6 +7,8 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { performance } from 'perf_hooks';
 import { ALEX_BACKEND } from '../src/modules/scoring/signal-extractor/__fixtures__/seed-developers';
 import { EcosystemClassifierService } from '../src/modules/scoring/signal-extractor/ecosystem-clarifier.service';
+import { InteractionProfileService } from '../src/modules/scoring/signal-extractor/interaction-profile.service';
+import { OrgAnalyserService } from '../src/modules/scoring/signal-extractor/org-analyser.service';
 import { StackFingerprintService } from '../src/modules/scoring/signal-extractor/stack-fingerprint.service';
 
 // Mock Octokit to return instantly
@@ -26,6 +28,7 @@ jest.mock('octokit', () => {
               },
             };
           }),
+          listOrgsForUser: jest.fn().mockResolvedValue({ data: [] }),
         },
         repos: {
           listForUser: jest.fn().mockImplementation(async () => {
@@ -44,8 +47,24 @@ jest.mock('octokit', () => {
               })),
             };
           }),
+          listForOrg: jest.fn().mockResolvedValue({ data: [] }),
+          getContent: jest
+            .fn()
+            .mockRejectedValue(
+              Object.assign(new Error('Not found'), { status: 404 }),
+            ),
+        },
+        search: {
+          issuesAndPullRequests: jest.fn().mockResolvedValue({
+            data: {
+              items: ALEX_BACKEND.externalPRs.externalRepoNames.map((repo) => ({
+                repository_url: `https://api.github.com/repos/${repo}`,
+              })),
+            },
+          }),
         },
       },
+      request: jest.fn().mockResolvedValue({ data: [] }),
       graphql: jest.fn().mockImplementation(async () => {
         await new Promise((r) => setTimeout(r, 5));
         return {
@@ -85,6 +104,8 @@ describe('Fetcher Performance Benchmark', () => {
         SignalExtractorService,
         SummaryGeneratorService,
         EcosystemClassifierService,
+        InteractionProfileService,
+        OrgAnalyserService,
         StackFingerprintService,
         ScoringService,
         {

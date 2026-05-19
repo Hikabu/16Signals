@@ -1,0 +1,20 @@
+Post a Job
+app/hr/jobs/new/page.tsx
+5-step employer form. Step 4 = Escrow setup (optional Solana integration, hackathon showcase). My Jobs tab.
+EMPLOYER ONLY
+Step 4: Escrow setup
+On-chain proof of commitment
+4
+Architecture
+app/hr/layout.tsx          ← employer gate (role !== 'employer' → redirect /)
+app/hr/jobs/new/page.tsx
+├── StepIndicator (1–5)
+├── [step=1] DraftForm
+├── [step=2] ParseJDStep
+├── [step=3] ConfirmRequirementsStep
+├── [step=4] EscrowSetupStep       ← NEW · Solana showcase
+└── [step=5] PublishStep           ← shows escrow badge if funded
+
+Tab: My Jobs
+└── MyJobsTable → getMyJobs() · close/view pipeline actions
+Escrow design note: In this step the employer sends SOL externally and pastes the txSignature back. Full tx construction is only in the pipeline (Page 6) for candidate payment release. This keeps step 4 buildable without requiring web3.js transaction deserialization.

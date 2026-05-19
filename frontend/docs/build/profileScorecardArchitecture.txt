@@ -1,0 +1,13 @@
+4
+Architecture
+app/jobs/page.tsx
+├── FilterBar                    ← FilterState: search, roleType, seniority, isWeb3,
+│                                   isEscrowFunded [NEW], isVerifiedPayer [NEW], page, limit
+├── JobGrid
+│   ├── JobCard[]                ← isApplied from applications cache; "Verified" badge if depositPaid+verifiedPayer
+│   └── LoadMoreButton
+└── JobDetailSheet               ← selectedJobId from page state
+    ├── JobHeader
+    ├── RequirementsList
+    ├── GapAnalysisSection       ← lazy query on panel open
+    └── ApplyFooter              ← apply gate check here

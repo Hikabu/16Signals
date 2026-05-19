@@ -3,7 +3,9 @@ import { ScoringService } from './scoring.service';
 import { SignalExtractorService } from '../signal-extractor/signal-extractor.service';
 import { SummaryGeneratorService } from '../summary-generator/summary-generator.service';
 import { EcosystemClassifierService } from '../signal-extractor/ecosystem-clarifier.service';
+import { InteractionProfileService } from '../signal-extractor/interaction-profile.service';
 import { StackFingerprintService } from '../signal-extractor/stack-fingerprint.service';
+import { OrgAnalyserService } from '../signal-extractor/org-analyser.service';
 import {
   ALEX_BACKEND,
   SARAH_FULLSTACK,
@@ -23,7 +25,9 @@ describe('ScoringService', () => {
         SignalExtractorService,
         SummaryGeneratorService,
         EcosystemClassifierService,
+        InteractionProfileService,
         StackFingerprintService,
+        OrgAnalyserService,
       ],
     }).compile();
 
@@ -84,6 +88,97 @@ describe('ScoringService', () => {
       const result = service.score(ALEX_BACKEND);
       expect(result.ownership.ownedProjects).toBe(5);
       expect(result.ownership.activelyMaintained).toBe(5);
+    });
+
+    it('upgrades ownership confidence when an org membership matches an external PR repo', () => {
+      const result = service.score({
+        ...NEW_DEV,
+        repos: [],
+        externalPRs: [
+          { repo: 'vercel/next.js', mergedAt: '2025-01-01T00:00:00Z' },
+        ],
+        orgs: [
+          { login: 'vercel', description: 'Frontend cloud', publicRepos: 100 },
+        ],
+        orgRepos: {
+          vercel: [
+            {
+              name: 'old',
+              pushedAt: '2024-01-01T00:00:00Z',
+              language: 'TypeScript',
+            },
+            {
+              name: 'next.js',
+              pushedAt: '2026-01-01T00:00:00Z',
+              language: 'JavaScript',
+            },
+          ],
+        },
+      } as any);
+
+      expect(result.organizations).toEqual([
+        {
+          login: 'vercel',
+          description: 'Frontend cloud',
+          publicRepos: 100,
+          confirmedContributor: true,
+          notableRepos: ['next.js', 'old'],
+        },
+      ]);
+      expect(result.ownership.confidence).toBe('medium');
+    });
+
+    it('keeps confirmedContributor false and adds org private-work note without matching external PRs', () => {
+      const result = service.score({
+        ...NEW_DEV,
+        repos: [],
+        externalPRs: [],
+        orgs: [{ login: 'vercel', description: '', publicRepos: 100 }],
+        orgRepos: {},
+      } as any);
+
+      expect(result.organizations[0].confirmedContributor).toBe(false);
+      expect(result.privateWorkNote).toBe(
+        'Appears to work primarily in private/org repositories',
+      );
+      expect(result.ownership.confidence).toBe('low');
+    });
+
+    it('returns an empty organizations array when there are no public memberships', () => {
+      const result = service.score({
+        ...NEW_DEV,
+        orgs: [],
+        orgRepos: {},
+      } as any);
+
+      expect(result.organizations).toEqual([]);
+    });
+  });
+
+  describe('Interaction Profile', () => {
+    it('promotes S9 to solana from starred repo affinity when owned repos are not solana', () => {
+      const result = service.score({
+        ...NEW_DEV,
+        repos: [],
+        starredRepos: Array.from({ length: 5 }, () => ({
+          language: 'TypeScript',
+          topics: ['solana'],
+        })),
+      } as any);
+
+      expect(result.interactionProfile?.ecosystemAffinity).toBe('solana');
+      expect(result.web3?.ecosystem).toBe('solana');
+      expect(result.web3?.ecosystemSource).toBe('interaction_affinity');
+      expect(result.summary).toContain('Active in the Solana ecosystem.');
+    });
+
+    it('keeps interactionProfile null when there are no starred repos', () => {
+      const result = service.score({
+        ...NEW_DEV,
+        starredRepos: [],
+      } as any);
+
+      expect(result.interactionProfile).toBeNull();
     });
   });
 

@@ -26,7 +26,7 @@ export class ProfileResolverService {
     let devProfile = candidate.devProfile;
 
     if (!devProfile) {
-      devProfile = await this.prisma.developerCandidate.create({
+      devProfile = await this.prisma.developerProfile.create({
         data: {
           candidateId: candidate.id,
         },

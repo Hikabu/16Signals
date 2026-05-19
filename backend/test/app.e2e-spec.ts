@@ -85,13 +85,13 @@ describe('APP E2E', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /auth/login should return 400 when walletAddress is missing', async () => {
+  it('POST /auth/login should authenticate from Privy token claims when walletAddress is missing', async () => {
     const res = await request(server)
       .post('/auth/employer/login')
       .set('Authorization', 'Bearer debugtoken')
       .send({});
-    expect(res.status).toBe(400);
-    expect(res.body).toHaveProperty('error');
+    expect(res.status).toBe(201);
+    expect(res.body.data.token).toBeDefined();
   });
 
   let appJwt: string;
@@ -106,8 +106,8 @@ describe('APP E2E', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.data.accessToken).toBeDefined();
-    appJwt = res.body.data.accessToken;
+    expect(res.body.data.token).toBeDefined();
+    appJwt = res.body.data.token;
   });
 
   it('GET /companies/me should reject without JWT', async () => {
@@ -120,7 +120,9 @@ describe('APP E2E', () => {
       .get('/me/company')
       .set('Authorization', `Bearer ${appJwt}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.walletAddress).toBe('0x123');
+    expect(res.body.data.walletAddress).toBe(
+      '0x123456789abcdef0123456789abcdef012345678',
+    );
   });
 
   let jobId: string;

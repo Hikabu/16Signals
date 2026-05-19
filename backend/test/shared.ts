@@ -8,6 +8,7 @@ import * as crypto from 'crypto';
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { getQueueToken } from '@nestjs/bullmq';
+import cookieParser from 'cookie-parser';
 
 export const getCookieValue = (
   setCookie: string[] | string | undefined,
@@ -28,6 +29,7 @@ export const resetBefore = async () => {
   }).compile();
 
   const app: INestApplication<App> = moduleFixture.createNestApplication();
+  app.use(cookieParser());
   app.enableShutdownHooks();
 
   try {
@@ -60,7 +62,7 @@ const resetDatabase = async (prisma: PrismaService) => {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "User" CASCADE;`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "users" CASCADE;`);
       return;
     } catch (err) {
       if (attempt === maxAttempts || !isTransientDatabaseResetError(err)) {
@@ -190,6 +192,7 @@ export const resetBeforeNoThrottle = async () => {
   //   .compile();
 
   const app = moduleFixture.createNestApplication();
+  app.use(cookieParser());
   app.enableShutdownHooks();
   await app.init();
 

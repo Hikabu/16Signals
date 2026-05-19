@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GithubSyncController } from './github-sync.controller';
 import { GithubSyncService } from './github-sync.service';
+import { ConfigService } from '@nestjs/config';
 
 const mockGithubSyncService = {
   triggerSync: jest.fn(),
@@ -17,6 +18,10 @@ describe('GithubSyncController', () => {
         {
           provide: GithubSyncService,
           useValue: mockGithubSyncService,
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('test-internal-key') },
         },
       ],
     }).compile();

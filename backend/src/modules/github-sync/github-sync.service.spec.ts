@@ -10,6 +10,9 @@ const mockPrisma = {
     update: jest.fn(),
     findFirst: jest.fn(),
   },
+  developerProfile: {
+    update: jest.fn(),
+  },
 };
 
 const mockConfig = {
@@ -76,12 +79,14 @@ describe('GithubSyncService', () => {
       id: 'github_1',
       githubUsername: 'alice',
     });
+    mockPrisma.developerProfile.update.mockResolvedValueOnce({
+      id: 'dev_1',
+    });
 
     await service.triggerSync('user_1');
 
     expect(mockQueue.add).toHaveBeenCalledWith('sync-profile', {
       candidateId: 'cand_1',
-      devCandidateId: 'dev_1',
       githubProfileId: 'github_1',
       userId: 'user_1',
     });

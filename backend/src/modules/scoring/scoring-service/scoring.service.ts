@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GitHubRawData, GitHubRepo } from '../github-adapter/github-data.types';
 import { EcosystemClassifierService } from '../signal-extractor/ecosystem-clarifier.service';
+import { InteractionProfileService } from '../signal-extractor/interaction-profile.service';
 import { StackFingerprintService } from '../signal-extractor/stack-fingerprint.service';
 import {
   ExtractedSignals,
@@ -9,8 +10,10 @@ import {
   ConsistencyLevel,
 } from '../types/result.types';
 import { SignalExtractorService } from '../signal-extractor/signal-extractor.service';
+import { OrgAnalyserService } from '../signal-extractor/org-analyser.service';
 import { SummaryGeneratorService } from '../summary-generator/summary-generator.service';
 import { LANGUAGE_CAPABILITY_WEIGHTS } from './language-weights';
+import { SCORING_SCHEMA_VERSION } from '../constants';
 
 @Injectable()
 export class ScoringService {
@@ -19,6 +22,8 @@ export class ScoringService {
     private readonly summaryGenerator: SummaryGeneratorService,
     private readonly ecosystemClassifier: EcosystemClassifierService,
     private readonly stackFingerprint: StackFingerprintService,
+    private readonly orgAnalyser: OrgAnalyserService,
+    private readonly interactionProfileService: InteractionProfileService,
   ) {}
 
   /**
@@ -31,52 +36,94 @@ export class ScoringService {
     const ownership = this.computeOwnership(data);
     const impact = this.computeImpact(signals, data);
 
-    const s9Ecosystem = this.ecosystemClassifier.detectEcosystemIdentity(
+    const interactionProfile = this.interactionProfileService.compute(
+      data.starredRepos ?? [],
+    );
+    const ownedRepoEcosystem = this.ecosystemClassifier.detectEcosystemIdentity(
       data.repos,
     );
-    const s10EcosystemPRs = this.ecosystemClassifier.countEcosystemPRs(
-      data.externalPRs?.externalRepoNames?.map((repo) => ({ repo })) || [],
+    const s9Ecosystem = this.ecosystemClassifier.detectEcosystemIdentity(
+      data.repos,
+      interactionProfile,
     );
+    const externalPRSummaries = this.toExternalPRSummaries(data.externalPRs);
+    const s10EcosystemPRs =
+      this.ecosystemClassifier.countEcosystemPRs(externalPRSummaries);
 
+    const manifests =
+      data.manifests ??
+      Object.entries(data.manifestKeys ?? {}).map(([repo, deps]) => ({
+        repo,
+        deps,
+        type: 'npm' as const,
+      }));
     const { tools } = this.stackFingerprint.extract(
-      data.manifestKeys,
+      manifests,
       signals.stackIdentity,
     );
 
     impact.externalContributions += s10EcosystemPRs;
+    const organizations = this.orgAnalyser.analyse(
+      data.orgs ?? [],
+      new Map(
+        Object.entries(data.orgRepos ?? {}).map(([login, repos]) => [
+          login.toLowerCase(),
+          repos,
+        ]),
+      ),
+      data.externalPRs,
+    );
+
+    if (organizations.some((org) => org.confirmedContributor)) {
+      ownership.confidence = this.upgradeConfidence(ownership.confidence);
+    }
 
     const result: AnalysisResult = {
       summary: '',
       capabilities,
       ownership,
       impact,
+      organizations,
+      interactionProfile,
       stack: { languages: signals.stackIdentity, tools },
       reputation: null,
       web3: null,
+      schemaVersion: SCORING_SCHEMA_VERSION,
     };
 
     if (s9Ecosystem || walletAddress) {
       result.web3 = {
         ecosystem: s9Ecosystem,
+        ecosystemSource: ownedRepoEcosystem
+          ? 'owned_repos'
+          : s9Ecosystem === 'solana'
+            ? 'interaction_affinity'
+            : undefined,
+        ecosystemReinforcedByInteraction:
+          Boolean(ownedRepoEcosystem) &&
+          interactionProfile?.ecosystemAffinity === 'solana',
         ecosystemPRs: s10EcosystemPRs,
         deployedPrograms: [], // stub
       };
     }
 
-    // Add private work note if applicable
-    if (this.signalExtractor.detectPrivateWorkIndicators(signals)) {
+    if (
+      organizations.length > 0 &&
+      !organizations.some((org) => org.confirmedContributor) &&
+      ownership.ownedProjects <= 2
+    ) {
       result.privateWorkNote =
-        'This profile shows high activity but low public artifact density, which typically indicates significant work in private repositories.';
-    }
-
-    // Add private work note if applicable
-    if (this.signalExtractor.detectPrivateWorkIndicators(signals)) {
+        'Appears to work primarily in private/org repositories';
+    } else if (this.signalExtractor.detectPrivateWorkIndicators(signals)) {
       result.privateWorkNote =
         'This profile shows high activity but low public artifact density, which typically indicates significant work in private repositories.';
     }
 
     // Generate summary
-    result.summary = this.summaryGenerator.generate(result);
+    result.summary = this.summaryGenerator.generate(
+      result,
+      this.getOwnedRepoTopics(data.repos),
+    );
 
     return result;
   }
@@ -202,5 +249,32 @@ export class ScoringService {
             ? 'medium'
             : 'low',
     };
+  }
+
+  private upgradeConfidence(confidence: ConfidenceLevel): ConfidenceLevel {
+    if (confidence === 'low') return 'medium';
+    if (confidence === 'medium') return 'high';
+    return 'high';
+  }
+
+  private toExternalPRSummaries(
+    externalPRs: GitHubRawData['externalPRs'],
+  ): { repo: string }[] {
+    if (Array.isArray(externalPRs)) {
+      return externalPRs.map((pr) => ({ repo: pr.repo }));
+    }
+
+    return externalPRs?.externalRepoNames?.map((repo) => ({ repo })) || [];
+  }
+
+  private getOwnedRepoTopics(repos: GitHubRepo[]): string[] {
+    return Array.from(
+      new Set(
+        repos
+          .filter((repo) => !repo.isFork)
+          .flatMap((repo) => repo.topics ?? [])
+          .map((topic) => topic.toLowerCase()),
+      ),
+    );
   }
 }

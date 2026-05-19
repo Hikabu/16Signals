@@ -111,7 +111,7 @@ export class ApplicantsService {
       hrView: buildHrView(app),
       technicalView: buildTechnicalView(app),
 
-      // Full detail fields (HR only — never returned on candidate endpoints)
+      // Full detail fields (HR only, never returned on candidate endpoints)
       pipelineStageHistory: (app as any).pipelineStageHistory ?? [],
       interviewQuestions: (app as any).interviewQuestions ?? [],
 
@@ -123,7 +123,7 @@ export class ApplicantsService {
 
       // Meta
       appliedAt: app.appliedAt,
-      frozenAt: (app as any).frozenScorecard?.capturedAt ?? null,
+      frozenAt: ((app as any).frozenScorecard as any)?.capturedAt ?? null,
     };
   }
 
@@ -218,7 +218,7 @@ export class ApplicantsService {
       [PipelineStage.REJECTED]: 8,
     };
 
-    if (stageOrder[nextStage] <= stageOrder[currentStage]) {
+    if (stageOrder[nextStage] <= stageOrder[currentStage as PipelineStage]) {
       // Exception: allow moving to REJECTED from anywhere except HIRED/REJECTED
       if (nextStage !== PipelineStage.REJECTED) {
         throw new BadRequestException(
@@ -280,7 +280,7 @@ export class ApplicantsService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { appliedAt: 'desc' },
     });
 
     return applications.map((app) => ({
@@ -299,6 +299,15 @@ export class ApplicantsService {
   async getGapPreview(jobId: string, candidateUserId: string) {
     const candidate = await this.prisma.candidate.findUnique({
       where: { userId: candidateUserId },
+      include: {
+        user: true,
+        devProfile: {
+          include: {
+            githubProfile: true,
+            web3Profile: true,
+          },
+        },
+      },
     });
     if (!candidate)
       throw new BadRequestException('Candidate profile not found');
@@ -309,7 +318,7 @@ export class ApplicantsService {
     }
 
     const latestAnalysis = await this.prisma.analysisJob.findFirst({
-      where: { userId: candidateUserId, status: 'completed' },
+      where: { candidateId: candidate.id, status: 'completed' },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -330,7 +339,7 @@ export class ApplicantsService {
       REJECT: FitTier.PASS,
     };
     const fitTier = verdictMap[decisionCard.verdict] || FitTier.PASS;
-    const roleFitScore = this.computeRoleFitScore(gapReport);
+    const roleFitScore = this.computeRoleFitScore(gapReport, analysisResult);
 
     const safeGaps = gapReport.gaps.map((g) => ({
       dimension: g.dimension,
@@ -341,11 +350,14 @@ export class ApplicantsService {
     return {
       jobId,
       fitTier,
+      reviewOutcome: (decisionCard as any).reviewOutcome,
       roleFitScore,
       gapSummary: decisionCard.hrSummary,
       matchedTechnologies: gapReport.matchedTechnologies,
       missingTechnologies: gapReport.missingTechnologies,
       gaps: safeGaps,
+      skillsGap: this.buildSkillsGap(gapReport, job),
+      scorecard: buildFrozenScorecard(analysisResult, candidate),
     };
   }
 
@@ -384,7 +396,7 @@ export class ApplicantsService {
 
     // 4. Load candidate's latest completed AnalysisJob
     const latestAnalysis = await this.prisma.analysisJob.findFirst({
-      where: { userId: candidateUserId, status: 'completed' },
+      where: { candidateId: candidate.id, status: 'completed' },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -414,13 +426,14 @@ export class ApplicantsService {
     const fitTier = verdictMap[decisionCard.verdict] || FitTier.PASS;
 
     // 8. roleFitScore
-    const roleFitScore = this.computeRoleFitScore(gapReport);
+    const roleFitScore = this.computeRoleFitScore(gapReport, analysisResult);
 
     // 8.5 Build frozenScorecard
     const frozenScorecard = buildFrozenScorecard(analysisResult, candidate);
+    const skillsGap = this.buildSkillsGap(gapReport, job);
 
     // 9. Create application (Shortlist model)
-    return this.prisma.shortlist.create({
+    const application = await this.prisma.shortlist.create({
       data: {
         jobPostId: jobId,
         candidateId,
@@ -439,9 +452,19 @@ export class ApplicantsService {
         status: ShortlistStatus.PENDING,
       },
     });
+
+    return {
+      ...application,
+      scorecard: frozenScorecard,
+      skillsGap,
+      reviewOutcome: (decisionCard as any).reviewOutcome,
+    };
   }
 
-  private computeRoleFitScore(gapReport: any): number {
+  private computeRoleFitScore(
+    gapReport: any,
+    analysisResult: AnalysisResult,
+  ): number {
     const counts = {
       DEALBREAKER: 0,
       SIGNIFICANT: 0,
@@ -454,12 +477,72 @@ export class ApplicantsService {
       }
     });
 
+    const capabilityScores = Object.values(
+      analysisResult.capabilities ?? {},
+    ).map((cap: any) => this.toPercentScore(cap.score));
+    const averageCapability = capabilityScores.length
+      ? capabilityScores.reduce((sum, score) => sum + score, 0) /
+        capabilityScores.length
+      : 0;
+    const ownershipScore = Math.min(
+      100,
+      (analysisResult.ownership?.activelyMaintained ?? 0) * 20 +
+        (analysisResult.ownership?.ownedProjects ?? 0) * 10,
+    );
+    const impactScore =
+      analysisResult.impact?.activityLevel === 'high'
+        ? 100
+        : analysisResult.impact?.activityLevel === 'medium'
+          ? 70
+          : 35;
+    const reputationBonus = Math.min(
+      8,
+      (analysisResult.reputation?.verifiedVouchCount ?? 0) * 4,
+    );
+    const web3Bonus = analysisResult.web3?.ecosystem ? 4 : 0;
+    const baseScore =
+      (gapReport.technologyFitScore ?? 100) * 0.35 +
+      averageCapability * 0.35 +
+      ownershipScore * 0.15 +
+      impactScore * 0.15;
+
     const score =
-      100 -
+      baseScore +
+      reputationBonus +
+      web3Bonus -
       counts.DEALBREAKER * 30 -
       counts.SIGNIFICANT * 10 -
       counts.MINOR * 3;
-    return Math.max(0, score);
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+
+  private toPercentScore(score: number): number {
+    return score <= 1 ? Math.round(score * 100) : Math.round(score);
+  }
+
+  private buildSkillsGap(gapReport: any, job: any) {
+    const parsedReqs = job?.parsedRequirements as any;
+    const requiredSkills =
+      parsedReqs?.requiredSkills ?? job?.requiredSkills ?? [];
+
+    if (!requiredSkills.length) {
+      return null;
+    }
+
+    return {
+      requiredSkills,
+      matchedTechnologies: gapReport.matchedTechnologies ?? [],
+      missingTechnologies: gapReport.missingTechnologies ?? [],
+      gaps: (gapReport.gaps ?? [])
+        .filter((gap: any) => gap.dimension?.startsWith('Technology: '))
+        .map((gap: any) => ({
+          skill: gap.dimension.replace('Technology: ', ''),
+          severity: gap.severity,
+          actual: gap.actual,
+          expected: gap.expected,
+          mitigatingContext: gap.mitigatingContext ?? null,
+        })),
+    };
   }
 
   async applyDecision(appId: string, status: string, companyId: string) {

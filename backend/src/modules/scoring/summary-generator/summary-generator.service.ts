@@ -6,7 +6,7 @@ export class SummaryGeneratorService {
   /**
    * Generates a 1-2 sentence professional summary based on the analysis results.
    */
-  generate(result: AnalysisResult): string {
+  generate(result: AnalysisResult, ownedRepoTopics: string[] = []): string {
     const { capabilities, ownership } = result;
 
     // 1. Determine focus
@@ -46,6 +46,15 @@ export class SummaryGeneratorService {
       summary += ' Active in the Solana ecosystem.';
     }
 
+    if (
+      this.commonTopicCount(
+        result.interactionProfile?.topicAffinity ?? [],
+        ownedRepoTopics,
+      ) >= 3
+    ) {
+      summary += ` Consistent topic focus across owned and starred repositories.`;
+    }
+
     if (result.reputation && result.reputation.verifiedVouchCount >= 2) {
       summary += ` Vouched for by ${result.reputation.verifiedVouchCount} verified developers.`;
     }
@@ -55,5 +64,10 @@ export class SummaryGeneratorService {
 
   private capitalize(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  private commonTopicCount(a: string[], b: string[]): number {
+    const topics = new Set(b.map((topic) => topic.toLowerCase()));
+    return a.filter((topic) => topics.has(topic.toLowerCase())).length;
   }
 }

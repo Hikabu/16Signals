@@ -8,6 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import { AnalysisResult } from '../scoring/types/result.types';
 import { CacheService } from '../scoring/cache/cache.service';
 import { RawScorecard } from './contract/scorecard.schema';
+import { User } from '@privy-io/node/resources/index';
+import { SCORING_SCHEMA_VERSION } from '../scoring/constants';
 
 @Injectable()
 export class ScorecardService {
@@ -33,24 +35,55 @@ export class ScorecardService {
       throw new Error('GITHUB_SYSTEM_TOKEN not configured');
     }
 
+    // const octokit = new Octokit({
+    //   request: {
+    //     headers: {
+    //       authorization: `token ${githubToken}`,
+    //       'X-GitHub-Api-Version': '2022-11-28',
+    //     },
+    //   },
+    // });
     const octokit = new Octokit({
-      request: {
-        headers: {
-          authorization: `token ${githubToken}`,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      },
-    });
+  auth: githubToken,
+  request: {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  },
+})
 
     await this.githubAdapter.fetchRawData(octokit, githubUsername);
 
     return this.buildPlaceholderResult();
   }
 
-  async getScorecardForUser(userId: string): Promise<RawScorecard | null> {
-    const candidate = await this.prisma.candidate.findFirst({
-      where: { userId },
+async getScorecardForUser({
+  userId,
+  username,
+}: {
+  userId?: string
+  username?: string
+}): Promise<RawScorecard | null> {
+
+  const candidate = await this.prisma.candidate.findFirst({
+    where: {
+      OR: [
+        userId
+          ? { userId }
+          : undefined,
+
+        username
+          ? {
+              user: {
+                username: username.toLowerCase(),
+              },
+            }
+          : undefined,
+      ].filter(Boolean) as any,
+    },
+
       select: {
+        id: true,
         scorecard: true,
         devProfile: {
           select: {
@@ -72,14 +105,68 @@ export class ScorecardService {
       return candidate.scorecard as RawScorecard;
     }
 
-    const username = candidate.devProfile?.githubProfile?.githubUsername;
-    if (username) {
-      this.logger.warn(`DB scorecard empty for user ${userId}, checking Redis`);
-      return this.getScorecardFromCache(username);
-    }
+    const githubUsername = candidate.devProfile?.githubProfile?.githubUsername;
+    
+  if (!githubUsername) return null;
 
-    return null;
+  this.logger.warn(
+    `DB scorecard missing for user ${userId}, attempting recovery from cache`,
+  );
+
+    // 2. Redis fallback
+  const cached = await this.getScorecardFromCache(githubUsername);
+
+  if (cached) {
+    await this.persistRecoveredScorecard(candidate.id, cached);
+    return cached;
   }
+
+  // 3. FINAL fallback: reconstruct from analysis cache
+  const rebuilt = await this.rebuildScorecardFromAnalysis(githubUsername);
+
+  if (rebuilt) {
+    await this.persistRecoveredScorecard(candidate.id, rebuilt);
+    return rebuilt;
+  }
+
+  return null;
+  }
+private async rebuildScorecardFromAnalysis(
+  username: string,
+): Promise<RawScorecard | null> {
+  const cacheKey = this.cacheService.buildCacheKey(username, undefined);
+
+  const cachedAnalysis = await this.cacheService.get(cacheKey);
+  if (!cachedAnalysis) return null;
+
+  const candidate = await this.prisma.candidate.findFirst({
+    where: {
+      devProfile: {
+        githubProfile: { githubUsername: username },
+      },
+    },
+    select: { id: true, scorecard: true },
+  });
+
+  if (!candidate) {
+    return cachedAnalysis as RawScorecard;
+  }
+
+  // ONLY persist if missing
+  if (!candidate.scorecard) {
+    await this.persistRecoveredScorecard(candidate.id, cachedAnalysis as RawScorecard);
+  }
+
+  return cachedAnalysis as RawScorecard;
+}
+  private async persistRecoveredScorecard(candidateId: string, scorecard: RawScorecard) {
+  await this.prisma.candidate.update({
+    where: { id: candidateId },
+    data: {
+      scorecard: scorecard as any,
+    },
+  });
+}
 
   async getScorecardFromCache(
     githubUsername: string,
@@ -92,17 +179,24 @@ export class ScorecardService {
   // UI MAPPER (FIXED)
   // ─────────────────────────────────────────────────────────────
 
-  mapToUiModel(raw: RawScorecard | ScorecardResult): ScorecardUiDto {
+async mapToUiModel(
+  raw: RawScorecard | ScorecardResult,
+  {
+    userId,
+    username,
+  }: {
+    userId?: string
+    username?: string
+  } = {},
+): Promise<ScorecardUiDto> {
     const isRaw = (r: any): r is RawScorecard => 'ownership' in r;
 
     // ── Fallback / placeholder UI ─────────────────────────────
     if (!isRaw(raw)) {
       return {
         profile: {
-          username: 'candidate',
+          username: "unknown",
           avatarUrl: undefined,
-          primaryCohort: 'unknown',
-          seniority: 'MID',
           summary: 'Reviewing developer history...',
         },
         score: {
@@ -111,8 +205,8 @@ export class ScorecardService {
           isWithheld: { value: false },
         },
         trust: {
-          level: 'PARTIAL',
-          risk: 'LOW_RISK',
+          level: 'PARTIAL' as any,
+          risk: 'LOW_RISK' as any,
           label: 'NEUTRAL',
           guidance: 'Awaiting updated scoring analysis.',
         },
@@ -132,11 +226,18 @@ export class ScorecardService {
             externalContributions: 0,
             confidence: 'low',
           },
+          reputation: null,
+          organizations: [],
+          interactionProfile: null,
+          stack: { languages: [], tools: [] },
+          web3: null,
         },
       };
     }
 
     const real = raw;
+
+    
 
     const capabilities = [
       this.mapCapability('backend', real.capabilities.backend),
@@ -144,12 +245,46 @@ export class ScorecardService {
       this.mapCapability('devops', real.capabilities.devops),
     ];
 
+      const candidate = await this.prisma.candidate.findFirst({
+     where: {
+      OR: [
+        userId
+          ? { userId }
+          : undefined,
+
+        username
+          ? {
+              user: {
+                username: username.toLowerCase(),
+              },
+            }
+          : undefined,
+      ].filter(Boolean) as any,
+    },
+    select: {
+      id: true,
+      devProfile: {
+        select: {
+          githubProfile: {
+            select: {
+              githubUsername: true,
+              rawDataSnapshot: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const githubProfile = candidate?.devProfile?.githubProfile;
+  const githubUsername = githubProfile?.githubUsername;
+
     return {
       profile: {
-        username: 'unknown',
-        avatarUrl: undefined,
-        primaryCohort: 'unknown',
-        seniority: 'MID',
+        username: githubUsername ?? "unknown",
+    avatarUrl: githubUsername
+        ? `https://github.com/${githubUsername}.png`
+        : undefined,
         summary: real.summary,
       },
       score: {
@@ -159,7 +294,7 @@ export class ScorecardService {
       },
       trust: {
         level: this.mapConfidenceLevel(real),
-        risk: 'LOW_RISK',
+        risk: 'LOW_RISK' as any,
         label: this.mapTrustLabel(real),
         guidance: this.mapGuidance(real),
       },
@@ -170,6 +305,12 @@ export class ScorecardService {
         caveats: [],
         ownership: real.ownership,
         impact: real.impact,
+        reputation: real.reputation ?? null,
+        privateWorkNote: real.privateWorkNote,
+        organizations: real.organizations ?? [],
+        interactionProfile: real.interactionProfile ?? null,
+        stack: real.stack ?? { languages: [], tools: [] },
+        web3: real.web3 ?? null,
       },
     };
   }
@@ -277,37 +418,29 @@ export class ScorecardService {
 
   private buildPlaceholderResult(): ScorecardResult {
     return {
-      snapshot: {
-        seniority: 'MID',
-        summary: 'Placeholder summary.',
-        riskLevel: 'LOW_RISK',
-        generatedAt: new Date(),
+      summary: 'Reviewing developer history...',
+      capabilities: {
+        backend: { score: 0, confidence: 'low' },
+        frontend: { score: 0, confidence: 'low' },
+        devops: { score: 0, confidence: 'low' },
       },
-      timeline: {
-        phases: [],
-        trajectory: 'STABLE',
-        generatedAt: new Date(),
+      ownership: {
+        ownedProjects: 0,
+        activelyMaintained: 0,
+        confidence: 'low',
       },
-      signals: {} as any,
-      claims: [],
-      confidenceEnvelope: {
-        overallConfidence: 0,
-        confidenceTier: 'LOW',
-        riskLevel: 'LOW_RISK',
-        caveats: [],
-        scoreWithheld: false,
+      impact: {
+        activityLevel: 'low',
+        consistency: 'sparse',
+        externalContributions: 0,
+        confidence: 'low',
       },
-      percentile: {
-        ecosystemPercentile: 0,
-        ecosystemPercentileLabel: '',
-        crossEcosystemPercentile: 0,
-        cohortSize: 0,
-      },
-      behaviorClassification: {
-        primaryPattern: 'BALANCED_CONTRIBUTOR',
-        primaryConfidence: 0,
-        secondaryPattern: null,
-      },
+      reputation: null,
+      organizations: [],
+      interactionProfile: null,
+      stack: { languages: [], tools: [] },
+      web3: null,
+      schemaVersion: SCORING_SCHEMA_VERSION
     };
   }
 }

@@ -6,7 +6,10 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
+  Post,
   Req,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -27,9 +30,12 @@ import {
   GithubConnectionResponseDto,
   Web3ConnectionResponseDto,
   SimpleMessageResponseDto,
+  CooldownResponseDto,
 } from './dto/profile.response.dto';
 
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
+
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @VerifiedAuth()
 @ApiBearerAuth()
@@ -49,6 +55,7 @@ export class ProfileController {
   @ApiOkResponse({ type: UserProfileResponseDto })
   @ApiNotFoundResponse({ description: 'User not found' })
   getProfile(@Req() req: any) {
+    // console.log("hit get profile in backend");
     return this.profileService.getProfile(req.user.id);
   }
 
@@ -62,7 +69,18 @@ export class ProfileController {
     description: 'Validation or username conflict error',
   })
   updateProfile(@Req() req: any, @Body() dto: UpdateUserDto) {
+    // console.log("hit hit");
     return this.profileService.updateProfile(req.user.id, dto);
+  }
+  
+  @Get('cooldown')
+  @ApiOperation({
+    summary: 'Get analysis and sync cooldowns',
+    description: 'Returns authoritative cooldown timestamps for the authenticated user.',
+  })
+  @ApiOkResponse({ type: CooldownResponseDto })
+  getCooldowns(@Req() req: any) {
+    return this.profileService.getCooldowns(req.user.id);
   }
 
   @Delete()
@@ -73,7 +91,7 @@ export class ProfileController {
   })
   @ApiOkResponse({ type: SimpleMessageResponseDto })
   deactivateAccount(@Req() req: any) {
-    return this.profileService.deactivateAccount(req.user.id);
+    return this.profileService.deleteAccount(req.user.id);
   }
 
   // ───────────────── CANDIDATE PROFILE ─────────────────
@@ -128,4 +146,39 @@ export class ProfileController {
   getConnectedWallet(@Req() req: any) {
     return this.profileService.getConnectedWallet(req.user.id);
   }
+
+@Post('avatar')
+@UseInterceptors(FileInterceptor('file'))
+async uploadAvatar(
+  @UploadedFile() file: Express.Multer.File,
+  @Req() req,
+) {
+  return this.profileService.uploadAvatar(req.user.id, file);
 }
+
+  // ───────────── EMPLOYER LAUNCH WAITLIST ─────────────
+
+  @Get('waitlist')
+  @ApiOperation({
+    summary: 'Get employer launch waitlist status (authenticated)',
+    description: 'Returns whether the authenticated user is already on the employer launch waitlist.',
+  })
+  @ApiOkResponse({ description: '{ registered: boolean }' })
+  getWaitlistStatus(@Req() req: any) {
+    return this.profileService.getWaitlistStatus(req.user.id);
+  }
+
+  @Post('waitlist')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Join employer launch waitlist (authenticated)',
+    description:
+      'Reads email from the authenticated user record; no body required. Returns alreadyRegistered flag. No duplicate email is sent.',
+  })
+  @ApiOkResponse({ description: '{ alreadyRegistered: boolean, message: string }' })
+  registerWaitlistAuth(@Req() req: any) {
+    return this.profileService.registerWaitlistAuth(req.user.id);
+  }
+}
+
+

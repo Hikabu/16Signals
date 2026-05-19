@@ -21,9 +21,8 @@ export class OnboardingGuard implements CanActivate {
     // console.log('req headers:', req.headers); // Debug log to check headers
     const authHeader = req.headers.authorization;
     // console.log('Authorization header:', authHeader); // Debug log to check Authorization header presence
-    if (!authHeader) throw new UnauthorizedException('No token');
-
-    const token = authHeader.split(' ')[1];
+    const token = authHeader?.split(' ')[1] ?? req.cookies?.temp_auth;
+    if (!token) throw new UnauthorizedException('No token');
 
     let payload: any;
     try {

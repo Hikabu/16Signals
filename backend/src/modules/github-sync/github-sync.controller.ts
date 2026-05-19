@@ -6,6 +6,7 @@ import {
   Res,
   UseGuards,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
@@ -18,10 +19,13 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiQuery,
+  ApiHeader,
 } from '@nestjs/swagger';
 
 import { GithubSyncService } from './github-sync.service';
 import { GithubSyncConnectGuard } from '../auth-candidate/guards/github.sync.connect.guard';
+import { InternalKeyGuard } from '../scorecard/internal-key.guard';
+
 
 @ApiTags('GitHub Sync')
 @Controller('sync/github')
@@ -77,9 +81,8 @@ export class GithubSyncController {
     @Query('state') state: string,
   ) {
     await this.githubSyncService.connectGithub(req.user, state);
-
-    return res.redirect(`${process.env.FRONTEND_URL}/dashboard/github/syncing`);
-  }
+return res.redirect(`${process.env.FRONTEND_URL}/sync/github/callback`);
+ }
 
   // ─────────────────────────────────────────────
   // TRIGGER SYNC
@@ -123,6 +126,21 @@ export class GithubSyncController {
     description: 'Current sync status retrieved successfully',
   })
   async getSyncStatus(@Req() req: any) {
+
     return this.githubSyncService.getSyncStatus(req.user.id);
   }
+
+
+///ONLY TESTING - DELETE TODO
+  @Delete('dev/unsync')
+@UseGuards(AuthGuard('jwt'), InternalKeyGuard)
+@ApiHeader({
+    name: 'X-Internal-Key',
+    description: 'Internal API key (required)',
+    required: true,
+  })
+async unsyncGithub(@Req() req: any) {
+  
+  return this.githubSyncService.unsyncGithub(req.user.id);
+}
 }

@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Get,
   Body,
   Param,
@@ -32,6 +33,7 @@ import {
   ParsedJobRequirementsSchema,
 } from './dto/confirm-requirements.dto';
 import { GetJobsQueryDto } from './dto/getJobsQuery.dto';
+import { GetMyJobsQueryDto } from './dto/get-my-jobs-query.dto';
 import { JobDescriptionParserService } from '../scoring/gap-analysis/job-description-parser.service';
 import { diffParsedRequirements } from '../scoring/gap-analysis/jd-diff.util';
 import { BaseController } from '../../shared/base.controller';
@@ -65,20 +67,24 @@ export class JobsController extends BaseController {
     description:
       'Returns a list of published jobs with filtering and pagination.',
   })
-  async getPublicJobs(@Query() query: GetJobsQueryDto) {
-    const jobs = await this.jobsService.getPublicJobs({
-      search: query.search,
-      roleType: query.roleType,
-      seniority: query.seniority,
-      isWeb3: query.isWeb3,
-      page: query.page,
-      limit: query.limit,
-    });
-    return this.handleSuccess(jobs);
-  }
+  @Get()
+async getPublicJobs(@Query() query: GetJobsQueryDto) {
+  const jobs = await this.jobsService.getPublicJobs({
+    search: query.search,
+    roleType: query.roleType,
+    seniority: query.seniority,
+    isWeb3: query.isWeb3,
+    isEscrowFunded: query.isEscrowFunded,        
+    isVerifiedPayer: query.isVerifiedPayer,    
+    page: query.page,
+    limit: query.limit,
+  });
+
+  return this.handleSuccess(jobs);
+}
 
   // ─────────────────────────────
-  // COMAPNY JOBS
+  // COMPANY JOBS
   // ─────────────────────────────
 
   @Get('me')
@@ -110,30 +116,45 @@ export class JobsController extends BaseController {
     description: 'Unauthorized',
     type: ErrorResponseDto,
   })
-  async getMyJobs(@Req() req: any) {
-    const jobs = await this.jobsService.findMyJobs(req.user.id);
+  async getMyJobs(@Req() req: any, @Query() query: GetMyJobsQueryDto) {
+    const jobs = await this.jobsService.findMyJobs(
+      req.user.id,
+      query.status ?? 'all',
+    );
     return this.handleSuccess(jobs);
   }
 
   // ─────────────────────────────
-  // PUBLIC: JOB DETAILS
+  // CREATE JOB (canonical + legacy draft URL)
+  // ─────────────────────────────
+
+  @Post()
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt-employer'))
+  @ApiOperation({
+    summary: 'Create a new job post (draft)',
+    description:
+      'Same as POST /jobs/draft. Creates a DRAFT job for the authenticated company.',
+  })
+  @ApiBody({ type: CreateJobDto })
+  @ApiCreatedResponse({
+    description: 'Job created successfully',
+    type: JobResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid JWT token',
+    type: ErrorResponseDto,
+  })
+  async createAtRoot(@Req() req: any, @Body() dto: CreateJobDto) {
+    const job = await this.jobsService.create(req.user.id, dto);
+    return this.handleCreated(job, 'Job created successfully');
+  }
+
+ // ─────────────────────────────
+  // PUBLIC:DRAFT
   // ─────────────────────────────
 
   @Public()
-  @Get(':id')
-  @ApiOperation({
-    summary: 'Get job details (Public)',
-    description: 'Returns detailed information about a published job.',
-  })
-  async getPublicJobById(@Param('id') id: string) {
-    const job = await this.jobsService.getPublicJobById(id);
-    return this.handleSuccess(job);
-  }
-
-  // ─────────────────────────────
-  // CREATE JOB
-  // ─────────────────────────────
-
   @Post('draft')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt-employer'))
@@ -175,6 +196,45 @@ export class JobsController extends BaseController {
     const job = await this.jobsService.create(req.user.id, dto);
     return this.handleCreated(job, 'Job created successfully');
   }
+
+  // ─────────────────────────────
+  // UPDATE DRAFT JOB
+  // ─────────────────────────────
+
+  @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt-employer'))
+  @ApiOperation({
+    summary: 'Update an existing draft job',
+    description:
+      'Updates fields of a DRAFT job owned by the authenticated company. This is used by the job creation wizard autosave flow.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job ID',
+    example: 'cma9x1k2p0000qwert123',
+  })
+  @ApiBody({ type: CreateJobDto })
+  async updateDraft(@Req() req: any, @Param('id') id: string, @Body() dto: CreateJobDto) {
+    const job = await this.jobsService.updateDraft(id, req.user.id, dto);
+    return this.handleSuccess(job, 'Job updated successfully');
+  }
+
+  // ─────────────────────────────
+  // PUBLIC: JOB DETAILS
+  // ─────────────────────────────
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get job details (Public)',
+    description: 'Returns detailed information about a published job.',
+  })
+  async getPublicJobById(@Param('id') id: string) {
+    const job = await this.jobsService.getPublicJobById(id);
+    return this.handleSuccess(job);
+  }
+ 
+
 
   // ─────────────────────────────
   // PARSE JD
@@ -303,6 +363,27 @@ export class JobsController extends BaseController {
     type: ErrorResponseDto,
   })
   async publish(@Req() req: any, @Param('id') id: string) {
+    const job = await this.jobsService.publish(id, req.user.id);
+    return this.handleSuccess(job, 'Job published successfully');
+  }
+
+  @Patch(':id/publish')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt-employer'))
+  @ApiOperation({
+    summary: 'Publish a job (PATCH)',
+    description: 'Same as POST /jobs/:id/publish.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Job ID',
+    example: 'cma9x1k2p0000qwert123',
+  })
+  @ApiOkResponse({
+    description: 'Job published',
+    type: JobResponseDto,
+  })
+  async publishPatch(@Req() req: any, @Param('id') id: string) {
     const job = await this.jobsService.publish(id, req.user.id);
     return this.handleSuccess(job, 'Job published successfully');
   }

@@ -82,12 +82,12 @@ describe('AnalysisController (integration)', () => {
       const candidate = await prisma.candidate.create({
         data: { userId: user.id },
       });
-      const devCandidate = await prisma.developerCandidate.create({
+      const devProfile = await prisma.developerProfile.create({
         data: { candidateId: candidate.id },
       });
       await prisma.githubProfile.create({
         data: {
-          devCandidateId: devCandidate.id,
+          developerProfileId: devProfile.id,
           githubUsername: username, // Use dynamic username
           githubUserId: `id_${ts}`,
           encryptedToken: 'v1:mock:mock:mock',
@@ -111,6 +111,7 @@ describe('AnalysisController (integration)', () => {
           jobId: expect.any(String),
           githubUsername: username,
         }),
+        undefined,
       );
     });
 

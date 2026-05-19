@@ -1,0 +1,6351 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/analytics/dashboard": {
+      "get": {
+        "description": "\nReturns aggregated analytics data for the authenticated company.\n\nThis endpoint is typically used to power dashboard views in frontend applications.\n\nIncludes:\n- Total number of jobs posted\n- Number of active jobs\n- Total number of shortlisted candidates across all jobs\n\nRequires a valid Bearer token.\n\nAuthorization header format:\nAuthorization: Bearer <token>\n    ",
+        "operationId": "AnalyticsController_getDashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Dashboard statistics retrieved successfully",
+            "schema": {
+              "example": {
+                "success": true,
+                "data": {
+                  "totalJobs": 25,
+                  "activeJobs": 10,
+                  "totalCandidatesShortlisted": 42
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardStatsResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 500,
+                    "message": "Internal server error",
+                    "error": "Internal Server Error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get dashboard statistics",
+        "tags": [
+          "Analytics"
+        ]
+      }
+    },
+    "/applications/me/gap-preview": {
+      "get": {
+        "description": "Returns gap analysis BEFORE applying.\n\nDoes not persist data.",
+        "operationId": "ApplicantsController_getGapPreview",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "query",
+            "description": "Job to preview gap analysis against",
+            "schema": {
+              "example": "job_123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gap preview with updated scorecard, skills gap, and review outcome.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "data": {
+                      "jobId": "job_123",
+                      "fitTier": "PROBE",
+                      "reviewOutcome": "NEEDS_REVIEW",
+                      "roleFitScore": 72,
+                      "gapSummary": "Review-recommended candidate. High backend capability. Missing Rust experience.",
+                      "matchedTechnologies": [
+                        "Solana"
+                      ],
+                      "missingTechnologies": [
+                        "Rust"
+                      ],
+                      "skillsGap": {
+                        "requiredSkills": [
+                          "Rust",
+                          "Solana"
+                        ],
+                        "matchedTechnologies": [
+                          "Solana"
+                        ],
+                        "missingTechnologies": [
+                          "Rust"
+                        ],
+                        "gaps": [
+                          {
+                            "skill": "Rust",
+                            "severity": "DEALBREAKER"
+                          }
+                        ]
+                      },
+                      "scorecard": {
+                        "summary": "Backend-focused developer with Solana activity.",
+                        "capabilities": {
+                          "backend": {
+                            "score": 0.82,
+                            "confidence": "high"
+                          },
+                          "frontend": {
+                            "score": 0.42,
+                            "confidence": "medium"
+                          },
+                          "devops": {
+                            "score": 0.51,
+                            "confidence": "medium"
+                          }
+                        },
+                        "ownership": {
+                          "ownedProjects": 5,
+                          "activelyMaintained": 3,
+                          "confidence": "high"
+                        },
+                        "impact": {
+                          "activityLevel": "high",
+                          "consistency": "strong",
+                          "externalContributions": 12,
+                          "confidence": "high"
+                        },
+                        "reputation": null,
+                        "organizations": [],
+                        "interactionProfile": null,
+                        "stack": {
+                          "languages": [
+                            "TypeScript"
+                          ],
+                          "tools": [
+                            "Anchor"
+                          ]
+                        },
+                        "web3": {
+                          "ecosystem": "solana",
+                          "ecosystemPRs": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing jobId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Preview gap analysis",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/applications/me/{jobId}": {
+      "post": {
+        "description": "Allows an authenticated candidate to apply for an ACTIVE job.\n\nThis triggers:\n- Gap analysis\n- Decision card generation\n- Initial pipeline stage = APPLIED",
+        "operationId": "ApplicantsController_apply",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "description": "Job ID",
+            "schema": {
+              "example": "job_123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Application submitted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Already applied OR missing analysis",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Apply for a job",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/applications/me": {
+      "get": {
+        "description": "Returns candidate applications with human-readable pipeline stages.",
+        "operationId": "ApplicantsController_getMyApplications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Get my applications",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/applications/hr/jobs/{jobId}": {
+      "get": {
+        "description": "Returns all applications for a job including:\n- HR decision view\n- Technical evaluation\n- Candidate info\n\nSupports filtering.",
+        "operationId": "ApplicantsController_getJobApplications",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "job_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "fitTier",
+            "required": false,
+            "in": "query",
+            "description": "Filter by fit tier",
+            "schema": {
+              "enum": [
+                "STRONG",
+                "PROBE",
+                "PASS"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "minScore",
+            "required": false,
+            "in": "query",
+            "description": "Minimum role fit score",
+            "schema": {
+              "example": 70,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pipelineStage",
+            "required": false,
+            "in": "query",
+            "description": "Filter by pipeline stage",
+            "schema": {
+              "enum": [
+                "APPLIED",
+                "REVIEWED",
+                "SHORTLISTED",
+                "INTERVIEW_HR",
+                "INTERVIEW_TECHNICAL",
+                "INTERVIEW_FINAL",
+                "OFFER",
+                "HIRED",
+                "REJECTED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Applications retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "List job applications (HR)",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/applications/hr/{appId}": {
+      "get": {
+        "description": "Returns full application data including:\n- Decision card\n- Gap report\n- Candidate profiles\n- Interview questions",
+        "operationId": "ApplicantsController_getApplicationDetail",
+        "parameters": [
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "app_123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns application detail with dual-view shape (HR vs CTO)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "app_123",
+                    "hrView": {
+                      "verdict": "PROCEED",
+                      "reviewOutcome": "OK",
+                      "hrSummary": "Strong candidate with clear career growth",
+                      "reputationNote": "Verified by 5 peers on-chain",
+                      "appliedAt": "2026-04-20T10:00:00Z",
+                      "pipelineStage": "INTERVIEW_TECHNICAL",
+                      "candidate": {
+                        "name": "Alice Smith",
+                        "username": "alice_dev"
+                      }
+                    },
+                    "technicalView": {
+                      "technicalSummary": "Expert in React and Node.js. Missing Rust experience.",
+                      "strengths": [
+                        "Architecture",
+                        "Testing"
+                      ],
+                      "risks": [
+                        "No experience with high-scale DBs"
+                      ],
+                      "roleFitScore": 85,
+                      "fitTier": "STRONG",
+                      "scorecard": {
+                        "summary": "Full-stack developer with strong backend capability.",
+                        "capabilities": {
+                          "backend": {
+                            "score": 0.82,
+                            "confidence": "high"
+                          },
+                          "frontend": {
+                            "score": 0.68,
+                            "confidence": "medium"
+                          },
+                          "devops": {
+                            "score": 0.44,
+                            "confidence": "medium"
+                          }
+                        },
+                        "ownership": {
+                          "ownedProjects": 5,
+                          "activelyMaintained": 3,
+                          "confidence": "medium"
+                        },
+                        "impact": {
+                          "activityLevel": "high",
+                          "consistency": "strong",
+                          "externalContributions": 12,
+                          "confidence": "high"
+                        },
+                        "reputation": null,
+                        "organizations": [],
+                        "interactionProfile": null,
+                        "stack": {
+                          "languages": [
+                            "TypeScript"
+                          ],
+                          "tools": [
+                            "NestJS",
+                            "PostgreSQL"
+                          ]
+                        },
+                        "web3": null
+                      },
+                      "skillsGap": {
+                        "requiredSkills": [
+                          "Rust",
+                          "Solana"
+                        ],
+                        "matchedTechnologies": [
+                          "Solana"
+                        ],
+                        "missingTechnologies": [
+                          "Rust"
+                        ],
+                        "gaps": [
+                          {
+                            "skill": "Rust",
+                            "severity": "DEALBREAKER"
+                          }
+                        ]
+                      }
+                    },
+                    "decisionCard": {
+                      "verdict": "PROCEED",
+                      "hrSummary": "...",
+                      "technicalSummary": "...",
+                      "gapDetail": {
+                        "overallVerdict": "PROCEED",
+                        "technologyFitScore": 0.85,
+                        "gaps": [
+                          {
+                            "dimension": "Rust",
+                            "severity": "SIGNIFICANT"
+                          }
+                        ]
+                      }
+                    },
+                    "interviewQuestions": {
+                      "stage": "INTERVIEW_TECHNICAL",
+                      "questions": [
+                        {
+                          "question": "Explain X",
+                          "priority": "MUST_ASK"
+                        }
+                      ]
+                    },
+                    "notObservable": [
+                      "Communication quality"
+                    ],
+                    "pipelineStageHistory": [
+                      {
+                        "stage": "APPLIED",
+                        "movedAt": "..."
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Application not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Get application FULL details",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/applications/hr/{appId}/decision": {
+      "patch": {
+        "description": "Marks an application as SHORTLISTED, REJECTED, or REVIEWED.",
+        "operationId": "ApplicantsController_applyDecision",
+        "parameters": [
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "app_123",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decision applied successfully"
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Apply review decision",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/applications/hr/{appId}/scorecard": {
+      "get": {
+        "description": "Generates a printable HTML scorecard for external sharing.",
+        "operationId": "ApplicantsController_getScorecard",
+        "parameters": [
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "app_123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTML scorecard generated"
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Export candidate scorecard (HTML)",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/applications/hr/{appId}/stage": {
+      "patch": {
+        "description": "Moves candidate forward in hiring pipeline.\n\nValidates transitions and may generate interview questions.",
+        "operationId": "ApplicantsController_advanceApplicationStage",
+        "parameters": [
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "app_123",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceStageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stage updated successfully"
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Advance pipeline stage",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/applications/hr/{appId}/interview-questions": {
+      "get": {
+        "description": "Returns generated interview questions.\n\nIncludes the frozen final scorecard and skills gap context used for technical probing.\n\nOptional:\n- Filter by stage\n- Defaults to latest set",
+        "operationId": "ApplicantsController_getInterviewQuestions",
+        "parameters": [
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "app_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "stage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "APPLIED",
+                "REVIEWED",
+                "SHORTLISTED",
+                "INTERVIEW_HR",
+                "INTERVIEW_TECHNICAL",
+                "INTERVIEW_FINAL",
+                "OFFER",
+                "HIRED",
+                "REJECTED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Interview question set with scorecard and skills gap context.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "data": {
+                      "stage": "INTERVIEW_TECHNICAL",
+                      "audienceType": "technical",
+                      "questions": [
+                        {
+                          "question": "How would you design a Rust service for this role?",
+                          "rationale": "Rust is a required gap.",
+                          "dimension": "Technology: Rust",
+                          "priority": "MUST_ASK"
+                        }
+                      ],
+                      "scorecard": {
+                        "capabilities": {
+                          "backend": {
+                            "score": 0.82,
+                            "confidence": "high"
+                          },
+                          "frontend": {
+                            "score": 0.42,
+                            "confidence": "medium"
+                          },
+                          "devops": {
+                            "score": 0.51,
+                            "confidence": "medium"
+                          }
+                        },
+                        "stack": {
+                          "languages": [
+                            "TypeScript"
+                          ],
+                          "tools": [
+                            "Anchor"
+                          ]
+                        },
+                        "web3": {
+                          "ecosystem": "solana"
+                        }
+                      },
+                      "skillsGap": {
+                        "requiredSkills": [
+                          "Rust",
+                          "Solana"
+                        ],
+                        "matchedTechnologies": [
+                          "Solana"
+                        ],
+                        "missingTechnologies": [
+                          "Rust"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Get interview questions",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/api/scorecard/mock/preview": {
+      "post": {
+        "description": "Generates a mock scorecard for a given GitHub username and returns a frontend-ready UI model. Requires internal API key.",
+        "operationId": "ScorecardController_preview",
+        "parameters": [
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewScorecardRequestDto"
+              },
+              "examples": {
+                "example1": {
+                  "summary": "Basic request",
+                  "value": {
+                    "githubUsername": "octocat"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully generated UI scorecard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardUiDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid internal API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Preview scorecard (UI model)",
+        "tags": [
+          "Scorecard"
+        ]
+      }
+    },
+    "/api/scorecard/mock/preview/raw": {
+      "post": {
+        "description": "Returns full raw scoring data for debugging and internal analysis. Not intended for frontend usage.",
+        "operationId": "ScorecardController_previewRaw",
+        "parameters": [
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewScorecardRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw scorecard data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardRawResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Preview scorecard (raw model)",
+        "tags": [
+          "Scorecard"
+        ]
+      }
+    },
+    "/api/scorecard/me": {
+      "get": {
+        "description": "Returns the authenticated user’s scorecard formatted for frontend display.",
+        "operationId": "ScorecardController_getMyScorecard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "User scorecard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardUiDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No scorecard found. User must trigger GitHub sync first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get my scorecard (UI)",
+        "tags": [
+          "Scorecard"
+        ]
+      }
+    },
+    "/api/scorecard/user/{username}": {
+      "get": {
+        "description": "Fetch a public scorecard using a registered platform username.",
+        "operationId": "ScorecardController_getPublicUserScorecard",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "description": "Registered platform username",
+            "schema": {
+              "example": "arturo",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public scorecard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardUiDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User or scorecard not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get public scorecard by app username",
+        "tags": [
+          "Scorecard"
+        ]
+      }
+    },
+    "/api/scorecard/github/{githubUsername}": {
+      "get": {
+        "description": "Fetch a public scorecard directly from a GitHub username.",
+        "operationId": "ScorecardController_getPublicScorecardByGithub",
+        "parameters": [
+          {
+            "name": "githubUsername",
+            "required": true,
+            "in": "path",
+            "description": "GitHub username",
+            "schema": {
+              "example": "octocat",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public scorecard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardUiDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No cached scorecard found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get public scorecard by GitHub username",
+        "tags": [
+          "Scorecard"
+        ]
+      }
+    },
+    "/api/scorecard/me/raw": {
+      "get": {
+        "description": "Returns raw internal scorecard data for the authenticated user.",
+        "operationId": "ScorecardController_getMyScorecardRaw",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Raw scorecard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardRawResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get my scorecard (raw)",
+        "tags": [
+          "Scorecard"
+        ]
+      }
+    },
+    "/api/scorecard/{username}/raw": {
+      "get": {
+        "description": "Returns raw cached scorecard for debugging or internal usage.",
+        "operationId": "ScorecardController_getPublicScorecardRaw",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "octocat",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw scorecard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardRawResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get public scorecard (raw)",
+        "tags": [
+          "Scorecard"
+        ]
+      }
+    },
+    "/api/mock/analysis/wallet": {
+      "get": {
+        "description": "Returns a fully populated AnalysisResult including deployedPrograms with upgradeCount and Superteam achievements. Use this to develop wallet-related UI.",
+        "operationId": "MockController_getWallet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "[MOCK] GitHub + Solana wallet result",
+        "tags": [
+          "Mock / Dev Reference"
+        ]
+      }
+    },
+    "/api/mock/analysis/github-only": {
+      "get": {
+        "description": "Returns an AnalysisResult where web3 is null. Use to verify UI renders correctly without wallet data.",
+        "operationId": "MockController_getGithubOnly",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "[MOCK] GitHub-only result (web3: null)",
+        "tags": [
+          "Mock / Dev Reference"
+        ]
+      }
+    },
+    "/api/mock/analysis/wallet-only": {
+      "get": {
+        "description": "Returns an AnalysisResult with low-confidence GitHub signals and on-chain wallet data only.",
+        "operationId": "MockController_getWalletOnly",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "[MOCK] Wallet-only result (no GitHub)",
+        "tags": [
+          "Mock / Dev Reference"
+        ]
+      }
+    },
+    "/api/mock/analysis": {
+      "get": {
+        "description": "Returns all three mock AnalysisResult variants in one response. Useful for component story setup.",
+        "operationId": "MockController_getAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "[MOCK] All AnalysisResult fixtures",
+        "tags": [
+          "Mock / Dev Reference"
+        ]
+      }
+    },
+    "/api/mock/viewer": {
+      "get": {
+        "description": "Serves a standalone HTML page that renders all mock API responses for frontend developers.",
+        "operationId": "MockController_getViewer",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "[MOCK] API Viewer, interactive reference page",
+        "tags": [
+          "Mock / Dev Reference"
+        ]
+      }
+    },
+    "/api/analysis": {
+      "post": {
+        "description": "\nCreates or retrieves an analysis job for a developer.\n\nModes:\n1. Authenticated: Reads linked GitHub/Wallet from profile.\n2. Anonymous: Takes identifiers from body.\n\nFeatures:\n- Cache check (skip if force=true)\n- GitHub snapshot reuse (<24h)\n- Async execution via BullMQ\n    ",
+        "operationId": "AnalysisController_createAnalysis",
+        "parameters": [],
+        "requestBody": {
+          "required": false,
+          "description": "\nOptional if authenticated.\n\n- If JWT is provided → body is ignored (uses linked accounts)\n- If no JWT → must provide githubUsername or walletAddress\n",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAnalysisDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobQueueResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Trigger developer analysis",
+        "tags": [
+          "Proof Of Talent"
+        ]
+      }
+    },
+    "/api/analysis/recompute": {
+      "post": {
+        "description": "\nTriggers a fresh analysis.\n\n- If force=true → cache is invalidated\n- Requires internal API key (Bearer token)\n\nUse this for admin/system reprocessing.\n    ",
+        "operationId": "AnalysisController_recompute",
+        "parameters": [
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "description": "Internal API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecomputeAnalysisDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Recompute job created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid internal API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Profile not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Recompute analysis",
+        "tags": [
+          "Proof Of Talent"
+        ]
+      }
+    },
+    "/api/analysis/{jobId}/status": {
+      "get": {
+        "description": "Returns current job state, stage, and progress percentage.",
+        "operationId": "AnalysisController_getStatus",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "description": "BullMQ job ID returned when creating analysis",
+            "schema": {
+              "example": "12345",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get job status",
+        "tags": [
+          "Proof Of Talent"
+        ]
+      }
+    },
+    "/api/analysis/{jobId}/result": {
+      "get": {
+        "description": "Returns final analysis result if completed.",
+        "operationId": "AnalysisController_getResult",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "12345",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job result response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResultResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get job result",
+        "tags": [
+          "Proof Of Talent"
+        ]
+      }
+    },
+    "/api/analysis/reset": {
+      "delete": {
+        "operationId": "AnalysisController_resetAnalysis",
+        "parameters": [
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Proof Of Talent"
+        ]
+      }
+    },
+    "/sync/github/connect": {
+      "get": {
+        "description": "Generates a GitHub OAuth URL for the authenticated user and redirects them to GitHub authorization.",
+        "operationId": "GithubSyncController_startConnect",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Redirects user to GitHub OAuth consent screen"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start GitHub connection",
+        "tags": [
+          "GitHub Sync"
+        ]
+      }
+    },
+    "/sync/github/connect/callback": {
+      "get": {
+        "description": "Handles GitHub OAuth callback and links GitHub account to the user profile, then triggers initial sync.",
+        "operationId": "GithubSyncController_connectCallback",
+        "parameters": [
+          {
+            "name": "state",
+            "required": true,
+            "in": "query",
+            "description": "OAuth state parameter used for CSRF protection",
+            "schema": {
+              "example": "9f8a3c2d1b...",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Redirects user to frontend sync progress page"
+          },
+          "401": {
+            "description": "Invalid or expired OAuth state"
+          }
+        },
+        "summary": "GitHub OAuth callback (connect flow)",
+        "tags": [
+          "GitHub Sync"
+        ]
+      }
+    },
+    "/sync/github": {
+      "post": {
+        "description": "Manually triggers a sync of GitHub data for the authenticated user. Requires GitHub to be connected. This step is required before generating a scorecard for a signed in user",
+        "operationId": "GithubSyncController_triggerSync",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sync job successfully queued or executed"
+          },
+          "401": {
+            "description": "Invalid or missing JWT token"
+          },
+          "409": {
+            "description": "GitHub account not connected. Frontend should redirect to connect flow."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sync Github before scorecard generation",
+        "tags": [
+          "GitHub Sync"
+        ]
+      }
+    },
+    "/sync/github/status": {
+      "get": {
+        "description": "Returns current sync state including progress, errors, and last sync timestamp.",
+        "operationId": "GithubSyncController_getSyncStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current sync status retrieved successfully"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get GitHub sync status",
+        "tags": [
+          "GitHub Sync"
+        ]
+      }
+    },
+    "/sync/github/dev/unsync": {
+      "delete": {
+        "operationId": "GithubSyncController_unsyncGithub",
+        "parameters": [
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "GitHub Sync"
+        ]
+      }
+    },
+    "/jobs": {
+      "get": {
+        "description": "Returns a list of published jobs with filtering and pagination.",
+        "operationId": "JobsController_getPublicJobs",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search in job title and description",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roleType",
+            "required": false,
+            "in": "query",
+            "description": "Role type required for the job",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BACKEND",
+                "FRONTEND",
+                "FULLSTACK",
+                "INFRASTRUCTURE",
+                "DATA_ML",
+                "SMART_CONTRACT",
+                "WEB3_BACKEND",
+                "WEB3_FRONTEND",
+                "WEB3_FULLSTACK",
+                "DEFI_PROTOCOL",
+                "SECURITY_WEB3",
+                "SECURITY",
+                "GENERALIST"
+              ]
+            }
+          },
+          {
+            "name": "seniority",
+            "required": false,
+            "in": "query",
+            "description": "Seniority level required",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "JUNIOR",
+                "MID",
+                "SENIOR",
+                "LEAD"
+              ]
+            }
+          },
+          {
+            "name": "isWeb3",
+            "required": false,
+            "in": "query",
+            "description": "Filter Web3 jobs",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isEscrowFunded",
+            "required": false,
+            "in": "query",
+            "description": "Filter jobs with escrow paid",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isVerifiedPayer",
+            "required": false,
+            "in": "query",
+            "description": "Filter jobs by companies with Verified employer history",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Items per page (max: 50)",
+            "schema": {
+              "example": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Browse open jobs (Public)",
+        "tags": [
+          "Jobs"
+        ]
+      },
+      "post": {
+        "description": "Same as POST /jobs/draft. Creates a DRAFT job for the authenticated company.",
+        "operationId": "JobsController_createAtRoot",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJobDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Job created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new job post (draft)",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/jobs/me": {
+      "get": {
+        "description": "Returns all job posts owned by the authenticated company, ordered by newest first.\n\nUseful for dashboards and job management views.",
+        "operationId": "JobsController_getMyJobs",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter jobs returned for the authenticated company. Omit or use `all` for every status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "active",
+                "all"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of jobs",
+            "schema": {
+              "example": {
+                "success": true,
+                "data": [
+                  {
+                    "id": "job_1",
+                    "title": "Backend Engineer",
+                    "status": "ACTIVE"
+                  }
+                ]
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all jobs created by the authenticated company",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/jobs/draft": {
+      "post": {
+        "description": "Creates a job in DRAFT status for the authenticated company.\n\nUse this endpoint when a company wants to start drafting a job listing before publishing it.",
+        "operationId": "JobsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJobDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Job created successfully",
+            "schema": {
+              "example": {
+                "success": true,
+                "message": "Job created successfully",
+                "data": {
+                  "id": "cma9x1k2p0000qwert123",
+                  "title": "Senior Backend Engineer",
+                  "description": "We are hiring...",
+                  "status": "DRAFT",
+                  "companyId": "company_123",
+                  "createdAt": "2026-04-27T10:00:00.000Z",
+                  "updatedAt": "2026-04-27T10:00:00.000Z"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid job payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new job post draft",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/jobs/{id}": {
+      "patch": {
+        "description": "Updates fields of a DRAFT job owned by the authenticated company. This is used by the job creation wizard autosave flow.",
+        "operationId": "JobsController_updateDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Job ID",
+            "schema": {
+              "example": "cma9x1k2p0000qwert123",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJobDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update an existing draft job",
+        "tags": [
+          "Jobs"
+        ]
+      },
+      "get": {
+        "description": "Returns detailed information about a published job.",
+        "operationId": "JobsController_getPublicJobById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get job details (Public)",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/jobs/{id}/parse-jd": {
+      "post": {
+        "description": "Uses AI to extract structured requirements (skills, seniority, weights).\n\nFrontend should use this for preview before confirming requirements.",
+        "operationId": "JobsController_parseJd",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Job ID",
+            "schema": {
+              "example": "cma9x1k2p0000qwert123",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseJobDescriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Parsed job requirements preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseJdResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Parse job description into structured requirements",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/jobs/{id}/confirm-requirements": {
+      "post": {
+        "description": "Persists AI-parsed requirements into the job.\n\nThis step finalizes the structured scoring configuration.",
+        "operationId": "JobsController_confirmRequirements",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Job ID",
+            "schema": {
+              "example": "cma9x1k2p0000qwert123",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParsedJobRequirementsSwaggerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Requirements confirmed and saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm parsed job requirements",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/jobs/{id}/publish": {
+      "post": {
+        "description": "Changes job status from DRAFT to ACTIVE.\n\nOnce published, the job becomes visible to candidates.",
+        "operationId": "JobsController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Job ID",
+            "schema": {
+              "example": "cma9x1k2p0000qwert123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found or does not belong to user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publish a job",
+        "tags": [
+          "Jobs"
+        ]
+      },
+      "patch": {
+        "description": "Same as POST /jobs/:id/publish.",
+        "operationId": "JobsController_publishPatch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Job ID",
+            "schema": {
+              "example": "cma9x1k2p0000qwert123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publish a job (PATCH)",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/jobs/{id}/close": {
+      "post": {
+        "description": "Marks the job as CLOSED.\n\nClosed jobs are no longer visible or accepting applications.",
+        "operationId": "JobsController_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Job ID",
+            "schema": {
+              "example": "cma9x1k2p0000qwert123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job closed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Close a job",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/auth/employer/login": {
+      "post": {
+        "description": "Verifies a Privy access token from Authorization header and returns an employer JWT.",
+        "operationId": "AuthEmployerController_login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successfully authenticated and returned application JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing authorization header or invalid request payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthEmplErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing Privy token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthEmplErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Login with Privy token",
+        "tags": [
+          "Auth (Employer)"
+        ]
+      }
+    },
+    "/auth/employer/logout": {
+      "post": {
+        "description": "Invalidates the refresh token and clears session cookies.",
+        "operationId": "AuthEmployerController_logout",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Logout user",
+        "tags": [
+          "Auth (Employer)"
+        ]
+      }
+    },
+    "/auth/employer/refresh": {
+      "post": {
+        "description": "Rotates the employer refresh token and issues a new access token.",
+        "operationId": "AuthEmployerController_refresh",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refresh employer tokens",
+        "tags": [
+          "Auth (Employer)"
+        ]
+      }
+    },
+    "/auth/candidate/register": {
+      "post": {
+        "description": "Registers a new user and starts email verification flow. May return auth state depending on verification status.",
+        "operationId": "AuthCandidateController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create new user account",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/verify-email": {
+      "post": {
+        "description": "Validates email verification code and activates user account.",
+        "operationId": "AuthCandidateController_verifyEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Verify email address",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/login": {
+      "post": {
+        "description": "Validates credentials and returns auth state (tokens, MFA, onboarding, or verification).",
+        "operationId": "AuthCandidateController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDtoSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Authenticate user",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/logout": {
+      "post": {
+        "description": "Invalidates refresh token and clears session cookies.",
+        "operationId": "AuthCandidateController_logout",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Logout user",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/github": {
+      "get": {
+        "description": "Redirects user to GitHub authentication page.",
+        "operationId": "AuthCandidateController_githubLogin",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Start GitHub OAuth login",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/github/callback": {
+      "get": {
+        "description": "Handles GitHub login callback and returns auth state response.",
+        "operationId": "AuthCandidateController_githubCallback",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "GitHub OAuth callback",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/google": {
+      "get": {
+        "operationId": "AuthCandidateController_googleLogin",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Start Google OAuth login",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/google/callback": {
+      "get": {
+        "operationId": "AuthCandidateController_googleCallback",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/onboarding": {
+      "post": {
+        "description": "Finalizes onboarding using temporary auth token.",
+        "operationId": "AuthCandidateController_completeOnboarding",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete onboarding",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/github/link": {
+      "get": {
+        "operationId": "AuthCandidateController_linkGithub",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Link GitHub account",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/github/link/callback": {
+      "get": {
+        "operationId": "AuthCandidateController_linkGithubCallback",
+        "parameters": [
+          {
+            "name": "state",
+            "required": true,
+            "in": "query",
+            "description": "Security state parameter for OAuth verification",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "GitHub linking callback",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/google/link": {
+      "get": {
+        "operationId": "AuthCandidateController_linkGoogle",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Link Google account",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/google/link/callback": {
+      "get": {
+        "operationId": "AuthCandidateController_linkGoogleCallback",
+        "parameters": [
+          {
+            "name": "state",
+            "required": true,
+            "in": "query",
+            "description": "Security state parameter for OAuth verification",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Google linking callback",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/refresh": {
+      "post": {
+        "operationId": "AuthCandidateController_refresh",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refresh tokens",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/password-reset/request": {
+      "post": {
+        "description": "Starts the password reset flow. Always returns a generic success response.",
+        "operationId": "AuthCandidateController_requestPasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestPasswordResetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Request password reset",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/password-reset/confirm": {
+      "post": {
+        "description": "Resets the password with a valid password reset token.",
+        "operationId": "AuthCandidateController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Confirm password reset",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/mfa/setup": {
+      "get": {
+        "operationId": "AuthCandidateController_setupMfa",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/mfa/activate": {
+      "post": {
+        "operationId": "AuthCandidateController_activateMfa",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateMfaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/mfa/verify": {
+      "post": {
+        "operationId": "AuthCandidateController_verifyMfa",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyMfaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/mfa/verify-recovery": {
+      "post": {
+        "operationId": "AuthCandidateController_verifyMfaRecovery",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyMfaRecoveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/me/security": {
+      "get": {
+        "description": "Returns mfaEnabled status, hasPassword, and linkedProviders for the authenticated user.",
+        "operationId": "AuthCandidateController_getSecurityInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Security info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "mfaEnabled": false,
+                    "hasPassword": true,
+                    "linkedProviders": [
+                      "LOCAL",
+                      "GITHUB"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get security settings",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/auth/candidate/me/change-password": {
+      "post": {
+        "description": "If the user already has a local password, currentPassword is required. If not (OAuth-only user), sets a password without requiring currentPassword.",
+        "operationId": "AuthCandidateController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "currentPassword": "old-pass (only if hasPassword is true)",
+                  "newPassword": "new-pass"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change or set password",
+        "tags": [
+          "Auth (candidates)"
+        ]
+      }
+    },
+    "/me/company": {
+      "get": {
+        "description": "Returns the authenticated company profile including job post statistics.",
+        "operationId": "CompaniesController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Company profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfileResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Company not found for authenticated user"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current company profile",
+        "tags": [
+          "Profile (company)"
+        ]
+      }
+    },
+    "/employer/waitlist/status": {
+      "get": {
+        "description": "Returns whether the given email is already registered on the employer waitlist.",
+        "operationId": "EmployerWaitlistController_getStatus",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ registered: boolean }"
+          }
+        },
+        "summary": "Check employer waitlist registration status",
+        "tags": [
+          "Employer Waitlist (public)"
+        ]
+      }
+    },
+    "/employer/waitlist": {
+      "post": {
+        "description": "Registers a company on the employer waitlist. Returns 409 if already registered.",
+        "operationId": "EmployerWaitlistController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterEmployerWaitlistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ message: string }"
+          },
+          "409": {
+            "description": "Email already registered"
+          }
+        },
+        "summary": "Join employer waitlist",
+        "tags": [
+          "Employer Waitlist (public)"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/me/user": {
+      "get": {
+        "description": "Returns authenticated user profile including linked auth providers (Google, GitHub, etc).",
+        "operationId": "ProfileController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current user profile",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      },
+      "patch": {
+        "description": "Updates first name, last name, and username.",
+        "operationId": "ProfileController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or username conflict error"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update user profile",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      },
+      "delete": {
+        "description": "Marks the user account as suspended.",
+        "operationId": "ProfileController_deactivateAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleMessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deactivate account",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      }
+    },
+    "/me/user/cooldown": {
+      "get": {
+        "description": "Returns authoritative cooldown timestamps for the authenticated user.",
+        "operationId": "ProfileController_getCooldowns",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CooldownResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get analysis and sync cooldowns",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      }
+    },
+    "/me/user/candidate": {
+      "get": {
+        "description": "Returns candidate-specific data including bio, career path, and dev profile.",
+        "operationId": "ProfileController_getCandidateProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateProfileResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate profile not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get candidate profile",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      },
+      "patch": {
+        "description": "Updates bio and career path.",
+        "operationId": "ProfileController_updateCandidateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCandidateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateProfileResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update candidate profile",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      }
+    },
+    "/me/user/github": {
+      "get": {
+        "description": "Returns whether GitHub is connected and sync status (without exposing tokens).",
+        "operationId": "ProfileController_getConnectedGithub",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubConnectionResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate profile not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get GitHub connection status",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      }
+    },
+    "/me/user/wallet": {
+      "get": {
+        "description": "Returns whether wallet is connected and sync status to which address.",
+        "operationId": "ProfileController_getConnectedWallet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Web3ConnectionResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate profile not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get wallet connection status",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      }
+    },
+    "/me/user/avatar": {
+      "post": {
+        "operationId": "ProfileController_uploadAvatar",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Profile (candidate)"
+        ]
+      }
+    },
+    "/me/user/waitlist": {
+      "get": {
+        "description": "Returns whether the authenticated user is already on the employer launch waitlist.",
+        "operationId": "ProfileController_getWaitlistStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "{ registered: boolean }"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get employer launch waitlist status (authenticated)",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      },
+      "post": {
+        "description": "Reads email from the authenticated user record; no body required. Returns alreadyRegistered flag. No duplicate email is sent.",
+        "operationId": "ProfileController_registerWaitlistAuth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "{ alreadyRegistered: boolean, message: string }"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join employer launch waitlist (authenticated)",
+        "tags": [
+          "Profile (candidate)"
+        ]
+      }
+    },
+    "/profile/public/{username}": {
+      "get": {
+        "operationId": "PublicProfileController_getPublicProfile",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/profile/public": {
+      "get": {
+        "operationId": "PublicProfileController_searchPublicProfiles",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/profile/waitlist": {
+      "post": {
+        "operationId": "PublicProfileController_registerWaitlist",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterWaitlistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Joined the waitlist"
+          },
+          "400": {
+            "description": "Invalid email address"
+          }
+        },
+        "summary": "Join employer launch waitlist (guest)",
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/profile/candidate-waitlist/status": {
+      "get": {
+        "operationId": "PublicProfileController_getNonDevWaitlistStatus",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ registered: boolean }"
+          }
+        },
+        "summary": "Check if email is already on the non-dev candidate waitlist",
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/profile/candidate-waitlist": {
+      "post": {
+        "operationId": "PublicProfileController_registerNonDevWaitlist",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterNonDevWaitlistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully joined the waitlist"
+          },
+          "400": {
+            "description": "Invalid payload"
+          },
+          "409": {
+            "description": "Email already on the waitlist"
+          }
+        },
+        "summary": "Join the non-developer candidate waitlist",
+        "tags": [
+          "Public Profiles"
+        ]
+      }
+    },
+    "/vouch/confirm": {
+      "post": {
+        "description": "\n  Creates and anchors a vouch for a candidate using a Solana transaction.\n  \n  This endpoint:\n  - Verifies the transaction exists on-chain\n  - Confirms the voucher wallet is the fee payer\n  - Validates memo message matches the provided message\n  - Enforces rules: no self-vouch, no duplicates, budget limits\n  \n  Authentication: JWT required. Uses the linked Solana wallet.\n\t  ",
+        "operationId": "VouchesController_confirmVouch",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Payload required to confirm a vouch",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmVouchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Vouch successfully confirmed and stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VouchResponseDto"
+                },
+                "examples": {
+                  "verifiedVoucher": {
+                    "summary": "Successful vouch from a high-quality (verified) wallet",
+                    "value": {
+                      "id": "vouch_123",
+                      "candidateId": "candidate_456",
+                      "voucherWallet": "9xQeWvG816bUx9EP...",
+                      "message": "Great engineer, highly recommend",
+                      "txSignature": "5Nf7...abc",
+                      "weight": "verified",
+                      "isActive": true,
+                      "confirmedAt": "2026-04-23T10:00:00.000Z",
+                      "expiresAt": "2026-10-20T10:00:00.000Z"
+                    }
+                  },
+                  "newWalletVoucher": {
+                    "summary": "Vouch created from a new wallet (lower trust weight)",
+                    "value": {
+                      "id": "vouch_789",
+                      "candidateId": "candidate_456",
+                      "voucherWallet": "7Gh3...xyz",
+                      "message": "Seems promising",
+                      "txSignature": "8Abc...999",
+                      "weight": "new",
+                      "isActive": true,
+                      "confirmedAt": "2026-04-23T11:00:00.000Z",
+                      "expiresAt": "2026-10-20T11:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error, duplicate vouch, self-vouch, budget exceeded, or invalid transaction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherErrorResponseDto"
+                },
+                "examples": {
+                  "duplicate": {
+                    "summary": "User already vouched for this candidate",
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Already vouched for this candidate",
+                      "error": "Bad Request"
+                    }
+                  },
+                  "selfVouch": {
+                    "summary": "User attempted to vouch for themselves",
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Cannot vouch for yourself",
+                      "error": "Bad Request"
+                    }
+                  },
+                  "invalidTx": {
+                    "summary": "Transaction failed verification",
+                    "value": {
+                      "statusCode": 400,
+                      "message": "No Memo instruction found whose text matches the provided message",
+                      "error": "Bad Request"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Candidate not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherErrorResponseDto"
+                },
+                "examples": {
+                  "notFound": {
+                    "summary": "Candidate does not exist",
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Candidate not found for identifier: octocat",
+                      "error": "Not Found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm a vouch (on-chain verified endorsement)",
+        "tags": [
+          "Vouches"
+        ]
+      }
+    },
+    "/vouch/{id}": {
+      "delete": {
+        "description": "\n  Revokes an existing vouch.\n  \n  Authentication: JWT required. Uses the linked Solana wallet.\n\t  ",
+        "operationId": "VouchesController_revokeVouch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Unique identifier of the vouch",
+            "schema": {
+              "example": "vouch_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Wallet signature proof required to revoke a vouch",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeVouchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Vouch successfully revoked (no response body)"
+          },
+          "400": {
+            "description": "Malformed signature or already inactive vouch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherErrorResponseDto"
+                },
+                "examples": {
+                  "invalidSignatureFormat": {
+                    "summary": "Signature could not be decoded",
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Signature decoding failed",
+                      "error": "Bad Request"
+                    }
+                  },
+                  "alreadyInactive": {
+                    "summary": "Vouch already revoked",
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Vouch is already inactive",
+                      "error": "Bad Request"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Signature verification failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherErrorResponseDto"
+                },
+                "examples": {
+                  "invalidSignature": {
+                    "summary": "Wallet signature is invalid",
+                    "value": {
+                      "statusCode": 401,
+                      "message": "Invalid wallet signature",
+                      "error": "Unauthorized"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Vouch not found or wallet mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherErrorResponseDto"
+                },
+                "examples": {
+                  "notFound": {
+                    "summary": "Vouch does not exist or does not belong to wallet",
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Vouch not found or wallet mismatch",
+                      "error": "Not Found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke a vouch",
+        "tags": [
+          "Vouches"
+        ]
+      }
+    },
+    "/vouch/webhooks/helius": {
+      "post": {
+        "description": "Receives Enhanced Transaction events from Helius for on-chain vouch processing.",
+        "operationId": "VouchesController_heliusWebhook",
+        "parameters": [
+          {
+            "name": "x-helius-webhook-secret",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Helius transaction webhook (internal)",
+        "tags": [
+          "Vouches"
+        ]
+      }
+    },
+    "/api/actions/vouch/{username}": {
+      "get": {
+        "description": "Returns the Solana Action metadata for rendering a vouch card in wallets.",
+        "operationId": "ActionsController_getBlinkCard",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "description": "GitHub username to vouch for",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blink card metadata"
+          }
+        },
+        "summary": "Get Blink Card for vouching",
+        "tags": [
+          "Solana Blinks"
+        ]
+      },
+      "post": {
+        "operationId": "ActionsController_getBlinkTransaction",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "message",
+            "required": false,
+            "in": "query",
+            "description": "This field is used by the wallet - frontened should write the message in the body",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VouchRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Request vouch transaction",
+        "tags": [
+          "Solana Blinks"
+        ]
+      }
+    },
+    "/sync/wallet/challenge": {
+      "get": {
+        "description": "Creates a time-limited cryptographic challenge used to verify wallet ownership before linking a Solana wallet to the user account. Flow [server gives you a challenge-message >>> wallet signs challenge-message >>> server verifies signature match for challenge-message] This is step 1 in the flow ",
+        "operationId": "WalletSyncController_getChallenge",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Challenge successfully generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponseDto"
+                },
+                "example": {
+                  "challenge": "link-wallet:user123:1713940000000:a1b2c3"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User is not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletSyncErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Unauthorized",
+                  "error": "Unauthorized"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate wallet linking challenge",
+        "tags": [
+          "Wallet Sync"
+        ]
+      }
+    },
+    "/sync/wallet": {
+      "post": {
+        "description": "Verifies a Solana wallet signature against a previously generated challenge and links the wallet to the authenticated user account.",
+        "operationId": "WalletSyncController_linkWallet",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Wallet address and cryptographic signature",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkWalletRequestDto"
+              },
+              "examples": {
+                "example1": {
+                  "summary": "Valid request example",
+                  "value": {
+                    "walletAddress": "7Gg3...SolanaAddressExample...",
+                    "signature": "5hK9...Base58Signature...",
+                    "message": "link-wallet:user123:1713940000000:a1b2c3"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Wallet successfully linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkWalletResponseDto"
+                },
+                "example": {
+                  "linked": true,
+                  "solanaAddress": "7Gg3...SolanaAddressExample..."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid wallet address format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletSyncErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid Solana wallet address",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Signature verification failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletSyncErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "message": "Wallet signature invalid",
+                  "error": "Unauthorized"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Challenge expired or candidate profile missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletSyncErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "Challenge expired or not found",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verify wallet signature and link wallet",
+        "tags": [
+          "Wallet Sync"
+        ]
+      }
+    },
+    "/sync/wallet/unsync": {
+      "delete": {
+        "operationId": "WalletSyncController_unsyncWallet",
+        "parameters": [
+          {
+            "name": "X-Internal-Key",
+            "in": "header",
+            "description": "Internal API key (required)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "DEV ONLY - unlink wallet",
+        "tags": [
+          "Wallet Sync"
+        ]
+      }
+    },
+    "/escrow/init-params/{jobPostId}": {
+      "get": {
+        "description": "Employer-only endpoint called before creating escrow on-chain. The backend derives the deterministic escrow id from the job UUID, derives the PDA from the authenticated employer wallet, and returns the exact USDT amount in 6-decimal base units.",
+        "operationId": "EscrowController_initParams",
+        "parameters": [
+          {
+            "name": "jobPostId",
+            "required": true,
+            "in": "path",
+            "description": "Job post id owned by the authenticated employer.",
+            "schema": {
+              "example": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Escrow init params returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "data": {
+                      "escrowId": "1234567890123456789",
+                      "expectedAmount": "250000000",
+                      "escrowAddress": "7eJ8hYqH6q6Gdfrb2uP83L6eJrwGQXSjQ2E6H6n8ZCwK"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated company or wallet does not own the job post.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden resource",
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get escrow initialization params",
+        "tags": [
+          "Escrow"
+        ]
+      }
+    },
+    "/escrow/confirm-funded": {
+      "post": {
+        "description": "Employer-only endpoint called after the employer funds escrow on-chain. The backend verifies the PDA, employer wallet, and funded amount, then records the CREATED -> FUNDED transition. Idempotency: repeating the same confirmation is safe and must not create duplicate state; conflicting funding attempts are rejected.",
+        "operationId": "EscrowController_confirmFunded",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmFundedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Escrow funding verified and stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Escrow funded on-chain",
+                    "data": {
+                      "id": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+                      "escrowId": "42",
+                      "escrowAddress": "7eJ8hYqH6q6Gdfrb2uP83L6eJrwGQXSjQ2E6H6n8ZCwK",
+                      "candidateWallet": "GkYqf7H9jFQpMe6TNz6N6BZkdn4xB8oVeDxXM7dRrM2p",
+                      "escrowStatus": "FUNDED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DTO, transaction not found on-chain, wrong amount funded, invalid PDA, or invalid employer wallet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Wrong amount funded",
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated user is not the employer that owns the job post.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden resource",
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Escrow is already funded with conflicting details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Escrow already funded",
+                    "error": "Conflict"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm funded escrow",
+        "tags": [
+          "Escrow"
+        ]
+      }
+    },
+    "/escrow/set-candidate": {
+      "post": {
+        "description": "Employer-only endpoint called after the candidate has been set on-chain. The backend verifies the funded escrow and candidate wallet, then records the FUNDED -> CANDIDATE_SET transition. Idempotency: setting the same candidate twice should return the current state; changing an existing candidate is rejected.",
+        "operationId": "EscrowController_setCandidate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCandidateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Candidate wallet verified and stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Candidate wallet saved",
+                    "data": {
+                      "id": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+                      "escrowId": "42",
+                      "escrowAddress": "7eJ8hYqH6q6Gdfrb2uP83L6eJrwGQXSjQ2E6H6n8ZCwK",
+                      "candidateWallet": "GkYqf7H9jFQpMe6TNz6N6BZkdn4xB8oVeDxXM7dRrM2p",
+                      "escrowStatus": "CANDIDATE_SET"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DTO, escrow not funded yet, invalid wallet format, or on-chain candidate mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Escrow must be FUNDED before setting candidate",
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated user is not the employer that owns the job post.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden resource",
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Candidate already set with different wallet or escrow already resolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Candidate already set",
+                    "error": "Conflict"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Attach candidate wallet",
+        "tags": [
+          "Escrow"
+        ]
+      }
+    },
+    "/escrow/confirm-released": {
+      "post": {
+        "description": "Employer-only endpoint called after the on-chain program releases escrow to the candidate. The backend verifies the on-chain resolution and signer ownership, then records CANDIDATE_SET -> RELEASED. Idempotency: repeated release confirmation returns the released state; refunding after release is rejected.",
+        "operationId": "EscrowController_confirmReleased",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmResolvedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Escrow release verified and stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Escrow released on-chain",
+                    "data": {
+                      "id": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+                      "escrowId": "42",
+                      "escrowAddress": "7eJ8hYqH6q6Gdfrb2uP83L6eJrwGQXSjQ2E6H6n8ZCwK",
+                      "candidateWallet": "GkYqf7H9jFQpMe6TNz6N6BZkdn4xB8oVeDxXM7dRrM2p",
+                      "escrowStatus": "RELEASED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DTO, escrow not funded, candidate not set, not resolved on-chain, or wrong signer releasing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Candidate must be set before release",
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated user is not the employer that owns the job post.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden resource",
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Escrow already released or refunded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Escrow already resolved",
+                    "error": "Conflict"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm released escrow",
+        "tags": [
+          "Escrow"
+        ]
+      }
+    },
+    "/escrow/confirm-refunded": {
+      "post": {
+        "description": "Employer-only endpoint called after the on-chain program refunds escrow to the employer. The backend verifies on-chain resolution and ownership, then records FUNDED or CANDIDATE_SET -> REFUNDED. Idempotency: repeated refund confirmation returns the refunded state; release after refund is rejected.",
+        "operationId": "EscrowController_confirmRefunded",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmResolvedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Escrow refund verified and stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Escrow refunded on-chain",
+                    "data": {
+                      "id": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+                      "escrowId": "42",
+                      "escrowAddress": "7eJ8hYqH6q6Gdfrb2uP83L6eJrwGQXSjQ2E6H6n8ZCwK",
+                      "candidateWallet": "GkYqf7H9jFQpMe6TNz6N6BZkdn4xB8oVeDxXM7dRrM2p",
+                      "escrowStatus": "REFUNDED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DTO, escrow not funded, not resolved on-chain, or wrong signer refunding.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Escrow must be funded before refund",
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated user is not the employer that owns the job post.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden resource",
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Escrow already released or refunded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Escrow already released",
+                    "error": "Conflict"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm refunded escrow",
+        "tags": [
+          "Escrow"
+        ]
+      }
+    },
+    "/escrow/status/{jobPostId}": {
+      "get": {
+        "description": "Employer-only endpoint for polling persisted escrow state and the latest on-chain state. It does not transition state. Only the employer that owns the job post can read it.",
+        "operationId": "EscrowController_status",
+        "parameters": [
+          {
+            "name": "jobPostId",
+            "required": true,
+            "in": "path",
+            "description": "Job post id owned by the authenticated employer.",
+            "schema": {
+              "example": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Escrow status returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "data": {
+                      "dbState": {
+                        "jobPostId": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+                        "escrowId": "42",
+                        "escrowAddress": "7eJ8hYqH6q6Gdfrb2uP83L6eJrwGQXSjQ2E6H6n8ZCwK",
+                        "candidateWallet": "GkYqf7H9jFQpMe6TNz6N6BZkdn4xB8oVeDxXM7dRrM2p",
+                        "escrowStatus": "CANDIDATE_SET"
+                      },
+                      "onChainState": {
+                        "employer": "8M7wZrVdD8hJorvekgZ4Uxq4A86hzHGzVJM4idJpJx2k",
+                        "candidate": "GkYqf7H9jFQpMe6TNz6N6BZkdn4xB8oVeDxXM7dRrM2p",
+                        "amount": "250000000",
+                        "released": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid jobPostId parameter.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Invalid jobPostId",
+                    "error": "Bad Request"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated user is not the owner of the job post.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden resource",
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Reserved for state read conflicts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Escrow state conflict",
+                    "error": "Conflict"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get escrow status",
+        "tags": [
+          "Escrow"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "a16zero Employer API",
+    "description": "Backend MVP for Employer platform features and Account Abstraction auth verification.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      },
+      "internal-api-key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-internal-key",
+        "description": "Internal API key"
+      }
+    },
+    "schemas": {
+      "DashboardStatsDto": {
+        "type": "object",
+        "properties": {
+          "totalJobs": {
+            "type": "number",
+            "description": "Total number of jobs created by the company",
+            "example": 25
+          },
+          "activeJobs": {
+            "type": "number",
+            "description": "Number of currently active job postings",
+            "example": 10
+          },
+          "totalCandidatesShortlisted": {
+            "type": "number",
+            "description": "Total number of shortlisted candidates across all jobs",
+            "example": 42
+          }
+        },
+        "required": [
+          "totalJobs",
+          "activeJobs",
+          "totalCandidatesShortlisted"
+        ]
+      },
+      "DashboardStatsResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the request was successful",
+            "example": true
+          },
+          "data": {
+            "description": "Dashboard statistics payload",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardStatsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation failed"
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message",
+          "error"
+        ]
+      },
+      "ApplyResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "application_123"
+          },
+          "pipelineStage": {
+            "type": "string",
+            "example": "APPLIED"
+          },
+          "status": {
+            "type": "string",
+            "example": "PENDING"
+          },
+          "reviewOutcome": {
+            "type": "string",
+            "enum": [
+              "OK",
+              "NEEDS_REVIEW",
+              "INSUFFICIENT"
+            ],
+            "example": "NEEDS_REVIEW"
+          },
+          "scorecard": {
+            "type": "object",
+            "example": {
+              "summary": "Full-stack developer with strong backend capability.",
+              "capabilities": {
+                "backend": {
+                  "score": 0.82,
+                  "confidence": "high"
+                },
+                "frontend": {
+                  "score": 0.68,
+                  "confidence": "medium"
+                },
+                "devops": {
+                  "score": 0.44,
+                  "confidence": "medium"
+                }
+              },
+              "ownership": {
+                "ownedProjects": 5,
+                "activelyMaintained": 3,
+                "confidence": "medium"
+              },
+              "impact": {
+                "activityLevel": "high",
+                "consistency": "strong",
+                "externalContributions": 12,
+                "confidence": "high"
+              },
+              "reputation": null,
+              "organizations": [],
+              "interactionProfile": null,
+              "stack": {
+                "languages": [
+                  "TypeScript"
+                ],
+                "tools": [
+                  "NestJS"
+                ]
+              },
+              "web3": null
+            }
+          },
+          "skillsGap": {
+            "type": "object",
+            "example": {
+              "requiredSkills": [
+                "Rust",
+                "Solana"
+              ],
+              "matchedTechnologies": [
+                "Solana"
+              ],
+              "missingTechnologies": [
+                "Rust"
+              ],
+              "gaps": [
+                {
+                  "skill": "Rust",
+                  "severity": "DEALBREAKER"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "pipelineStage",
+          "status"
+        ]
+      },
+      "ApplyDecisionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "SHORTLISTED",
+              "REJECTED",
+              "REVIEWED"
+            ],
+            "description": "The decision status for the application",
+            "example": "SHORTLISTED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AdvanceStageDto": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "REVIEWED",
+              "SHORTLISTED",
+              "INTERVIEW_HR",
+              "INTERVIEW_TECHNICAL",
+              "INTERVIEW_FINAL",
+              "OFFER",
+              "HIRED",
+              "REJECTED"
+            ],
+            "example": "INTERVIEW_HR",
+            "description": "Next pipeline stage"
+          },
+          "note": {
+            "type": "string",
+            "example": "Strong communication skills",
+            "description": "Optional HR note"
+          }
+        },
+        "required": [
+          "stage"
+        ]
+      },
+      "PreviewScorecardRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ScorecardUiDto": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string",
+                "description": "GitHub username of the candidate"
+              },
+              "avatarUrl": {
+                "type": "string",
+                "format": "uri"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "username",
+              "summary"
+            ]
+          },
+          "score": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "percentile": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "isWithheld": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value"
+                ]
+              }
+            },
+            "required": [
+              "value",
+              "percentile",
+              "isWithheld"
+            ]
+          },
+          "trust": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string"
+              },
+              "risk": {
+                "type": "string",
+                "enum": [
+                  "LOW_RISK",
+                  "MEDIUM_RISK",
+                  "HIGH_RISK",
+                  "INSUFFICIENT_DATA"
+                ]
+              },
+              "label": {
+                "type": "string"
+              },
+              "guidance": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "level",
+              "risk",
+              "label",
+              "guidance"
+            ]
+          },
+          "insights": {
+            "type": "object",
+            "properties": {
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "enum": [
+                        "backend",
+                        "frontend",
+                        "devops"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "score": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "displayScore": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "confidence": {
+                      "type": "string"
+                    },
+                    "strength": {
+                      "type": "string",
+                      "enum": [
+                        "strong",
+                        "moderate",
+                        "weak"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "label",
+                    "score",
+                    "displayScore",
+                    "confidence",
+                    "strength"
+                  ]
+                }
+              },
+              "highlights": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "gaps": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "caveats": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "ownership": {
+                "type": "object",
+                "properties": {
+                  "ownedProjects": {
+                    "type": "number"
+                  },
+                  "activelyMaintained": {
+                    "type": "number"
+                  },
+                  "confidence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ownedProjects",
+                  "activelyMaintained",
+                  "confidence"
+                ]
+              },
+              "impact": {
+                "type": "object",
+                "properties": {
+                  "activityLevel": {
+                    "type": "string"
+                  },
+                  "consistency": {
+                    "type": "string"
+                  },
+                  "externalContributions": {
+                    "type": "number"
+                  },
+                  "confidence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "activityLevel",
+                  "consistency",
+                  "externalContributions",
+                  "confidence"
+                ]
+              },
+              "reputation": {
+                "nullable": true
+              },
+              "privateWorkNote": {
+                "type": "string"
+              },
+              "organizations": {
+                "type": "array",
+                "items": {}
+              },
+              "interactionProfile": {
+                "nullable": true
+              },
+              "stack": {
+                "type": "object",
+                "properties": {
+                  "languages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "languages",
+                  "tools"
+                ]
+              },
+              "web3": {
+                "nullable": true
+              }
+            },
+            "required": [
+              "capabilities",
+              "highlights",
+              "gaps",
+              "caveats",
+              "ownership",
+              "impact"
+            ]
+          }
+        },
+        "required": [
+          "profile",
+          "score",
+          "trust",
+          "insights"
+        ]
+      },
+      "ScorecardErrorResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ScorecardRawResponseDto": {},
+      "CreateAnalysisDto": {
+        "type": "object",
+        "properties": {
+          "githubUsername": {
+            "type": "string"
+          },
+          "walletAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          }
+        }
+      },
+      "JobQueueResponseDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "example": "12345",
+            "description": "BullMQ job ID"
+          }
+        },
+        "required": [
+          "jobId"
+        ]
+      },
+      "AnalysisErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation failed"
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message",
+          "error"
+        ]
+      },
+      "RecomputeAnalysisDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "7b986a14-4f1b-4330-8120-f0ec4342c7ec"
+          },
+          "force": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "userId",
+          "force"
+        ]
+      },
+      "JobResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cma9x1k2p0000qwert123"
+          },
+          "title": {
+            "type": "string",
+            "example": "Senior Backend Engineer"
+          },
+          "description": {
+            "type": "string",
+            "example": "We are looking for a NestJS expert to build scalable APIs..."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_PAYMENT",
+              "ACTIVE",
+              "CLOSED_PENDING",
+              "CLOSED"
+            ],
+            "example": "ACTIVE",
+            "description": "Job status"
+          },
+          "companyId": {
+            "type": "string",
+            "example": "company_123"
+          },
+          "roleType": {
+            "type": "string",
+            "enum": [
+              "BACKEND",
+              "FRONTEND",
+              "FULLSTACK",
+              "INFRASTRUCTURE",
+              "DATA_ML",
+              "SMART_CONTRACT",
+              "WEB3_BACKEND",
+              "WEB3_FRONTEND",
+              "WEB3_FULLSTACK",
+              "DEFI_PROTOCOL",
+              "SECURITY_WEB3",
+              "SECURITY",
+              "GENERALIST"
+            ],
+            "example": "BACKEND"
+          },
+          "seniorityLevel": {
+            "type": "string",
+            "enum": [
+              "JUNIOR",
+              "MID",
+              "SENIOR",
+              "LEAD"
+            ],
+            "example": "SENIOR"
+          },
+          "isWeb3Role": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-04-27T10:00:00.000Z"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-04-27T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "status",
+          "companyId",
+          "roleType",
+          "seniorityLevel",
+          "isWeb3Role",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "JobStatusResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "pending"
+          },
+          "stage": {
+            "type": "string",
+            "example": "queued"
+          },
+          "progress": {
+            "type": "number",
+            "example": 45
+          },
+          "failureReason": {
+            "type": "string",
+            "example": null
+          }
+        },
+        "required": [
+          "status",
+          "stage",
+          "progress"
+        ]
+      },
+      "JobResultResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "completed"
+          },
+          "progress": {
+            "type": "number",
+            "example": 100
+          },
+          "result": {
+            "type": "object",
+            "description": "Final computed analysis result",
+            "example": {
+              "summary": "Full-stack developer with strong backend capability.",
+              "capabilities": {
+                "backend": {
+                  "score": 0.82,
+                  "confidence": "high"
+                },
+                "frontend": {
+                  "score": 0.68,
+                  "confidence": "medium"
+                },
+                "devops": {
+                  "score": 0.44,
+                  "confidence": "medium"
+                }
+              },
+              "ownership": {
+                "ownedProjects": 5,
+                "activelyMaintained": 3,
+                "confidence": "medium"
+              },
+              "impact": {
+                "activityLevel": "high",
+                "consistency": "strong",
+                "externalContributions": 12,
+                "confidence": "high"
+              },
+              "reputation": null,
+              "privateWorkNote": null,
+              "organizations": [],
+              "interactionProfile": null,
+              "stack": {
+                "languages": [
+                  "TypeScript"
+                ],
+                "tools": [
+                  "NestJS",
+                  "PostgreSQL"
+                ]
+              },
+              "web3": null
+            }
+          },
+          "error": {
+            "type": "string",
+            "example": "Some error occurred"
+          }
+        },
+        "required": [
+          "status",
+          "progress"
+        ]
+      },
+      "CreateJobDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Senior NestJS Engineer"
+          },
+          "description": {
+            "type": "string",
+            "example": "We are looking for a senior engineer to join our team."
+          },
+          "location": {
+            "type": "string",
+            "example": "Remote"
+          },
+          "employmentType": {
+            "type": "string",
+            "example": "Full-time"
+          },
+          "bonusAmount": {
+            "type": "number",
+            "example": 1000
+          },
+          "currency": {
+            "type": "string",
+            "example": "USD"
+          },
+          "roleType": {
+            "type": "string",
+            "enum": [
+              "BACKEND",
+              "FRONTEND",
+              "FULLSTACK",
+              "INFRASTRUCTURE",
+              "DATA_ML",
+              "SMART_CONTRACT",
+              "WEB3_BACKEND",
+              "WEB3_FRONTEND",
+              "WEB3_FULLSTACK",
+              "DEFI_PROTOCOL",
+              "SECURITY_WEB3",
+              "SECURITY",
+              "GENERALIST"
+            ],
+            "description": "Primary role category for this opening."
+          }
+        },
+        "required": [
+          "title",
+          "description"
+        ]
+      },
+      "ParseJobDescriptionDto": {
+        "type": "object",
+        "properties": {
+          "jdText": {
+            "type": "string",
+            "example": "We are looking for a Senior Backend Engineer proficient in NestJS and PostgreSQL..."
+          }
+        },
+        "required": [
+          "jdText"
+        ]
+      },
+      "ParseJdResponseDto": {
+        "type": "object",
+        "properties": {
+          "parsed": {
+            "type": "object",
+            "description": "AI parsed structured requirements",
+            "example": {
+              "skills": [
+                "Node.js",
+                "NestJS",
+                "PostgreSQL"
+              ],
+              "seniority": "SENIOR",
+              "parserConfidence": 0.82
+            }
+          },
+          "requiresReview": {
+            "type": "boolean",
+            "description": "Whether manual review is recommended",
+            "example": false
+          },
+          "diff": {
+            "type": "object",
+            "description": "Diff summary of extracted requirements",
+            "example": {
+              "added": [
+                "GraphQL"
+              ],
+              "removed": [],
+              "changedWeights": [
+                "ownershipWeight"
+              ]
+            }
+          }
+        },
+        "required": [
+          "parsed",
+          "requiresReview",
+          "diff"
+        ]
+      },
+      "ParsedJobRequirementsSwaggerDto": {
+        "type": "object",
+        "properties": {
+          "requiredSkills": {
+            "description": "Technologies required for the role",
+            "example": [
+              "Node.js",
+              "NestJS",
+              "PostgreSQL"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requiredRoleType": {
+            "type": "string",
+            "enum": [
+              "BACKEND",
+              "FRONTEND",
+              "FULLSTACK",
+              "INFRASTRUCTURE",
+              "DATA_ML",
+              "SMART_CONTRACT",
+              "WEB3_BACKEND",
+              "WEB3_FRONTEND",
+              "WEB3_FULLSTACK",
+              "DEFI_PROTOCOL",
+              "SECURITY_WEB3",
+              "SECURITY",
+              "GENERALIST"
+            ],
+            "example": "BACKEND",
+            "description": "Primary role type expected for the candidate"
+          },
+          "seniorityLevel": {
+            "type": "string",
+            "enum": [
+              "JUNIOR",
+              "MID",
+              "SENIOR",
+              "LEAD"
+            ],
+            "example": "SENIOR",
+            "description": "Expected seniority level"
+          },
+          "collaborationWeight": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ],
+            "example": "HIGH",
+            "description": "Importance of collaboration skills"
+          },
+          "ownershipWeight": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ],
+            "example": "MEDIUM",
+            "description": "Importance of ownership/autonomy"
+          },
+          "innovationWeight": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ],
+            "example": "LOW",
+            "description": "Importance of innovation and creativity"
+          },
+          "isWeb3Role": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether this role is Web3-related"
+          },
+          "parserConfidence": {
+            "type": "number",
+            "example": 0.82,
+            "description": "Confidence score from the AI parser (0 to 1). Values below ~0.75 should be reviewed manually.",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "requiredSkills",
+          "requiredRoleType",
+          "seniorityLevel",
+          "collaborationWeight",
+          "ownershipWeight",
+          "innovationWeight",
+          "isWeb3Role",
+          "parserConfidence"
+        ]
+      },
+      "LoginResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AuthEmplErrorResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "description": "Valid email address",
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "username": {
+            "description": "Unique username",
+            "type": "string",
+            "minLength": 3
+          },
+          "password": {
+            "minLength": 8,
+            "allOf": [
+              {
+                "pattern": "[A-Z]"
+              },
+              {
+                "pattern": "[0-9]"
+              },
+              {
+                "pattern": "[^A-Za-z0-9]"
+              }
+            ],
+            "description": "Secure password with complexity requirements"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CANDIDATE",
+              "RECRUITER"
+            ],
+            "description": "User role in the system"
+          }
+        },
+        "required": [
+          "password",
+          "role"
+        ]
+      },
+      "VerifyEmailDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "6-digit verification code sent to the users email"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "LoginDtoSchema": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Email or username"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "description": "Secret password"
+          }
+        },
+        "required": [
+          "identifier",
+          "password"
+        ]
+      },
+      "OnboardingDto": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 20,
+            "description": "Unique public username"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      },
+      "RequestPasswordResetDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+            "description": "Account email address"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Password reset token received via email"
+          },
+          "newPassword": {
+            "minLength": 8,
+            "allOf": [
+              {
+                "pattern": "[A-Z]"
+              },
+              {
+                "pattern": "[0-9]"
+              },
+              {
+                "pattern": "[^A-Za-z0-9]"
+              }
+            ],
+            "description": "New secure password"
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
+      "ActivateMfaDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 6,
+            "description": "6-digit MFA code"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "VerifyMfaDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Internal User ID"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 6,
+            "description": "6-digit MFA code"
+          },
+          "mfaToken": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Temporary MFA session token"
+          }
+        },
+        "required": [
+          "userId",
+          "code",
+          "mfaToken"
+        ]
+      },
+      "VerifyMfaRecoveryDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Internal User ID"
+          },
+          "backupCode": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 8,
+            "description": "8-character recovery code"
+          },
+          "mfaToken": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Temporary MFA session token"
+          }
+        },
+        "required": [
+          "userId",
+          "backupCode",
+          "mfaToken"
+        ]
+      },
+      "CompanyJobsCountDto": {
+        "type": "object",
+        "properties": {
+          "jobPosts": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "jobPosts"
+        ]
+      },
+      "CompanyProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "walletAddress": {
+            "type": "string"
+          },
+          "smartAccountAddress": {
+            "type": "string"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "_count": {
+            "$ref": "#/components/schemas/CompanyJobsCountDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "country",
+          "walletAddress",
+          "smartAccountAddress",
+          "isVerified",
+          "createdAt",
+          "updatedAt",
+          "_count"
+        ]
+      },
+      "RegisterEmployerWaitlistDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "hiring@acme.com"
+          },
+          "companyName": {
+            "type": "string",
+            "example": "Acme Corp"
+          },
+          "website": {
+            "type": "string",
+            "example": "https://acme.com"
+          },
+          "rolesHiring": {
+            "example": [
+              "Frontend Developer",
+              "Designer"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "otherRolesText": {
+            "type": "string",
+            "example": "Legal, Finance, Operations"
+          },
+          "usesGithub": {
+            "type": "boolean",
+            "example": true
+          },
+          "evalTools": {
+            "type": "string",
+            "example": "Greenhouse, Notion, Loom"
+          },
+          "needsOtherRoleTools": {
+            "type": "boolean",
+            "example": true
+          },
+          "companyTypes": {
+            "example": [
+              "Startup",
+              "Web3 / Crypto"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "teamSize": {
+            "type": "string",
+            "example": "11–50"
+          },
+          "socialLinks": {
+            "type": "string",
+            "example": "https://linkedin.com/in/jane"
+          }
+        },
+        "required": [
+          "email",
+          "companyName"
+        ]
+      },
+      "AuthAccountDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "example": "google"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-01-01T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "provider",
+          "createdAt"
+        ]
+      },
+      "UserProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string"
+          },
+          "accountStatus": {
+            "type": "string"
+          },
+          "isEmailVerified": {
+            "type": "boolean"
+          },
+          "mfaEnabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "authAccounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthAccountDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "username",
+          "firstName",
+          "lastName",
+          "name",
+          "role",
+          "accountStatus",
+          "isEmailVerified",
+          "mfaEnabled",
+          "createdAt",
+          "updatedAt",
+          "authAccounts"
+        ]
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CooldownItemDto": {
+        "type": "object",
+        "properties": {
+          "cooldownUntil": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "cooldownUntil"
+        ]
+      },
+      "CooldownResponseDto": {
+        "type": "object",
+        "properties": {
+          "github": {
+            "$ref": "#/components/schemas/CooldownItemDto"
+          },
+          "wallet": {
+            "$ref": "#/components/schemas/CooldownItemDto"
+          },
+          "generate": {
+            "$ref": "#/components/schemas/CooldownItemDto"
+          }
+        },
+        "required": [
+          "github",
+          "wallet",
+          "generate"
+        ]
+      },
+      "SimpleMessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "CandidateProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerPath": {
+            "type": "number"
+          },
+          "scorecard": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "vouches": {
+            "type": "object",
+            "nullable": true
+          },
+          "devProfile": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "bio",
+          "location",
+          "website",
+          "careerPath",
+          "scorecard",
+          "createdAt",
+          "vouches",
+          "devProfile"
+        ]
+      },
+      "UpdateCandidateDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "GithubConnectionResponseDto": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "github": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "connected",
+          "github"
+        ]
+      },
+      "Web3ConnectionResponseDto": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "web3": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "connected",
+          "web3"
+        ]
+      },
+      "RegisterWaitlistDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "candidate@example.com"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "RegisterNonDevWaitlistDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "jane@company.com"
+          },
+          "name": {
+            "type": "string",
+            "example": "Jane Smith"
+          },
+          "role": {
+            "type": "string",
+            "example": "Designer"
+          },
+          "otherRole": {
+            "type": "string",
+            "example": "Operations Manager"
+          },
+          "tools": {
+            "type": "string",
+            "example": "Figma, Notion, Linear, Salesforce"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ConfirmVouchDto": {
+        "type": "object",
+        "properties": {
+          "candidateIdentifier": {
+            "type": "string",
+            "description": "Identifier of the candidate",
+            "example": "octocat"
+          },
+          "message": {
+            "type": "string",
+            "description": "Endorsement message",
+            "example": "Great engineer"
+          },
+          "txSignature": {
+            "type": "string",
+            "description": "Transaction signature",
+            "example": "5Nf7abcXYZ123..."
+          }
+        },
+        "required": [
+          "candidateIdentifier",
+          "message",
+          "txSignature"
+        ]
+      },
+      "VouchResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "vouch_123"
+          },
+          "candidateId": {
+            "type": "string",
+            "example": "candidate_456"
+          },
+          "voucherWallet": {
+            "type": "string",
+            "example": "9xQeWvG816bUx9EP..."
+          },
+          "message": {
+            "type": "string",
+            "example": "Great engineer, highly recommend"
+          },
+          "txSignature": {
+            "type": "string",
+            "example": "5Nf7...abc"
+          },
+          "weight": {
+            "type": "string",
+            "description": "Quality weight of the voucher",
+            "example": "verified"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "confirmedAt": {
+            "type": "string",
+            "example": "2026-04-23T10:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-10-20T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "candidateId",
+          "voucherWallet",
+          "message",
+          "txSignature",
+          "weight",
+          "isActive",
+          "confirmedAt",
+          "expiresAt"
+        ]
+      },
+      "VoucherErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation failed"
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message",
+          "error"
+        ]
+      },
+      "RevokeVouchDto": {
+        "type": "object",
+        "properties": {
+          "voucherWallet": {
+            "type": "string",
+            "description": "Wallet address of the original voucher",
+            "example": "9xQeWvG816bUx9EPf9z..."
+          },
+          "signedMessage": {
+            "type": "string",
+            "description": "Signed message proving ownership. Must sign: \"revoke-vouch:<vouchId>\"",
+            "example": "3f8k2sdf...base58signature"
+          }
+        },
+        "required": [
+          "voucherWallet",
+          "signedMessage"
+        ]
+      },
+      "VouchDataDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Vouch message via body (Phantom uses query param instead)",
+            "example": "We built the MVP together in 3 weeks.",
+            "maxLength": 200
+          }
+        }
+      },
+      "VouchRequestDto": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string",
+            "description": "Voucher wallet address (base58). Phantom injects this automatically. For Swagger testing: paste any valid Solana wallet address.",
+            "example": "7fZkMnPs3Q9xWvKdRtLqY2AbCdEfGhIj4KlMnOpQrSt"
+          },
+          "data": {
+            "description": "Vouch message via body. If message query param is present, query param takes priority. Phantom sends message as query param from the href template.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VouchDataDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "account"
+        ]
+      },
+      "ChallengeResponseDto": {
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "type": "string",
+            "description": "Cryptographic challenge string used to verify wallet ownership",
+            "example": "link-wallet:user123:1713940000000:a1b2c3"
+          }
+        },
+        "required": [
+          "challenge"
+        ]
+      },
+      "WalletSyncErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          },
+          "message": {
+            "type": "object",
+            "example": "Validation failed"
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message",
+          "error"
+        ]
+      },
+      "LinkWalletRequestDto": {
+        "type": "object",
+        "properties": {
+          "walletAddress": {
+            "type": "string",
+            "description": "Solana wallet public address (Base58 encoded)",
+            "example": "7Gg3xYzExampleSolanaWalletAddress123"
+          },
+          "signature": {
+            "type": "string",
+            "description": "Base58 encoded signature of the challenge signed by the wallet private key",
+            "example": "5hK9xExampleSignatureBase58EncodedString"
+          },
+          "message": {
+            "type": "string",
+            "description": "The plaintext message that was signed",
+            "example": "Link Solana wallet to 16Signals\nUser: user123\nTimestamp: 1713940000000"
+          }
+        },
+        "required": [
+          "walletAddress",
+          "signature"
+        ]
+      },
+      "LinkWalletResponseDto": {
+        "type": "object",
+        "properties": {
+          "linked": {
+            "type": "boolean",
+            "description": "Indicates whether wallet was successfully linked",
+            "example": true
+          },
+          "solanaAddress": {
+            "type": "string",
+            "description": "Linked Solana wallet address",
+            "example": "7Gg3xYzExampleSolanaWalletAddress123"
+          }
+        },
+        "required": [
+          "linked",
+          "solanaAddress"
+        ]
+      },
+      "ConfirmFundedDto": {
+        "type": "object",
+        "properties": {
+          "jobPostId": {
+            "type": "string",
+            "description": "Job post whose on-chain escrow was funded by the employer.",
+            "example": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+            "format": "uuid"
+          },
+          "escrowAddress": {
+            "type": "string",
+            "description": "Derived escrow PDA funded on-chain.",
+            "example": "7eJ8hYqH6q6Gdfrb2uP83L6eJrwGQXSjQ2E6H6n8ZCwK",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]+$"
+          }
+        },
+        "required": [
+          "jobPostId",
+          "escrowAddress"
+        ]
+      },
+      "SetCandidateDto": {
+        "type": "object",
+        "properties": {
+          "jobPostId": {
+            "type": "string",
+            "description": "Funded job post that should receive a candidate wallet.",
+            "example": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+            "format": "uuid"
+          },
+          "candidateWallet": {
+            "type": "string",
+            "description": "Candidate Solana wallet recorded by the on-chain escrow.",
+            "example": "GkYqf7H9jFQpMe6TNz6N6BZkdn4xB8oVeDxXM7dRrM2p",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]+$"
+          }
+        },
+        "required": [
+          "jobPostId",
+          "candidateWallet"
+        ]
+      },
+      "ConfirmResolvedDto": {
+        "type": "object",
+        "properties": {
+          "jobPostId": {
+            "type": "string",
+            "description": "Job post whose escrow resolution was observed on-chain.",
+            "example": "8d4fa8cc-7df5-4f0f-91a2-bc1a9b2b7c11",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "jobPostId"
+        ]
+      }
+    }
+  }
+}

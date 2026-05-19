@@ -1,5 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { IsString, IsBoolean, IsOptional } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
@@ -18,10 +20,13 @@ export const CreateAnalysisSchema = z
 
 export class CreateAnalysisDto extends createZodDto(CreateAnalysisSchema) {}
 
-export const RecomputeAnalysisSchema = z.object({
-  userId: z.string().optional(),
-  force: z.boolean().optional(),
-});
-export class RecomputeAnalysisDto extends createZodDto(
-  RecomputeAnalysisSchema,
-) {}
+export class RecomputeAnalysisDto {
+  @ApiProperty({ example: '7b986a14-4f1b-4330-8120-f0ec4342c7ec' })
+  @IsString()
+  userId: string;
+
+  @ApiProperty({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
+}

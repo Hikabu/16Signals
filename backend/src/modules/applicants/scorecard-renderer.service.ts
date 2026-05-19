@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 export class ScorecardRendererService {
   render(application: any): string {
     const dc = application.decisionCard ?? {};
-    const sc = application.frozenScorecard ?? {}; // source of truth — never pull live data
+    const sc = application.frozenScorecard ?? {}; // source of truth, never pull live data
     const gap = application.gapReport ?? {};
     const job = application.jobPost ?? application.job ?? {};
     const candidate = application.candidate ?? {};
@@ -21,66 +21,41 @@ export class ScorecardRendererService {
           ? '#dc2626'
           : '#d97706';
 
+    const fitTier = application.fitTier ?? '—';
     const fitColor =
-      sc.fitTier === 'STRONG'
+      fitTier === 'STRONG'
         ? '#16a34a'
-        : sc.fitTier === 'PROBE'
+        : fitTier === 'PROBE'
           ? '#d97706'
           : '#6b7280';
 
-    const fraudColor =
-      sc.fraudTier === 'CLEAN'
-        ? '#16a34a'
-        : sc.fraudTier === 'REVIEW'
-          ? '#d97706'
-          : '#dc2626';
+    const capabilities = Object.entries(sc.capabilities ?? {});
+    const stack = sc.stack ?? { languages: [], tools: [] };
 
     const pct = (n: number) => `${Math.round(n)}%`;
     const score = (n: number) => `${Math.round(n ?? 0)}`;
 
-    const languageBar = (langs: any[]) =>
+    const languageBar = (langs: string[]) =>
       langs
-        .slice(0, 6)
+        .slice(0, 8)
         .map(
           (l) => `
+      <span class="tech-chip" style="background:#eff6ff;color:#1d4ed8">${l}</span>`,
+        )
+        .join('');
+
+    const capabilityRows = (caps: any[]) =>
+      caps
+        .map(
+          ([name, cap]) => `
       <div style="margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
-          <span>${l.name}</span><span style="color:#6b7280">${pct(l.percent)}</span>
+          <span>${name}</span><span style="color:#6b7280">${pct((cap.score ?? 0) * 100)} · ${cap.confidence ?? 'low'}</span>
         </div>
         <div style="background:#e5e7eb;border-radius:4px;height:6px">
-          <div style="background:#2563eb;border-radius:4px;height:6px;width:${pct(l.percent)}"></div>
+          <div style="background:#2563eb;border-radius:4px;height:6px;width:${pct((cap.score ?? 0) * 100)}"></div>
         </div>
       </div>`,
-        )
-        .join('');
-
-    const repoList = (repos: any[]) =>
-      repos
-        .slice(0, 5)
-        .map(
-          (r) => `
-      <div class="repo-card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <strong style="font-size:13px">${r.name}</strong>
-          ${r.isOriginal ? '' : '<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px">FORK</span>'}
-          ${r.primaryLanguage ? `<span style="font-size:10px;background:#eff6ff;color:#1d4ed8;padding:1px 6px;border-radius:4px">${r.primaryLanguage}</span>` : ''}
-          ${r.stars > 0 ? `<span style="font-size:11px;color:#6b7280">★ ${r.stars}</span>` : ''}
-        </div>
-        ${r.description ? `<div style="font-size:12px;color:#6b7280">${r.description}</div>` : ''}
-      </div>`,
-        )
-        .join('');
-
-    const dimensionRows = (dims: any[]) =>
-      dims
-        .map(
-          (d) => `
-      <tr>
-        <td>${d.name}</td>
-        <td style="text-align:center;font-family:monospace;font-weight:700">${score(d.score)}</td>
-        <td style="text-align:center;color:#6b7280">${pct(d.weight * 100)}</td>
-        <td style="font-size:11px;color:#6b7280">${(d.signals ?? []).slice(0, 3).join(' · ')}</td>
-      </tr>`,
         )
         .join('');
 
@@ -102,13 +77,14 @@ export class ScorecardRendererService {
         })
         .join('');
 
-    const stats = sc.contributionStats ?? {};
+    const ownership = sc.ownership ?? {};
+    const impact = sc.impact ?? {};
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Scorecard — ${job.title ?? 'Role'} — ${name}</title>
+<title>Scorecard, ${job.title ?? 'Role'}, ${name}</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; color: #111; background: #fff; padding: 40px; max-width: 900px; margin: 0 auto; }
@@ -156,7 +132,7 @@ export class ScorecardRendererService {
   To export as PDF: use your browser's <strong>Print</strong> function and choose <strong>Save as PDF</strong>.
 </div>
 
-<h1>${job.title ?? 'Role'} — Candidate Scorecard</h1>
+<h1>${job.title ?? 'Role'}, Candidate Scorecard</h1>
 <h2>${name}${username ? ' · @' + username : ''} · Generated ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</h2>
 
 <div class="verdict-block">
@@ -165,11 +141,10 @@ export class ScorecardRendererService {
 </div>
 
 <div class="pill-row">
-  <span class="pill" style="background:${fitColor}1a;color:${fitColor}">Fit: ${sc.fitTier ?? '—'}</span>
+  <span class="pill" style="background:${fitColor}1a;color:${fitColor}">Fit: ${fitTier}</span>
   <span class="pill" style="background:#eff6ff;color:#1d4ed8">Score: ${score(sc.roleFitScore ?? application.roleFitScore)}/100</span>
-  <span class="pill" style="background:${fraudColor}1a;color:${fraudColor}">Fraud: ${sc.fraudTier ?? 'CLEAN'}</span>
-  ${sc.confidenceTier ? `<span class="pill" style="background:#f3f4f6;color:#374151">Confidence: ${sc.confidenceTier}</span>` : ''}
-  ${sc.behaviorPattern ? `<span class="pill" style="background:#f3f4f6;color:#374151">${sc.behaviorPattern}</span>` : ''}
+  ${impact.confidence ? `<span class="pill" style="background:#f3f4f6;color:#374151">Impact: ${impact.confidence}</span>` : ''}
+  ${ownership.confidence ? `<span class="pill" style="background:#f3f4f6;color:#374151">Ownership: ${ownership.confidence}</span>` : ''}
 </div>
 
 <!-- ─── HR SECTION ───────────────────────────────────── -->
@@ -197,38 +172,44 @@ ${dc.technicalSummary ? `<div class="box" style="margin-bottom:20px"><p style="f
 
 <h3>Contribution Stats</h3>
 <div class="stat-grid">
-  <div class="stat-box"><div class="stat-n">${stats.totalCommits ?? '—'}</div><div class="stat-l">Commits</div></div>
-  <div class="stat-box"><div class="stat-n">${stats.totalPRs ?? '—'}</div><div class="stat-l">Pull Requests</div></div>
-  <div class="stat-box"><div class="stat-n">${stats.totalReviews ?? '—'}</div><div class="stat-l">Reviews</div></div>
-  <div class="stat-box"><div class="stat-n">${stats.accountAgeDays ? Math.round(stats.accountAgeDays / 365) + 'y' : '—'}</div><div class="stat-l">Account Age</div></div>
+  <div class="stat-box"><div class="stat-n">${ownership.ownedProjects ?? '—'}</div><div class="stat-l">Owned Projects</div></div>
+  <div class="stat-box"><div class="stat-n">${ownership.activelyMaintained ?? '—'}</div><div class="stat-l">Maintained</div></div>
+  <div class="stat-box"><div class="stat-n">${impact.externalContributions ?? '—'}</div><div class="stat-l">External Contributions</div></div>
+  <div class="stat-box"><div class="stat-n">${impact.activityLevel ?? '—'}</div><div class="stat-l">Activity</div></div>
 </div>
 
 ${
-  (sc.languagesUsed ?? []).length > 0
+  capabilities.length > 0
+    ? `
+<h3>Capability Scores</h3>
+<div class="box">${capabilityRows(capabilities)}</div>
+`
+    : ''
+}
+
+${
+  (stack.languages ?? []).length > 0
     ? `
 <h3>Language Profile</h3>
-<div class="box">${languageBar(sc.languagesUsed)}</div>
+<div class="box">${languageBar(stack.languages)}</div>
 `
     : ''
 }
 
 ${
-  (sc.dimensions ?? []).length > 0
+  (stack.tools ?? []).length > 0
     ? `
-<h3>Dimension Scores</h3>
-<table>
-  <thead><tr><th>Dimension</th><th style="text-align:center">Score</th><th style="text-align:center">Weight</th><th>Signals</th></tr></thead>
-  <tbody>${dimensionRows(sc.dimensions)}</tbody>
-</table>
+<h3>Detected Tools</h3>
+<div class="box">${languageBar(stack.tools)}</div>
 `
     : ''
 }
 
 ${
-  (sc.topRepositories ?? []).length > 0
+  sc.privateWorkNote
     ? `
-<h3>Top Repositories</h3>
-${repoList(sc.topRepositories)}
+<h3>Private Work Note</h3>
+<div class="box">${sc.privateWorkNote}</div>
 `
     : ''
 }
@@ -238,9 +219,9 @@ ${
     ? `
 <h3>Web3 Profile</h3>
 <div class="box" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-  <div><div style="font-size:20px;font-weight:800;font-family:monospace">${score(sc.web3.walletScore)}</div><div style="font-size:11px;color:#6b7280;text-transform:uppercase">Wallet Score</div></div>
-  <div><div style="font-size:20px;font-weight:800;font-family:monospace">${sc.web3.transactionCount ?? '—'}</div><div style="font-size:11px;color:#6b7280;text-transform:uppercase">Transactions</div></div>
-  <div style="grid-column:1/-1"><div style="font-size:11px;color:#6b7280;margin-bottom:6px;text-transform:uppercase">Protocols</div>${(sc.web3.protocolsUsed ?? []).map((p: string) => `<span class="tech-chip" style="background:#eff6ff;color:#1d4ed8">${p}</span>`).join('') || '—'}</div>
+  <div><div style="font-size:20px;font-weight:800;font-family:monospace">${sc.web3.ecosystem ?? '—'}</div><div style="font-size:11px;color:#6b7280;text-transform:uppercase">Ecosystem</div></div>
+  <div><div style="font-size:20px;font-weight:800;font-family:monospace">${sc.web3.ecosystemPRs ?? '—'}</div><div style="font-size:11px;color:#6b7280;text-transform:uppercase">Ecosystem PRs</div></div>
+  <div><div style="font-size:20px;font-weight:800;font-family:monospace">${(sc.web3.deployedPrograms ?? []).length}</div><div style="font-size:11px;color:#6b7280;text-transform:uppercase">Programs</div></div>
 </div>
 `
     : ''
@@ -279,7 +260,7 @@ ${
 <div class="not-obs">The following cannot be assessed from code signals alone and require interview assessment: Communication quality · System design thinking · Management capability · Cultural fit · Attitude under pressure · Interview performance.</div>
 
 <div class="footer">
-  Generated by Colosseum — proof-of-talent hiring platform<br>
+  Generated by Colosseum, proof-of-talent hiring platform<br>
   Snapshot captured: ${sc.capturedAt ? new Date(sc.capturedAt).toLocaleString('en-GB') : 'Unknown'} · Exported: ${new Date().toISOString()}
 </div>
 </body></html>`;

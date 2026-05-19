@@ -25,10 +25,9 @@ describe('Auth Lifecycle (e2e)', () => {
     const registerResponse = await request(app.getHttpServer())
       .post('/auth/candidate/register')
       .send(testUser)
-      .expect(302);
+      .expect(202);
 
-    const location = registerResponse.headers.location;
-    expect(location).toContain('/verify?email=');
+    expect(registerResponse.body.success).toBe(true);
 
     // Verify protected route is blocked
     await request(app.getHttpServer())
@@ -44,7 +43,7 @@ describe('Auth Lifecycle (e2e)', () => {
     await request(app.getHttpServer())
       .post('/auth/candidate/register')
       .send(testUser)
-      .expect(302);
+      .expect(202);
 
     // For the sake of the E2E test lifecycle, we'll manually verify the user
     // to test that the login flow then works.

@@ -7,7 +7,22 @@ export class UpdateCandidateDto {
   bio?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  location?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  website?: string;
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   careerPath?: number;
+
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
 }

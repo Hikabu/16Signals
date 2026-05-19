@@ -87,7 +87,7 @@ describe('Auth (e2e)', () => {
       .expect(201);
 
     expect(response.body.success).toBe(true);
-    expect(response.body.data.accessToken).toBeDefined();
+    expect(response.body.data.token).toBeDefined();
 
     const company = await prisma.company.findUnique({
       where: { privyId: 'test-privy-id' },
@@ -102,7 +102,7 @@ describe('Auth (e2e)', () => {
       .set('Authorization', 'Bearer mock-token')
       .send({ walletAddress: '0x123' });
 
-    const token = loginRes.body.data.accessToken;
+    const token = loginRes.body.data.token;
 
     const response = await request(server)
       .get('/me/company')
@@ -119,7 +119,7 @@ describe('Auth (e2e)', () => {
       .set('Authorization', 'Bearer mock-token')
       .send({ walletAddress: '0x123' });
 
-    const token = loginRes.body.data.accessToken;
+    const token = loginRes.body.data.token;
 
     const response = await request(server)
       .post('/jobs/draft')
@@ -141,7 +141,7 @@ describe('Auth (e2e)', () => {
       .set('Authorization', 'Bearer mock-token')
       .send({ walletAddress: '0x123' });
 
-    const token = loginRes.body.data.accessToken;
+    const token = loginRes.body.data.token;
 
     await request(server)
       .post('/jobs/draft')

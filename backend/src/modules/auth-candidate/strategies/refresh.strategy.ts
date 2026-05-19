@@ -21,7 +21,7 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
         (req) => req?.headers?.authorization?.replace('Bearer ', ''),
       ]),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_REFRESH_SECRET'),
+      secretOrKey: config.get<string>('jwt_secret.refresh'),
       passReqToCallback: true,
     });
   }

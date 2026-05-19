@@ -43,6 +43,18 @@ describe('EcosystemClassifierService', () => {
       // Also test with completely absent or invalid input
       expect(service.detectEcosystemIdentity(undefined as any)).toBeNull();
     });
+
+    it('uses interaction affinity when owned repos have no ecosystem identity', () => {
+      const repos = [{ name: 'frontend', topics: ['react'] }];
+
+      expect(
+        service.detectEcosystemIdentity(repos, {
+          topicAffinity: ['solana'],
+          languageAffinity: ['Rust'],
+          ecosystemAffinity: 'solana',
+        }),
+      ).toBe('solana');
+    });
   });
 
   describe('countEcosystemPRs', () => {

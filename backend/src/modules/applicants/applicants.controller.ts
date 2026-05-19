@@ -74,6 +74,55 @@ export class ApplicantsController extends BaseController {
     description: 'Missing jobId',
     type: ErrorResponseDto,
   })
+  @ApiOkResponse({
+    description:
+      'Gap preview with updated scorecard, skills gap, and review outcome.',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          jobId: 'job_123',
+          fitTier: 'PROBE',
+          reviewOutcome: 'NEEDS_REVIEW',
+          roleFitScore: 72,
+          gapSummary:
+            'Review-recommended candidate. High backend capability. Missing Rust experience.',
+          matchedTechnologies: ['Solana'],
+          missingTechnologies: ['Rust'],
+          skillsGap: {
+            requiredSkills: ['Rust', 'Solana'],
+            matchedTechnologies: ['Solana'],
+            missingTechnologies: ['Rust'],
+            gaps: [{ skill: 'Rust', severity: 'DEALBREAKER' }],
+          },
+          scorecard: {
+            summary: 'Backend-focused developer with Solana activity.',
+            capabilities: {
+              backend: { score: 0.82, confidence: 'high' },
+              frontend: { score: 0.42, confidence: 'medium' },
+              devops: { score: 0.51, confidence: 'medium' },
+            },
+            ownership: {
+              ownedProjects: 5,
+              activelyMaintained: 3,
+              confidence: 'high',
+            },
+            impact: {
+              activityLevel: 'high',
+              consistency: 'strong',
+              externalContributions: 12,
+              confidence: 'high',
+            },
+            reputation: null,
+            organizations: [],
+            interactionProfile: null,
+            stack: { languages: ['TypeScript'], tools: ['Anchor'] },
+            web3: { ecosystem: 'solana', ecosystemPRs: 2 },
+          },
+        },
+      },
+    },
+  })
   async getGapPreview(@Req() req: any, @Query('jobId') jobId: string) {
     if (!jobId) throw new BadRequestException('jobId is required');
 
@@ -219,6 +268,7 @@ export class ApplicantsController extends BaseController {
         id: 'app_123',
         hrView: {
           verdict: 'PROCEED',
+          reviewOutcome: 'OK',
           hrSummary: 'Strong candidate with clear career growth',
           reputationNote: 'Verified by 5 peers on-chain',
           appliedAt: '2026-04-20T10:00:00Z',
@@ -232,6 +282,39 @@ export class ApplicantsController extends BaseController {
           risks: ['No experience with high-scale DBs'],
           roleFitScore: 85,
           fitTier: 'STRONG',
+          scorecard: {
+            summary: 'Full-stack developer with strong backend capability.',
+            capabilities: {
+              backend: { score: 0.82, confidence: 'high' },
+              frontend: { score: 0.68, confidence: 'medium' },
+              devops: { score: 0.44, confidence: 'medium' },
+            },
+            ownership: {
+              ownedProjects: 5,
+              activelyMaintained: 3,
+              confidence: 'medium',
+            },
+            impact: {
+              activityLevel: 'high',
+              consistency: 'strong',
+              externalContributions: 12,
+              confidence: 'high',
+            },
+            reputation: null,
+            organizations: [],
+            interactionProfile: null,
+            stack: {
+              languages: ['TypeScript'],
+              tools: ['NestJS', 'PostgreSQL'],
+            },
+            web3: null,
+          },
+          skillsGap: {
+            requiredSkills: ['Rust', 'Solana'],
+            matchedTechnologies: ['Solana'],
+            missingTechnologies: ['Rust'],
+            gaps: [{ skill: 'Rust', severity: 'DEALBREAKER' }],
+          },
         },
         decisionCard: {
           verdict: 'PROCEED',
@@ -352,6 +435,7 @@ export class ApplicantsController extends BaseController {
     summary: 'Get interview questions',
     description:
       'Returns generated interview questions.\n\n' +
+      'Includes the frozen final scorecard and skills gap context used for technical probing.\n\n' +
       'Optional:\n' +
       '- Filter by stage\n' +
       '- Defaults to latest set',
@@ -361,6 +445,41 @@ export class ApplicantsController extends BaseController {
     name: 'stage',
     required: false,
     enum: PipelineStage,
+  })
+  @ApiOkResponse({
+    description:
+      'Interview question set with scorecard and skills gap context.',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          stage: 'INTERVIEW_TECHNICAL',
+          audienceType: 'technical',
+          questions: [
+            {
+              question: 'How would you design a Rust service for this role?',
+              rationale: 'Rust is a required gap.',
+              dimension: 'Technology: Rust',
+              priority: 'MUST_ASK',
+            },
+          ],
+          scorecard: {
+            capabilities: {
+              backend: { score: 0.82, confidence: 'high' },
+              frontend: { score: 0.42, confidence: 'medium' },
+              devops: { score: 0.51, confidence: 'medium' },
+            },
+            stack: { languages: ['TypeScript'], tools: ['Anchor'] },
+            web3: { ecosystem: 'solana' },
+          },
+          skillsGap: {
+            requiredSkills: ['Rust', 'Solana'],
+            matchedTechnologies: ['Solana'],
+            missingTechnologies: ['Rust'],
+          },
+        },
+      },
+    },
   })
   async getInterviewQuestions(
     @Req() req: any,
@@ -375,18 +494,23 @@ export class ApplicantsController extends BaseController {
     });
 
     const interviewQuestions = (rawApp as any)?.interviewQuestions || [];
+    const scorecardContext = {
+      scorecard: (app as any).technicalView?.scorecard ?? null,
+      skillsGap: (app as any).technicalView?.skillsGap ?? null,
+    };
 
     if (!interviewQuestions.length) {
-      return this.handleSuccess({ questionsFound: false });
+      return this.handleSuccess({ questionsFound: false, ...scorecardContext });
     }
 
     if (stage) {
       const match = interviewQuestions.find((q: any) => q.stage === stage);
-      if (match) return this.handleSuccess(match);
+      if (match) return this.handleSuccess({ ...match, ...scorecardContext });
     }
 
-    return this.handleSuccess(
-      interviewQuestions[interviewQuestions.length - 1],
-    );
+    return this.handleSuccess({
+      ...interviewQuestions[interviewQuestions.length - 1],
+      ...scorecardContext,
+    });
   }
 }

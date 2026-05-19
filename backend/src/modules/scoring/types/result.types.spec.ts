@@ -24,6 +24,8 @@ describe('Scoring Types Verification', () => {
         languages: [],
         tools: [],
       },
+      organizations: [],
+      interactionProfile: null,
       web3: null,
     };
     expect(result.summary).toBeDefined();

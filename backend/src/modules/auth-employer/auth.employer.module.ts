@@ -4,8 +4,8 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthEmployerService } from './auth.employer.service';
 import { AuthEmployerController } from './auth.employer.controller';
-import { PrivyService } from './privy.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { EmployerRefreshStrategy } from './strategies/refresh.strategy';
 
 @Module({
   imports: [
@@ -13,13 +13,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService): JwtModuleOptions => ({
-        secret: config.get<string>('JWT_SECRET'),
+        secret: config.get<string>('JWT_ACCESS_SECRET'),
         signOptions: { expiresIn: '15m' },
       }),
     }),
   ],
   controllers: [AuthEmployerController],
-  providers: [AuthEmployerService, PrivyService, JwtStrategy],
+  providers: [AuthEmployerService, JwtStrategy, EmployerRefreshStrategy],
   exports: [AuthEmployerService],
 })
 export class AuthEmployerModule {}

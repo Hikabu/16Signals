@@ -46,6 +46,8 @@ describe('CacheService', () => {
       languages: [],
       tools: [],
     },
+    organizations: [],
+    interactionProfile: null,
     web3: null,
     reputation: null,
   };

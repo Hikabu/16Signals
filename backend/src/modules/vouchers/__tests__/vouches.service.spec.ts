@@ -98,13 +98,12 @@ describe('VouchesService', () => {
         update: jest.fn().mockResolvedValue({ id: 'vouch-1', isActive: false }),
       },
       candidate: {
+        findUnique: jest.fn().mockResolvedValue({
+          devProfile: {
+            web3Profile: { solanaAddress: VOUCHER_WALLET },
+          },
+        }),
         findFirst: jest.fn().mockResolvedValue(CANDIDATE),
-      },
-      // confirmVouch resolves the caller's wallet from web3Profile
-      web3Profile: {
-        findUnique: jest
-          .fn()
-          .mockResolvedValue({ solanaAddress: VOUCHER_WALLET }),
       },
     };
 
@@ -130,9 +129,11 @@ describe('VouchesService', () => {
   describe('confirmVouch Anti-Abuse', () => {
     // 7. voucherWallet === candidate.devProfile.web3Profile.walletAddress → 400 self-vouch
     it('throws BadRequestException for self-vouching', async () => {
-      // Override web3Profile to return the candidate's own wallet
-      mockPrisma.web3Profile.findUnique.mockResolvedValue({
-        solanaAddress: CANDIDATE_WALLET,
+      // Override caller profile to return the target candidate's own wallet
+      mockPrisma.candidate.findUnique.mockResolvedValue({
+        devProfile: {
+          web3Profile: { solanaAddress: CANDIDATE_WALLET },
+        },
       });
       await expect(
         service.confirmVouch(BASE_INPUT, 'user-abc'),
