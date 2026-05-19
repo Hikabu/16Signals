@@ -10,7 +10,6 @@ import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as multer from 'multer';
 
 const logger = new Logger('Bootstrap');
 
@@ -69,26 +68,23 @@ async function bootstrap() {
     )
     .build();
 
- if (process.env.NODE_ENV !== 'production') {
-  const document = SwaggerModule.createDocument(app, config);
-  const cleanedDocument = cleanupOpenApiDoc(document);
+  if (process.env.NODE_ENV !== 'production') {
+    const document = SwaggerModule.createDocument(app, config);
+    const cleanedDocument = cleanupOpenApiDoc(document);
 
-  SwaggerModule.setup('api/docs', app, cleanedDocument, {
-    swaggerOptions: {
-      requestSnippetsEnabled: true,
-    },
-  });
+    SwaggerModule.setup('api/docs', app, cleanedDocument, {
+      swaggerOptions: {
+        requestSnippetsEnabled: true,
+      },
+    });
 
-  // EXPORT OPENAPI.JSON
-  const outputPath = path.resolve(process.cwd(), 'openapi.json');
+    // EXPORT OPENAPI.JSON
+    const outputPath = path.resolve(process.cwd(), 'openapi.json');
 
-  fs.writeFileSync(
-    outputPath,
-    JSON.stringify(cleanedDocument, null, 2),
-  );
+    fs.writeFileSync(outputPath, JSON.stringify(cleanedDocument, null, 2));
 
-  logger.log(`OpenAPI spec exported to ${outputPath}`);
-}
+    logger.log(`OpenAPI spec exported to ${outputPath}`);
+  }
 
   const port = process.env.PORT || 8080;
   await app.listen(port, '0.0.0.0');

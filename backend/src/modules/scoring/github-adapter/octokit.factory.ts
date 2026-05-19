@@ -61,13 +61,13 @@ export class OctokitFactory {
           const token = decrypt(data, key);
           this.logger.debug({ userId }, 'octokit_using_user_token');
           const octokit = new Octokit({
-  auth: token,
-  request: {
-    headers: {
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  },
-});
+            request: {
+              headers: {
+                authorization: `token ${token}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+              },
+            },
+          });
           (octokit as any).__githubTokenSource = 'user';
           return octokit;
         } catch (err: any) {
@@ -100,13 +100,13 @@ export class OctokitFactory {
       'octokit_using_system_token',
     );
     const octokit = new Octokit({
-  auth: systemToken,
-  request: {
-    headers: {
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  },
-});
+      request: {
+        headers: {
+          authorization: `token ${systemToken}`,
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      },
+    });
     (octokit as any).__githubTokenSource = 'system';
     return octokit;
   }

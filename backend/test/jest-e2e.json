@@ -10,6 +10,8 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
+    "^octokit$": "<rootDir>/mocks/octokit.ts",
+    "^@octokit/app$": "<rootDir>/mocks/octokit-app.ts",
     "^src/(.*)$": "<rootDir>/../src/$1"
   },
   "transformIgnorePatterns": [

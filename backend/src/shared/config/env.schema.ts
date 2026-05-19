@@ -53,10 +53,8 @@ export const envSchema = z.object({
   RECLAIM_APP_SECRET: z.string().optional(),
 
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
-CLOUDINARY_API_KEY: z.string().optional(),
-CLOUDINARY_API_SECRET: z.string().optional(),
-
-
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
 });
 
 // export function validateEnv(config: Record<string, unknown>) {

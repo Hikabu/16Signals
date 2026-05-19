@@ -1,4 +1,7 @@
+import { config as loadEnv } from 'dotenv';
+
 process.env.NODE_ENV = 'test';
+loadEnv({ quiet: true });
 
 process.env.DATABASE_URL ??=
   'postgresql://postgres:strong@localhost:5432/16signals?schema=public&connection_limit=5&connect_timeout=10';
@@ -19,6 +22,8 @@ process.env.AUTH_ENCRYPTION_KEY =
 process.env.ENCRYPTION_KEY =
   '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 process.env.INTERNAL_API_KEY ??= 'test-internal-key';
+process.env.GITHUB_APP_ID ??= '1';
+process.env.GITHUB_PRIVATE_KEY ??= 'test-key';
 process.env.GITHUB_SYSTEM_TOKEN ??= 'test-github-system-token';
 process.env.PRIVY_APP_ID ??= 'test-privy-app';
 process.env.PRIVY_SECRET ??= 'test-privy-secret';
@@ -40,8 +45,7 @@ jest.mock('../src/modules/auth-employer/privyAuth', () => ({
     return {
       privyUserId:
         token === 'mock-token' ? 'test-privy-id' : 'did:privy:test-user-123',
-      email:
-        token === 'mock-token' ? 'test@example.com' : 'valeriia@test.com',
+      email: token === 'mock-token' ? 'test@example.com' : 'valeriia@test.com',
       walletAddress:
         token === 'mock-token'
           ? '0x123'
