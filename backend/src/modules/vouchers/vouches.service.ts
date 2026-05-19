@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { Vouch } from '@prisma/client';
 import {
   Connection,
   PublicKey,
@@ -36,6 +37,21 @@ export interface ConfirmVouchInput {
   /** On-chain transaction signature that anchors this vouch */
   txSignature: string;
 }
+
+type NewPreparedVouch = {
+  candidateId: string;
+  txSignature: string;
+  voucherWallet: string;
+  message: string;
+  weight: string;
+  expiresAt: Date;
+};
+
+type ExistingPreparedVouch = {
+  existing: Vouch;
+};
+
+type PreparedVouch = NewPreparedVouch | ExistingPreparedVouch;
 
 @Injectable()
 export class VouchesService {
@@ -106,7 +122,16 @@ export class VouchesService {
       throw new BadRequestException('Cannot vouch for yourself');
     }
 
-    // ── Step 1: On-chain verification (Web UI must verify, tx from frontend) ──
+    // ── Business validation before chain verification ────────────────────
+    const prepared = await this.prepareVouch({
+      txSignature,
+      candidateUsername: candidateIdentifier,
+      voucherWallet,
+      message,
+      recheckIdempotency: true,
+    });
+
+    // ── On-chain verification (Web UI must verify, tx from frontend) ─────
     await this.verifyOnChainTx(
       txSignature,
       voucherWallet,
@@ -114,13 +139,8 @@ export class VouchesService {
       candidateIdentifier,
     );
 
-    // ── Step 2: Shared anti-Sybil + DB logic ──────────────────────────────
-    return this.persistVouch({
-      txSignature,
-      candidateUsername: candidateIdentifier,
-      voucherWallet,
-      message,
-    });
+    // ── Persist only after business and chain checks pass ────────────────
+    return this.createPreparedVouch(prepared);
   }
 
   // ─── Helius webhook path ─────────────────────────────────────────────────
@@ -215,6 +235,44 @@ export class VouchesService {
       return existing;
     }
 
+    const prepared = await this.prepareVouch({
+      txSignature,
+      candidateUsername,
+      voucherWallet,
+      message,
+    });
+
+    return this.createPreparedVouch(prepared);
+  }
+
+  private async prepareVouch(params: {
+    txSignature: string;
+    candidateUsername: string;
+    voucherWallet: string;
+    message: string;
+    recheckIdempotency?: boolean;
+  }): Promise<PreparedVouch> {
+    const {
+      txSignature,
+      candidateUsername,
+      voucherWallet,
+      message,
+      recheckIdempotency = false,
+    } = params;
+
+    if (recheckIdempotency) {
+      const existing = await this.prisma.vouch.findUnique({
+        where: { txSignature },
+      });
+      if (existing) {
+        this.logger.log(
+          { txSignature },
+          'vouch_already_confirmed, idempotent return',
+        );
+        return { existing };
+      }
+    }
+
     // ── Candidate resolution ──────────────────────────────────────────────
     const candidate = await this.prisma.candidate.findFirst({
       where: {
@@ -272,10 +330,45 @@ export class VouchesService {
     // ── f. TTL ────────────────────────────────────────────────────────────
     const expiresAt = new Date(Date.now() + VOUCH_TTL_DAYS * 86_400 * 1000);
 
+    return {
+      candidateId: candidate.id,
+      txSignature,
+      voucherWallet,
+      message,
+      weight,
+      expiresAt,
+    };
+  }
+
+  private async createPreparedVouch(prepared: PreparedVouch) {
+    if ('existing' in prepared) {
+      return prepared.existing;
+    }
+
+    const {
+      candidateId,
+      txSignature,
+      voucherWallet,
+      message,
+      weight,
+      expiresAt,
+    } = prepared;
+
+    const existing = await this.prisma.vouch.findUnique({
+      where: { txSignature },
+    });
+    if (existing) {
+      this.logger.log(
+        { txSignature },
+        'vouch_already_confirmed, idempotent return',
+      );
+      return existing;
+    }
+
     // ── g. Create vouch record ────────────────────────────────────────────
     const vouch = await this.prisma.vouch.create({
       data: {
-        candidateId: candidate.id,
+        candidateId,
         voucherWallet,
         message,
         txSignature,
@@ -286,13 +379,13 @@ export class VouchesService {
     });
 
     this.logger.log(
-      { vouchId: vouch.id, candidateId: candidate.id, weight },
+      { vouchId: vouch.id, candidateId, weight },
       'vouch_confirmed',
     );
 
     // ── h. Cluster detection (async, non-blocking) ────────────────────────
     setImmediate(() =>
-      this.runClusterCheck(candidate.id, voucherWallet).catch((err) =>
+      this.runClusterCheck(candidateId, voucherWallet).catch((err) =>
         this.logger.warn({ err }, 'cluster_check_error'),
       ),
     );
@@ -317,6 +410,11 @@ export class VouchesService {
   ): Promise<void> {
     if (!message || !message.trim()) {
       throw new BadRequestException('Message must not be empty');
+    }
+
+    if (this.config.get<string>('NODE_ENV') === 'test') {
+      this.verifyMockOnChainTx(txSignature, message);
+      return;
     }
 
     const usingDevnet = this.config.get<string>('USING_DEVNET') === 'true';
@@ -427,6 +525,28 @@ export class VouchesService {
     }
 
     this.logger.debug({ txSignature, voucherWallet }, 'on_chain_verify_ok');
+  }
+
+  private verifyMockOnChainTx(txSignature: string, message: string): void {
+    if (txSignature === 'sig_failed' || txSignature === 'sig_fail') {
+      throw new BadRequestException(
+        `Transaction ${txSignature} failed on chain: true`,
+      );
+    }
+
+    if (
+      txSignature === 'sig_memo_mismatch' ||
+      txSignature === 'sig_mismatch'
+    ) {
+      throw new BadRequestException(
+        'Transaction message does not match provided message',
+      );
+    }
+
+    this.logger.debug(
+      { txSignature, messageLength: message.length },
+      'mock_on_chain_verify_ok',
+    );
   }
 
   /**

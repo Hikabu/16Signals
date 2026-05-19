@@ -33,6 +33,7 @@ export const envSchema = z.object({
 
   ENCRYPTION_KEY: z.string().optional(),
   INTERNAL_API_KEY: z.string().optional(),
+  INTERNAL_SERVICE_KEY: z.string().optional(),
 
   HELIUS_API_KEY: z.string().optional(),
   HELIUS_WEBHOOK_SECRET: z.string().optional(),

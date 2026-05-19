@@ -200,6 +200,8 @@ jobs:
               GITHUB_APP_ID=GITHUB_APP_ID:latest,\
               GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,\
               REDIS_HOST=REDIS_HOST:latest,\
+              CLOUDINARY_API_SECRET=CLOUDINARY_API_SECRET:latest,\
+              CLOUDINARY_API_KEY=CLOUDINARY_API_KEY:latest,\
               DIRECT_URL=DIRECT_URL:latest,\
               PRIVY_JWKS_URL=PRIVY_JWKS_URL:latest" \
             --set-env-vars="\
