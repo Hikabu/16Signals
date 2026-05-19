@@ -101,7 +101,7 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-150 select-none cursor-pointer",
+        "rounded-full border px-3 py-2 text-xs font-medium transition-all duration-150 select-none cursor-pointer min-h-[40px] sm:min-h-0 sm:py-1.5",
         selected
           ? "border-primary/50 bg-primary/15 text-primary"
           : "border-border bg-transparent text-muted-foreground hover:border-border/70 hover:text-foreground"
@@ -389,7 +389,7 @@ function EmployerWaitlistWizard({
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 overflow-y-auto max-h-[calc(100svh-220px)] sm:max-h-none pb-6">
         <StepProgress step={2} />
 
         {/* ── Roles: Engineering ─────────────────────────────────────── */}
@@ -501,12 +501,12 @@ function EmployerWaitlistWizard({
 
           {/* GitHub checkbox */}
           <label
-            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-border/70"
+            className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-border/70 min-h-[52px]"
             onClick={() => setData((d) => ({ ...d, usesGithub: !d.usesGithub }))}
           >
             <div
               className={cn(
-                "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all",
+                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all",
                 data.usesGithub ? "border-primary bg-primary" : "border-border bg-transparent"
               )}
             >
@@ -516,8 +516,8 @@ function EmployerWaitlistWizard({
                 </svg>
               )}
             </div>
-            <Github className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-foreground">We review GitHub activity / code to evaluate engineers</span>
+            <Github className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="text-sm text-foreground leading-snug">We review GitHub activity / code to evaluate engineers</span>
           </label>
 
           {/* Free text for other engineer tools */}
@@ -532,12 +532,12 @@ function EmployerWaitlistWizard({
           {/* Tools-for-other-roles checkbox — only show if they selected non-eng roles */}
           {(data.rolesHiring.some((r) => OTHER_ROLES.includes(r)) || data.otherRolesText.trim().length > 0) && (
             <label
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-border/70"
+              className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-border/70 min-h-[52px]"
               onClick={() => setData((d) => ({ ...d, needsOtherRoleTools: !d.needsOtherRoleTools }))}
             >
               <div
                 className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all",
+                  "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all",
                   data.needsOtherRoleTools ? "border-primary bg-primary" : "border-border bg-transparent"
                 )}
               >
@@ -547,7 +547,7 @@ function EmployerWaitlistWizard({
                   </svg>
                 )}
               </div>
-              <span className="text-sm text-foreground">
+              <span className="text-sm text-foreground leading-snug">
                 Also interested in tools to evaluate non-engineering roles
               </span>
             </label>
@@ -612,13 +612,13 @@ function EmployerWaitlistWizard({
           </p>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
+        {/* Actions — wrap on mobile */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="shrink-0"
+            className="h-10 shrink-0 px-4"
             onClick={() => setStep(1)}
           >
             <ArrowLeft className="mr-1 h-3.5 w-3.5" />
@@ -629,7 +629,7 @@ function EmployerWaitlistWizard({
             type="button"
             variant="ghost"
             size="sm"
-            className="text-muted-foreground"
+            className="h-10 text-muted-foreground"
             disabled={submitStatus === "submitting"}
             onClick={submit}
           >
@@ -638,7 +638,7 @@ function EmployerWaitlistWizard({
 
           <Button
             type="button"
-            className="ml-auto"
+            className="h-10 flex-1 sm:flex-none sm:ml-auto"
             disabled={submitStatus === "submitting"}
             onClick={submit}
           >

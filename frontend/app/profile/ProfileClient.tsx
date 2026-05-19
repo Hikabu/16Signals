@@ -40,7 +40,6 @@ export default function ProfileClient() {
   // console.log('PROFILE CLIENT RENDER')
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const [isEditing, setIsEditing] = useState(false)
   // Controls whether GenerateScorecardSection is expanded.
   // Starts open; auto-collapses when analysis is triggered.
 const { data: scorecard } = useQuery({
@@ -111,7 +110,6 @@ const {
         updateCandMut.mutateAsync({ bio: data.bio, location: data.location, website: data.website })
       ])
       toast({ title: "Profile saved" })
-      setIsEditing(false)
     } catch (error) {
       toast({ title: "Failed to save profile", variant: "destructive" })
     }
@@ -212,13 +210,8 @@ const githubStatusMapped = {
           bio: (candidate as any)?.bio ?? '',
           location: (candidate as any)?.location ?? '',
           website: (candidate as any)?.website ?? '',
-            avatarUrl: (candidate as any)?.avatarUrl ?? '',
-
+          avatarUrl: (candidate as any)?.avatarUrl ?? '',
         }}
-        isEditing={isEditing}
-        onToggleEdit={() => setIsEditing(!isEditing)}
-        onSave={handleSaveProfile}
-        isSaving={updateUserMut.isPending || updateCandMut.isPending}
       />
 <motion.div
   layout

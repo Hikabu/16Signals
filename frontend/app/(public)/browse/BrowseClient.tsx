@@ -68,38 +68,47 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
   const pathLabel = careerPathLabel(candidate.careerPath);
 
   return (
-    <div className="group relative flex items-center gap-5 rounded-xl border border-border bg-card px-6 py-5 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-[0_0_0_1px_rgba(42,161,152,0.12)]">
-      <Avatar className="h-12 w-12 shrink-0 ring-1 ring-border group-hover:ring-primary/30 transition-all duration-200">
-        <AvatarFallback className="bg-primary/10 text-primary text-sm font-mono font-semibold tracking-wide">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-foreground">{display}</p>
-          {pathLabel && (
-            <span className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-              {pathLabel}
-            </span>
-          )}
+    <div className="group relative flex flex-col gap-4 rounded-xl border border-border bg-card px-5 py-4 transition-all duration-200 hover:border-primary/40 hover:bg-accent/30 hover:shadow-[0_0_0_1px_rgba(42,161,152,0.12)] sm:flex-row sm:items-center sm:gap-5 sm:px-6 sm:py-5">
+      {/* Top row on mobile: avatar + identity */}
+      <div className="flex items-center gap-4 sm:contents">
+        <Avatar className="h-11 w-11 shrink-0 ring-1 ring-border group-hover:ring-primary/30 transition-all duration-200 sm:h-12 sm:w-12">
+          <AvatarFallback className="bg-primary/10 text-primary text-sm font-mono font-semibold tracking-wide">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-foreground">{display}</p>
+            {pathLabel && (
+              <span className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                {pathLabel}
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground font-mono">@{candidate.username}</p>
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground font-mono">@{candidate.username}</p>
+      </div>
+
+      {/* Bio & location — full width on both mobile and desktop */}
+      <div className="min-w-0 flex-1">
         {candidate.bio && (
-          <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-muted-foreground line-clamp-2">
+          <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">
             {candidate.bio}
           </p>
         )}
         {candidate.location && (
-          <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground/70">
+          <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground/70">
             <MapPin className="h-3 w-3 shrink-0" />
             <span>{candidate.location}</span>
           </div>
         )}
       </div>
-      <div className="ml-4 shrink-0">
+
+      {/* View profile button */}
+      <div className="shrink-0">
         <Button
           asChild variant="outline" size="sm"
-          className="h-8 gap-1.5 rounded-lg border-border px-4 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-150"
+          className="h-9 w-full gap-1.5 rounded-lg border-border px-4 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-150 sm:w-auto"
         >
           <Link href={`/u/${candidate.username}`}>
             View profile <ChevronRight className="h-3.5 w-3.5" />
@@ -181,10 +190,7 @@ function GuestWaitlistForm({
   }
 
   return (
-    <form
-  onSubmit={handleSubmit}
-className="flex w-full max-w-[300px] gap-5"
->
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
       <Input
         id="waitlist-email-input"
         type="email"
@@ -192,14 +198,15 @@ className="flex w-full max-w-[300px] gap-5"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="your@email.com"
-        className="h-10 flex-1 rounded-lg border-border bg-muted/20 text-sm placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/20"
+        className="h-11 flex-1 rounded-lg border-border bg-muted/20 text-sm placeholder:text-muted-foreground/50 focus-visible:border-primary/50 focus-visible:ring-primary/20"
       />
       <Button
         id="waitlist-submit-btn"
         type="submit"
         disabled={status === "loading"}
-className="h-10 shrink-0 w-[120px] rounded-lg bg-primary px-4 text-sm font-medium"      
->        {status === "loading" ? (
+        className="h-11 shrink-0 rounded-lg bg-primary px-5 text-sm font-medium"
+      >
+        {status === "loading" ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Bell className="h-4 w-4" />
@@ -207,7 +214,7 @@ className="h-10 shrink-0 w-[120px] rounded-lg bg-primary px-4 text-sm font-mediu
         Notify me
       </Button>
       {status === "error" && (
-        <p className="text-xs text-destructive sm:col-span-2">{errorMsg}</p>
+        <p className="text-xs text-destructive w-full">{errorMsg}</p>
       )}
     </form>
   );
@@ -314,151 +321,113 @@ className="
 }
 
 // ---------------------------------------------------------------------------
-// Jobs gated banner (CANDIDATE_ONLY mode)
-// ---------------------------------------------------------------------------
 
 function JobsGatedBanner({ me }: { me?: any }) {
   const isLoggedIn = !!me;
   const hasScorecard = !!me?.scorecard;
   const [waitlistDone, setWaitlistDone] = useState(false);
-return (
-  <div className="col-span-full flex justify-center px-4 py-16">
-    <div className="w-full max-w-2xl">
+  return (
+    <div className="col-span-full flex justify-center px-4 py-12 sm:py-16">
+      <div className="w-full max-w-2xl">
 
-      {/* Status */}
-      <div className="mb-4 flex justify-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
-          <Lock className="h-3.5 w-3.5" />
-          Employer access in private rollout
-        </div>
-      </div>
-
-      {/* Heading */}
-      <div className="text-center">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">
-          Job postings are launching soon
-        </h2>
-
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-          We're onboarding verified companies and securing the employer side
-          of 16Signals before opening roles publicly.
-        </p>
-      </div>
-
-      {/* Primary candidate CTA */}
-      <div className="mt-8 rounded-2xl border border-border bg-card p-6">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              Prepare your candidate profile
-            </p>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-Get your scorecard ready before employer access opens.            </p>
+        {/* Status badge */}
+        <div className="mb-4 flex justify-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
+            <Lock className="h-3.5 w-3.5" />
+            Employer access in private rollout
           </div>
+        </div>
 
-          <div className="shrink-0">
-            {isLoggedIn ? (
-              hasScorecard ? (
-                <Button
-                  asChild
-                  className="h-10 rounded-lg px-5"
-                >
+        {/* Heading */}
+        <div className="text-center">
+          <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Job postings are launching soon
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            We're onboarding verified companies and securing the employer side
+            of 16Signals before opening roles publicly.
+          </p>
+        </div>
+
+        {/* Candidate CTA card */}
+        <div className="mt-6 rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Prepare your candidate profile
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Get your scorecard ready before employer access opens.
+              </p>
+            </div>
+            <div className="shrink-0">
+              {isLoggedIn ? (
+                <Button asChild className="h-10 w-full rounded-lg px-5 sm:w-auto">
                   <Link href="/profile">
-                    View scorecard
+                    {hasScorecard ? "View scorecard" : "Build scorecard"}
                   </Link>
                 </Button>
               ) : (
-                <Button
-                  asChild
-                  className="h-10 rounded-lg px-5"
-                >
-                  <Link href="/profile">
-                    Build scorecard
-                  </Link>
+                <Button asChild className="h-10 w-full rounded-lg px-5 sm:w-auto">
+                  <Link href="/auth">Create profile</Link>
                 </Button>
-              )
+              )}
+            </div>
+          </div>
+
+          <div className="mt-5 border-t border-border pt-5">
+            {waitlistDone ? (
+              <div className="flex justify-center">
+                <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>You're on the list, we'll email you when employers go live.</span>
+                </div>
+              </div>
             ) : (
-              <Button
-                asChild
-                className="h-10 w-[120px] rounded-lg px-5"
-              >
-                <Link href="/auth">
-                  Create profile
-                </Link>
-              </Button>
+              <>
+                {isLoggedIn ? (
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+                        <BellRing className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          Get notified when employer access opens
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          We'll email you as soon as companies post roles.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <AuthWaitlistButton
+                        userEmail={me?.email}
+                        onSuccess={() => setWaitlistDone(true)}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <BellRing className="h-4 w-4 shrink-0 text-primary" />
+                      <p className="text-sm text-muted-foreground">Want early access updates?</p>
+                    </div>
+                    <GuestWaitlistForm onSuccess={() => setWaitlistDone(true)} />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
-        <div className="mt-5 border-t border-border pt-5">
-  {waitlistDone ? (
-    <div className="flex justify-center">
-      <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-4 py-3 text-sm text-primary">
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
-        <span>
-          You're on the list, we'll email you when employers go live.
-        </span>
       </div>
     </div>
-) : (
-  <>
-    {isLoggedIn ? (
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
-            <BellRing className="h-4 w-4 text-primary" />
-          </div>
-
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              Get notified when employer access opens
-            </p>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              We’ll email you as soon as companies post roles.
-            </p>
-          </div>
-        </div>
-
-        <div className="shrink-0">
-          <AuthWaitlistButton
-            userEmail={me?.email}
-            onSuccess={() => setWaitlistDone(true)}
-          />
-        </div>
-      </div>
-    ) : (
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <BellRing className="h-4 w-4 text-primary" />
-
-            <p className="text-sm text-muted-foreground">
-              Want early access updates?
-            </p>
-          </div>
-        </div>
-
-        <div className="shrink-0">
-          <GuestWaitlistForm
-            onSuccess={() => setWaitlistDone(true)}
-          />
-        </div>
-
-      </div>
-    )}
-  </>
-)}
-</div>
-</div>
-</div>
-</div>
-)
+  );
 }
 
 // ---------------------------------------------------------------------------
+
+
 // Sort options (talent tab)
 // ---------------------------------------------------------------------------
 

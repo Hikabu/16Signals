@@ -7,10 +7,10 @@ import { CandidateNav } from "./CandidateNav";
 import { EmployerNav } from "./EmployerNav";
 
 /**
- * Routes that own their own navigation (marketing pages).
- * AppNav is suppressed on these so there's no double navbar.
+ * Routes that explicitly render their own full-page nav.
+ * Currently empty — the landing page now uses the global PublicNav.
  */
-const MARKETING_ROUTES = new Set(["/"]);
+const MARKETING_ROUTES = new Set<string>([]);
 
 /**
  * Smart navbar that auto-selects the correct variant based on auth state.

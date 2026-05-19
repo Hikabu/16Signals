@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
@@ -8,80 +8,9 @@ import { ArrowRight, Check, Shield, Eye, Zap, Github } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
-//use: ALL 
-
 
 // Premium easing
 const ease = [0.16, 1, 0.3, 1] as const;
-
-// ============================================================================
-// NAVIGATION
-// ============================================================================
-
-function Navigation() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  return (
-    <motion.header
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.8, delay: 0.5, ease }}
-      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? "border-b border-border/10 bg-background/80 backdrop-blur-2xl"
-          : "bg-transparent"
-      }`}
-    >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2.5">
-          <Image src="/logo.png" alt="16signals" width={24} height={24} />
-          <span className="font-medium tracking-tight">16signals</span>
-        </Link>
-
-        <nav className="hidden items-center gap-8 text-sm md:flex">
-          <Link
-            href="#signals"
-            className="text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            Signals
-          </Link>
-          <Link
-            href="#how-it-works"
-            className="text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            How it works
-          </Link>
-          <Link
-            href="#no-ghost-jobs"
-            className="text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            No ghost jobs
-          </Link>
-        </nav>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden md:inline-flex"
-            asChild
-          >
-            <Link href={routes.auth}>Sign in</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href={routes.browse}>Get started</Link>
-          </Button>
-        </div>
-      </div>
-    </motion.header>
-  );
-}
 
 // ============================================================================
 // HERO - Premium Apple-like with subtle ambient glow
@@ -101,13 +30,11 @@ function HeroSection() {
   return (
     <section
       ref={containerRef}
-      className="relative flex min-h-screen items-center justify-center overflow-hidden"
+      className="relative flex min-h-[calc(100svh-56px)] items-center justify-center overflow-hidden"
     >
       {/* Premium ambient background */}
       <div className="pointer-events-none absolute inset-0">
-        {/* Primary glow */}
         <div className="absolute left-1/2 top-1/3 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[120px]" />
-        {/* Secondary accent */}
         <div className="absolute left-1/4 top-1/2 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-primary/5 blur-[100px]" />
         <div className="absolute right-1/4 top-1/3 h-[300px] w-[300px] translate-x-1/2 rounded-full bg-primary/5 blur-[80px]" />
       </div>
@@ -130,14 +57,14 @@ function HeroSection() {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.2, ease }}
-          className="relative mx-auto mb-12 w-fit"
+          className="relative mx-auto mb-10 w-fit"
         >
           <div className="absolute inset-0 scale-150 rounded-full bg-primary/20 blur-2xl" />
           <Image
             src="/logo.png"
             alt="16signals"
-            width={64}
-            height={64}
+            width={56}
+            height={56}
             priority
             className="relative"
           />
@@ -148,70 +75,75 @@ function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.4, ease }}
-          className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
+          className="text-3xl font-semibold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
         >
           Resumes describe developers.
         </motion.h1>
 
-        <motion.h1
+        <motion.p
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.55, ease }}
-          className="mt-2 bg-gradient-to-r from-primary via-primary to-primary/70 bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl md:text-6xl lg:text-7xl"
+          className="mt-2 bg-gradient-to-r from-primary via-primary to-primary/70 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-5xl md:text-6xl lg:text-7xl"
         >
           Signals reveal them.
-        </motion.h1>
+        </motion.p>
 
         {/* Subheadline */}
         <motion.p
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.7, ease }}
-          className="mx-auto mt-8 max-w-xl text-lg text-muted-foreground sm:text-xl"
+          className="mx-auto mt-6 max-w-xl text-base text-muted-foreground sm:text-lg md:text-xl"
         >
           Engineering intelligence extracted from years of verified technical
           work. 16 dimensions of evidence, zero guesswork.
         </motion.p>
 
-        {/* CTA */}
+        {/* CTA — dual path: connect GitHub OR explore as guest */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.85, ease }}
-          className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row"
+          className="mt-10 flex flex-col items-stretch justify-center gap-3 px-0 sm:flex-row sm:items-center sm:px-0"
         >
-          <Button size="lg" className="h-13 gap-2.5 px-8 text-base" asChild>
+          {/* Primary: Connect GitHub (candidate sign-up) */}
+          <Button
+            size="lg"
+            className="h-13 gap-2.5 px-8 text-base w-full sm:w-auto"
+            asChild
+          >
             <Link href={routes.auth}>
               <Github className="size-5" />
               Connect GitHub
             </Link>
           </Button>
+
+          {/* Secondary: Explore without signing in */}
           <Button
-            variant="ghost"
+            variant="outline"
             size="lg"
-            className="h-13 px-8 text-base text-muted-foreground"
+            className="h-13 px-8 text-base w-full sm:w-auto"
+            asChild
           >
-              <Link href="#how-it-works">
-
-            See how it works
-                          </Link>
-
-            <ArrowRight className="ml-2 size-4" />
-
+            <Link href={routes.browse}>
+              Explore talent
+              <ArrowRight className="ml-2 size-4" />
+            </Link>
           </Button>
         </motion.div>
 
-        {/* Trust indicators */}
+        {/* Trust indicators — wrap on mobile */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1.2, ease }}
-          className="mt-16 flex items-center justify-center gap-8 text-sm text-muted-foreground/60"
+          className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground/60 sm:text-sm"
         >
           <span>Read-only access</span>
-          <span className="size-1 rounded-full bg-muted-foreground/30" />
+          <span className="hidden sm:inline size-1 rounded-full bg-muted-foreground/30" />
           <span>Free for developers</span>
-          <span className="size-1 rounded-full bg-muted-foreground/30" />
+          <span className="hidden sm:inline size-1 rounded-full bg-muted-foreground/30" />
           <span>No spam, ever</span>
         </motion.div>
       </motion.div>
@@ -749,8 +681,8 @@ function Footer() {
 
 export default function LandingPage() {
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-background">
-      <Navigation />
+    <main className="relative overflow-x-hidden bg-background">
+      {/* Nav is rendered globally by AppNav in the root layout */}
       <HeroSection />
       <ProblemSection />
       <SignalsSection />
