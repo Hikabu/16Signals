@@ -16,7 +16,7 @@ import { SolanaAdapterService } from './web3-adapter/solana-adapter.service';
 import { Web3MergeService } from './web3-merge/web3-merge.service';
 import { ConfigModule } from '@nestjs/config';
 
-import { GapAnalysisModule } from './gap-analysis/gap-analysis.module';
+// import { GapAnalysisModule } from './gap-analysis/gap-analysis.module';
 import { DecisionCardModule } from './decision-card/decision-card.module';
 import { ProfileResolverModule } from '../profile-candidate/profile-resolver.module';
 
@@ -26,7 +26,7 @@ import { ProfileResolverModule } from '../profile-candidate/profile-resolver.mod
     ConfigModule,
     PrismaModule,
     RedisModule,
-    GapAnalysisModule,
+    // GapAnalysisModule,
     DecisionCardModule,
     ProfileResolverModule,
 

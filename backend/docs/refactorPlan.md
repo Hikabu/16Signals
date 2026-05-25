@@ -9,110 +9,8 @@
 5. **LLM integration after rule-based baseline** — replace rules with LLM calls incrementally
 6. **Deep Mode last** — it depends on everything else
 
-
-### Phase 3 — Evidence Brief Assembler + Light Mode Pipeline (Week 3)
-**Goal:** A complete Light Mode brief runs end-to-end (no LLM, no anti-gaming yet).
-
-| Step | Task |
-|---|---|
-| 3.1 | `BriefAssemblerService` — sections A–G from primitive outputs |
-| 3.2 | `EmploymentVerificationService` — Rung 1 (email domain) only for now |
-| 3.3 | `InterviewProbeGenerator` — rule-based probes from primitive gaps |
-| 3.4 | `LightAnalysisProcessor` — BullMQ pipeline wiring all services |
-| 3.5 | New API endpoints: `POST /analysis` (v5 schema), `GET /analysis/:id/brief` |
-| 3.6 | Integration test: full pipeline on 3 known profiles |
-| 3.7 | Brief section G always present and accurate |
-
 ---
 
-### Phase 4 — Anti-Gaming Detection (Week 4)
-**Goal:** All 6 detection algorithms live, feeding Section D and P7.
-
-| Step | Task |
-|---|---|
-| 4.1 | `CommitInflationService` — size histogram, 30% threshold |
-| 4.2 | `ForkDumpingService` — gitinspector-free for Light Mode (API patterns) |
-| 4.3 | `BurstDormancyService` — contribution heatmap, 5× burst detection |
-| 4.4 | `RepoLaunderingService` — GitHub Code Search API, Copyleaks integration |
-| 4.5 | `CredentialLeakService` (Light Mode stub — gitleaks not available yet) |
-| 4.6 | Wire all flags into `P7AuthenticityConfidenceService` |
-| 4.7 | Populate Section D of Evidence Brief |
-| 4.8 | Hard stop logic for credential leaks |
-| 4.9 | Tests: each detection algorithm against crafted edge cases |
-
----
-
-### Phase 5 — LLM Integration (Week 5)
-**Goal:** Replace rule-based stubs with LLM calls for commit quality, PR depth, AI-gen detection.
-
-| Step | Task |
-|---|---|
-| 5.1 | `LLMClientService` — Anthropic API wrapper, rate handling, retry |
-| 5.2 | `CommitQualityPrompt` — evaluates informativeness, intent, message patterns |
-| 5.3 | `PRDepthPrompt` — review comment substance, root cause vs symptom |
-| 5.4 | `AIGenerationPrompt` — style discontinuity, entropy anomaly detection |
-| 5.5 | `READMEScorerPrompt` — quality, clarity, documentation discipline |
-| 5.6 | Wire LLM outputs into P1 (commit quality), P3 (PR depth), P6 (AI-gen), P7 (style) |
-| 5.7 | Fallback: if LLM call fails, primitive reverts to rule-based with `low_evidence` |
-| 5.8 | Token budget management — batch LLM calls in single request per analysis job |
-
----
-
-### Phase 6 — Deep Mode Infrastructure (Week 6)
-**Goal:** GitHub App installed, tokens managed, repos cloned, local tools run.
-
-| Step | Task |
-|---|---|
-| 6.1 | `EvaluationLinkModule` — link generation, email send, GitHub App OAuth flow |
-| 6.2 | `DeepFetcherService` — installation token management, full repo crawl |
-| 6.3 | `RepoClonerService` — HTTPS clone of top 30 repos, parallel 4 workers |
-| 6.4 | Tool wrapper services: `SccService`, `TokeiService`, `GitinspectorService` |
-| 6.5 | `GitleaksService` — full history scan, credential detection |
-| 6.6 | `SemgrepService` — lightweight SAST on candidate code samples |
-| 6.7 | `ActionlintService` — GitHub Actions workflow validation |
-| 6.8 | `DeepAnalysisProcessor` — full pipeline wiring |
-| 6.9 | Employment verification Rungs 2 + 3 (org membership + contribution fingerprint) |
-| 6.10 | Data retention enforcement — in-memory only for source code, purge on completion |
-| 6.11 | Employer notification on Deep Mode completion |
-| 6.12 | Integration test: full Deep Mode on test GitHub App installation |
-
----
-
-### Phase 7 — Role/JD Matching + Section F (Week 7)
-**Goal:** Section F live; JD parsing active.
-
-| Step | Task |
-|---|---|
-| 7.1 | `JobDescriptionModule` — CRUD, LLM extraction of required signals |
-| 7.2 | `RoleStackMatchService` — evidenced stack vs JD requirements |
-| 7.3 | Gap analysis → specific interview probes (Section E extension) |
-| 7.4 | `JDIntentExtractor` — LLM prompt to extract actual requirements beyond keywords |
-| 7.5 | Wire Section F into Brief Assembler (only when JD provided + Deep Mode) |
-
----
-
-### Phase 8 — Hardening & Outcomes (Week 8)
-**Goal:** Production-ready, GDPR compliant, outcome data schema live.
-
-| Step | Task |
-|---|---|
-| 8.1 | `HireOutcome` model + POST /outcomes endpoint |
-| 8.2 | Anti-gaming calibration hook — flag → outcome correlation schema |
-| 8.3 | GDPR deletion — hard delete + Redis flush |
-| 8.4 | Load test: 50 concurrent Light Mode jobs, p95 < 3 min |
-| 8.5 | Load test: 10 concurrent Deep Mode jobs |
-| 8.6 | Cache hit verification |
-| 8.7 | Sentry error tracking wired to all processors |
-| 8.8 | Full E2E test suite: 5 seed profiles × 2 modes |
-
----
-
-## Part 5 — LLM Prompt Library
-
-Each prompt below is a complete context package. Use it verbatim or with minimal adjustment.
-The **model assignment** reflects each model's strengths: Gemini for large-context comprehension and scaffolding, Claude for precise logic and constraint-heavy implementation, Codex (or GPT-4o) for debugging and filling in function bodies.
-
----
 
 ### Phase 1 — Light Fetcher + Data Groups (Week 1)
 **Goal:** Fetching all public data correctly, mapped to Groups A–G.
@@ -125,261 +23,6 @@ The **model assignment** reflects each model's strengths: Gemini for large-conte
 | 1.4 | `GroupMapperService` — maps raw fetch output to typed Groups A–G |
 | 1.5 | Unit tests: fetch all groups for a known public profile |
 | 1.6 | Cache layer: key = `username:light:v5`, TTL 24h |
-
----
-
-
-### PROMPT 1.1 — Light Fetcher Service
-**Model:** Gemini  
-**Why Gemini:** Large context to hold the full data group spec + octokit patterns simultaneously.  
-**Target file:** `src/github/light-fetcher/light-fetcher.service.ts`
-
-```
-You are building the Light Mode data fetcher for a GitHub analysis system using NestJS + TypeScript + @octokit/rest + @octokit/graphql.
-
-WHAT THIS SERVICE DOES:
-Fetches all public GitHub data for a username. Returns a typed RawLightData object mapped to Groups A–G from the spec. No cloning. API only.
-
-GROUPS TO FETCH:
-
-Group A (Identity & Profile):
-- user profile: bio, company, blog, account age, hireable flag, location
-- commit email domains (extracted from recent public commit events)
-- public GitHub org memberships
-
-Group B (Repository Inventory):
-- all public repos: name, language, topics, README presence (check if README exists at root), last push date, fork status, homepage URLs, archived status, star count, fork count, created_at
-- exclude unmodified forks (forks where the candidate has 0 commits — detect by checking if pushed_at > forked_at and stars > 0 OR topics exist)
-
-Group C (Commit Intelligence — API only, no clone):
-- commit frequency: weekly contribution graph (last 52 weeks active count)
-- commit message sample: last 50 commits from most active non-fork repo
-- work-hour distribution: hour-of-day distribution from commit timestamps
-- commit signing rate: from repo commit API, sample last 20 commits per top-5 repos
-
-Group D (Collaboration & Review — public only):
-- PR author/reviewer counts from public repos
-- review comment count and a sample of 20 review comments from top repos
-- self-merge rate: merged PRs where author = merger
-- external contributions: PRs merged into repos the user does not own
-
-Group F (Impact & External Signals):
-- contribution calendar (already in Group C weekly graph)
-- stars/forks aggregate across owned non-fork repos
-- package registry presence (flag only — actual fetch in ExternalSignalService)
-
-GRAPHQL STRATEGY:
-Use a single batched GraphQL query for: contribution calendar, last 30 PRs authored, last 30 PR reviews given, pinned repos, org memberships. Reduces REST budget by ~60%.
-
-RATE LIMIT:
-Inject RateLimitService. Check budget before each REST call. If remaining < 500: throw RateLimitExhaustedException, cache partial result.
-
-TYPES:
-Import from `../../types/raw-data.types` (you must also define this types file — include it as a second file in your output).
-
-OUTPUT FORMAT:
-Two files:
-1. light-fetcher.service.ts — the NestJS @Injectable service
-2. raw-data.types.ts — typed interfaces for RawGroupA through RawGroupF
-
-Do not include scoring logic. Do not include LLM calls. Do not include anti-gaming. Fetch and structure only.
-```
-
----
-
-### PROMPT 1.2 — Rate Limit Service
-**Model:** Claude  
-**Why Claude:** Precise state machine logic with clear thresholds.  
-**Target file:** `src/github/rate-limit/rate-limit.service.ts`
-
-```
-Build a NestJS @Injectable RateLimitService for a GitHub API client in TypeScript.
-
-REQUIREMENTS:
-1. Tracks three separate budgets: REST (5000/hr), GraphQL (5000 points/hr), Search (30/min)
-2. Circuit breaker: if REST remaining < 500 → throw RateLimitExhaustedException with { retryAfterMs }
-3. Exposes: checkBudget(apiType), consumeRequest(apiType, cost?), getRemainingBudget(), resetWindow()
-4. Fetches current budget from GitHub API (/rate_limit endpoint) on init and on 401 error
-5. Uses an in-memory budget tracker updated optimistically after each call (not refetching after every call)
-6. Logs budget state via pino when crossing thresholds: <2000, <1000, <500
-
-The service is instantiated once per Light Mode job and once per Deep Mode job (scoped to the job, not singleton). Use REQUEST scope or pass token as constructor arg — your call, explain your choice in a comment.
-
-Types: use @octokit/rest types where applicable.
-Error: export RateLimitExhaustedException as a custom NestJS HttpException.
-```
-
----
-
-### PROMPT 1.3 — External Signal Service
-Model: Claude
-Why Claude: Multiple third-party APIs with different error modes; needs precise fallback and rate-limit handling per API.
-Target file: src/github/external-signals/external-signals.service.ts
-Build ExternalSignalService in NestJS TypeScript. This service fetches supplementary signals from package registries and Stack Overflow.
-
-ALL CALLS ARE BEST-EFFORT. Any individual API failure must be caught, logged, and return null for that signal. Never throw. Never block the pipeline.
-
-METHOD SIGNATURE:
-fetch(githubUsername: string, repos: RawGroupB['repos']): Promise<RawGroupF>
-
-WHAT TO FETCH:
-
-1. npm Registry (https://registry.npmjs.org/-/v1/search?text=maintainer:[username]&size=10)
-   - Find packages where the candidate is a maintainer
-   - For each package: GET https://api.npmjs.org/downloads/point/last-week/[package]
-   - Collect: packageName, weeklyDownloads, description
-   - Also fetch dependent count: https://registry.npmjs.org/[package] → versions latest → devDependencies keys count is NOT the right signal; instead use: https://www.npmjs.com/package/[package] is not an API — skip dependent count for npm, collect downloads only
-   - Timeout: 5s per call
-
-2. PyPI JSON API (https://pypi.org/pypi/[package]/json)
-   - Detect PyPI packages by scanning repos for setup.py or pyproject.toml in fileTreeSample
-   - Extract package name from repo name (heuristic: repo name = package name, try it)
-   - For matched packages: fetch download stats from https://pypistats.org/api/packages/[package]/recent
-   - Collect: packageName, downloadsLastMonth
-   - Timeout: 5s per call
-
-3. Crates.io API (https://crates.io/api/v1/crates?q=[username]&page=1)
-   - Detect by scanning repos for Cargo.toml in fileTreeSample
-   - For matched crates: fetch https://crates.io/api/v1/crates/[name]
-   - Collect: crateName, downloads, dependentCratesCount (from /reverse_dependencies endpoint)
-   - Set User-Agent header: 'colosseum-analysis/1.0 (contact@colosseum.dev)' — crates.io requires this
-   - Timeout: 5s per call
-
-4. Stack Exchange API (https://api.stackexchange.com/2.3/users?inname=[username]&site=stackoverflow&filter=default)
-   - Find user by GitHub username (heuristic match — not guaranteed)
-   - If found: fetch reputation, top 3 tags by answer count
-   - This is Tier 3 additive only — if not found, return null, never flag as negative
-   - Timeout: 3s
-
-RETURN TYPE: RawGroupF (from primitives.types.ts)
-- packageRegistryPresence: populated from above
-- stackOverflowReputation: from step 4 or null
-- stackOverflowTopTags: from step 4 or null
-- contributionCalendarWeeks and star/fork counts are populated by LightFetcherService, not here — leave them at 0 as defaults, they will be merged upstream
-
-PARALLEL EXECUTION: Run all 4 fetches with Promise.allSettled. Do not await sequentially.
-
-Include ExternalSignalsModule exporting ExternalSignalService.
-
-### PROMPT 1.4 — Group Mapper Service
-Model: Claude
-Why Claude: Pure data transformation with strict type mapping — small, precise, no room for creative interpretation.
-Target file: src/github/group-mapper/group-mapper.service.ts
-Build GroupMapperService in NestJS TypeScript.
-
-PURPOSE: Takes raw octokit API response objects and maps them into the typed RawGroup* interfaces from src/types/primitives.types.ts. This is a pure transformation layer — no fetching, no scoring, no business logic.
-
-METHOD: map(raw: OctokitRawResponse): PrimitiveInputMap
-
-Where OctokitRawResponse is:
-{
-  userProfile: any        // GET /users/:username response
-  repos: any[]            // GET /users/:username/repos response items
-  contributions: any      // GraphQL contributionsCollection response
-  pullRequests: any[]     // GraphQL pullRequests nodes
-  reviews: any[]          // GraphQL pullRequestReviews nodes
-  orgMemberships: any[]   // GraphQL organizations nodes
-  commitSamples: Record<string, any[]>  // repoName -> commits array
-}
-
-MAPPING RULES:
-
-GroupA:
-- bio: userProfile.bio
-- company: userProfile.company (strip leading @)
-- blog: userProfile.blog
-- accountAgeMonths: diff in months between userProfile.created_at and now
-- hireable: userProfile.hireable
-- commitEmailDomains: extract unique domains from commitSamples[*][*].commit.author.email
-- orgMemberships: orgMemberships.map(o => ({ org: o.login, role: o.viewerIsAMember ? 'member' : 'owner' }))
-
-GroupB:
-- repos: map each repo object
-  - isFork: repo.fork
-  - lastPushedAt: repo.pushed_at
-  - fileTreeSample: [] (populated separately by fetcher — leave empty here)
-  - all other fields map directly from octokit field names (snake_case to camelCase)
-
-GroupC:
-- weeklyContributions: contributions.contributionCalendar.weeks.map(w => ({ week: w.firstDay, total: w.contributionDays.reduce((s,d) => s+d.contributionCount, 0) }))
-- commitSample: flatten commitSamples into array, map each commit:
-  - isMerge: commit.parents.length > 1
-  - isDocOnly: detect if all changed files end in .md .txt .rst .mdx (use commit.files if available, else false)
-  - isSigned: commit.commit.verification?.verified ?? false
-- workHourDistribution: build Record<hour, count> from commit timestamps
-- commitSigningRate: signed commits / total commits
-
-GroupD:
-- prsAuthored: pullRequests.map pr -> { number, title, bodyWordCount: (pr.body || '').split(' ').length, additions: pr.additions, deletions: pr.deletions, mergedAt: pr.mergedAt, wasSelfMerged: pr.mergedBy?.login === pr.author?.login, repoOwner: pr.repository?.owner?.login }
-- reviewsGiven: reviews.map -> { body, wordCount: body.split(' ').length, submittedAt, prRepoOwner: review.pullRequest?.repository?.owner?.login }
-- externalPRsMerged: count of prsAuthored where repoOwner !== githubUsername (pass username as second arg to map method)
-- externalPRRepos: unique repoOwner values from external PRs
-
-GroupE (from file tree analysis — partial in Light Mode):
-- ciConfigPresent: any repo fileTreeSample includes '.github' or '.circleci' or 'Jenkinsfile'
-- testDirPresent: any repo fileTreeSample includes 'test' or 'tests' or '__tests__' or 'spec'
-- dockerfilePresent: any repo fileTreeSample includes 'Dockerfile' or 'docker-compose.yml'
-- iacPresent: any repo fileTreeSample includes 'terraform' or 'pulumi' or 'cdk'
-- lintConfigPresent: any repo fileTreeSample includes '.eslintrc' or '.eslintrc.js' or 'biome.json' or '.golangci.yml'
-- semanticVersioningRate: calculate from repo tags (not available from basic fetch — default 0, mark as needs-deep)
-- dependabotEnabled: any repo fileTreeSample includes '.github/dependabot.yml' — note: fileTreeSample is root-level only so this will be false in light mode; acceptable
-- hasSecurityMd: any repo fileTreeSample includes 'SECURITY.md'
-- aiConfigFiles: scan all fileTreeSamples for: '.cursorrules', 'CLAUDE.md', '.aider.conf.yml', '.github/copilot-instructions.md'
-
-GroupF defaults (to be merged with ExternalSignalService output):
-- contributionCalendarWeeks: count of weeks with total > 0 from GroupC.weeklyContributions
-- totalStarsOwned: sum of starCount for non-fork repos
-- totalForksOwned: sum of forkCount for non-fork repos
-- packageRegistryPresence: [] (populated by ExternalSignalService)
-
-Return: PrimitiveInputMap (all 7 primitive inputs pre-populated from the groups)
-
-### PROMPT 1.5+1.6 — Light Fetcher Unit Tests + Cache Layer
-Model: Codex
-Why Codex: Test structure and cache key logic are mechanical — exact patterns with no design ambiguity.
-Target files: src/github/light-fetcher/light-fetcher.service.spec.ts, src/github/cache/brief-cache.service.ts
-TASK 1: Unit tests for LightFetcherService
-
-Write Jest unit tests for LightFetcherService in a NestJS project. Use @nestjs/testing and nock for HTTP mocking.
-
-Test file: src/github/light-fetcher/light-fetcher.service.spec.ts
-
-Tests to write:
-1. fetch('torvalds') — mocks GitHub API responses, asserts RawLightData has all 6 groups populated
-2. fetch() with rate limit < 500 remaining — asserts RateLimitExhaustedException is thrown
-3. fetch() with a user that has 0 public repos — asserts groups return empty arrays not null/undefined
-4. fetch() with GraphQL error response — asserts partial result returned with error logged, not thrown
-5. fetch() — asserts GroupMapper.map() is called exactly once with the raw response
-
-Use jest.fn() for all service dependencies. Mock octokit via nock on https://api.github.com.
-Store a minimal fixture of a real GitHub API response in test/fixtures/github-user-torvalds.json.
-
----
-
-TASK 2: BriefCacheService
-
-File: src/github/cache/brief-cache.service.ts
-
-Build a NestJS @Injectable() service that wraps the CachedResult Prisma model.
-
-Methods:
-
-async get(key: string): Promise<EvidenceBrief | null>
-- Query CachedResult where cacheKey = key AND expiresAt > now()
-- Return parsed JSON or null
-
-async set(key: string, brief: EvidenceBrief, ttlSeconds: number): Promise<void>
-- Upsert CachedResult: cacheKey, result (JSON), expiresAt = now + ttlSeconds
-- Use Prisma upsert with cacheKey as the unique identifier
-
-async invalidate(username: string): Promise<void>
-- Delete all CachedResult rows where cacheKey LIKE 'brief:{username}:%'
-- Use Prisma deleteMany with cacheKey contains filter
-
-static buildKey(username: string, mode: 'light' | 'deep', version = 'v5'): string
-- Returns: `brief:${username}:${mode}:${version}`
-
-Inject PrismaService and Logger.
 
 ---
 
@@ -665,7 +308,63 @@ CONFIDENCE:
 
 Note: operational maturity is the primitive most likely to produce observability_gap for senior enterprise engineers. Always add this to the output: "Operational maturity signals are predominantly visible in public DevOps/platform repositories. Enterprise engineers may have extensive production experience with no public trace."
 
-PROMPT 2.7+2.8+2.9+2.10 — Supporting Services Bundle
+
+### PROMPT 2.6 — P6 AI Leverage Quality
+**Model:** Claude  
+**Why Claude:** Complex classification logic with 5 output classes.  
+**Target file:** `src/signals/primitives/p6-ai-leverage.service.ts`
+
+```
+Build the P6 (AI Leverage Quality) primitive evaluator.
+
+CORE QUESTION: "Can this engineer effectively direct AI to produce quality outcomes?"
+
+INPUT: RawGroupC (commit data) + RawGroupB (repo inventory for AI config file detection)
+OUTPUT: PrimitiveAssessment + AILeverageClass (from types/evidence-brief.types.ts)
+
+CLASSIFICATION RULES (classify into one of 5 classes):
+
+ai_operator: 
+  - High commit velocity periods (>2x normal weekly rate) WITH maintained or improving test-to-code ratio
+  - AI tool config files detected (Cursor rules, .github/copilot-instructions.md, custom prompt files)
+  - Iterative refinement commits following large single-session bursts (small follow-up commits after >200-line commits)
+
+ai_architect:
+  - AI config files present with evidence of customisation (file size > 500 bytes suggests non-default config)
+  - LLM-default boilerplate code modified with custom architectural patterns (stub — mark as "LLM scoring pending" for Phase 5)
+  - Commit message patterns referencing AI tools: "with claude", "via copilot", "ai-assisted"
+
+ai_passenger:
+  - High velocity with declining or zero test coverage trajectory
+  - Large single-session commits with no follow-up refinement commits
+  - Abrupt style discontinuities correlated with large commits (stub — "LLM scoring pending")
+  - Flag as: soft_concern in Section D
+
+traditional_engineer:
+  - No AI config files detected
+  - Consistent commit size distribution (no high-velocity bursts)
+  - Normal style consistency
+  - NOT penalised — explicitly positive in certain contexts
+
+disclosure_flag:
+  - AST entropy anomalies detected (stub for Phase 5 LLM analysis)
+  - Abrupt style discontinuities with high confidence
+  - Requires interview to clarify — never automatic rejection
+  - Sets AntiGamingFlag with type='ai_generation_gap'
+
+DETECTION LOGIC:
+- AI config file scan: check for .cursorrules, .github/copilot-instructions.md, .aider.conf.yml, CLAUDE.md, custom_instructions.txt in repo root (use Group B file tree data)
+- Commit velocity burst: week with >3x trailing 4-week average
+- Refinement window: commits within 48h after a burst commit, each < 50 lines
+
+The AILeverageClass should be attached to the PrimitiveAssessment output as an additional field. Extend the interface locally for this service.
+
+Return: PrimitiveAssessment & { aiLeverageClass: AILeverageClass }
+```
+
+---
+
+### PROMPT 2.7+2.8+2.9+2.10 — Supporting Services Bundle
 Model: Claude
 Why Claude: These are all small, precise services with hard rules. Better as one Claude call than four.
 Target files: p7-authenticity-confidence.service.ts, seniority-weights.service.ts, archetype-config.service.ts, confidence-language.service.ts
@@ -742,60 +441,319 @@ Also implement: getProfileLevelGateText(): string
 Returns: "This profile pattern is consistent with enterprise or regulated-industry engineering contexts where public evidence is structurally absent. This is correlated with — not anticorrelated with — seniority and impact. Proceed to technical interview."
 
 ---
-### PROMPT 2.6 — P6 AI Leverage Quality
-**Model:** Claude  
-**Why Claude:** Complex classification logic with 5 output classes.  
-**Target file:** `src/signals/primitives/p6-ai-leverage.service.ts`
 
-```
-Build the P6 (AI Leverage Quality) primitive evaluator.
 
-CORE QUESTION: "Can this engineer effectively direct AI to produce quality outcomes?"
 
-INPUT: RawGroupC (commit data) + RawGroupB (repo inventory for AI config file detection)
-OUTPUT: PrimitiveAssessment + AILeverageClass (from types/evidence-brief.types.ts)
+### Phase 3 — Evidence Brief Assembler + Light Mode Pipeline (Week 3)
+**Goal:** A complete Light Mode brief runs end-to-end (no LLM, no anti-gaming yet).
 
-CLASSIFICATION RULES (classify into one of 5 classes):
-
-ai_operator: 
-  - High commit velocity periods (>2x normal weekly rate) WITH maintained or improving test-to-code ratio
-  - AI tool config files detected (Cursor rules, .github/copilot-instructions.md, custom prompt files)
-  - Iterative refinement commits following large single-session bursts (small follow-up commits after >200-line commits)
-
-ai_architect:
-  - AI config files present with evidence of customisation (file size > 500 bytes suggests non-default config)
-  - LLM-default boilerplate code modified with custom architectural patterns (stub — mark as "LLM scoring pending" for Phase 5)
-  - Commit message patterns referencing AI tools: "with claude", "via copilot", "ai-assisted"
-
-ai_passenger:
-  - High velocity with declining or zero test coverage trajectory
-  - Large single-session commits with no follow-up refinement commits
-  - Abrupt style discontinuities correlated with large commits (stub — "LLM scoring pending")
-  - Flag as: soft_concern in Section D
-
-traditional_engineer:
-  - No AI config files detected
-  - Consistent commit size distribution (no high-velocity bursts)
-  - Normal style consistency
-  - NOT penalised — explicitly positive in certain contexts
-
-disclosure_flag:
-  - AST entropy anomalies detected (stub for Phase 5 LLM analysis)
-  - Abrupt style discontinuities with high confidence
-  - Requires interview to clarify — never automatic rejection
-  - Sets AntiGamingFlag with type='ai_generation_gap'
-
-DETECTION LOGIC:
-- AI config file scan: check for .cursorrules, .github/copilot-instructions.md, .aider.conf.yml, CLAUDE.md, custom_instructions.txt in repo root (use Group B file tree data)
-- Commit velocity burst: week with >3x trailing 4-week average
-- Refinement window: commits within 48h after a burst commit, each < 50 lines
-
-The AILeverageClass should be attached to the PrimitiveAssessment output as an additional field. Extend the interface locally for this service.
-
-Return: PrimitiveAssessment & { aiLeverageClass: AILeverageClass }
-```
+| Step | Task |
+|---|---|
+| 3.1 | `BriefAssemblerService` — sections A–G from primitive outputs |
+| 3.2 | `EmploymentVerificationService` — Rung 1 (email domain) only for now |
+| 3.3 | `InterviewProbeGenerator` — rule-based probes from primitive gaps |
+| 3.4 | `LightAnalysisProcessor` — BullMQ pipeline wiring all services |
+| 3.5 | New API endpoints: `POST /analysis` (v5 schema), `GET /analysis/:id/brief` |
+| 3.6 | Integration test: full pipeline on 3 known profiles |
+| 3.7 | Brief section G always present and accurate |
 
 ---
+### PROMPT 3.1 — Brief Assembler Service
+Model: Gemini
+Why Gemini: Needs to hold all 7 sections + all 7 primitive outputs + evidence brief spec simultaneously.
+Target file: src/brief/brief-assembler.service.ts
+Build BriefAssemblerService for a GitHub analysis system in NestJS TypeScript.
+
+PURPOSE: Takes all primitive assessment outputs and assembles the complete EvidenceBrief JSON.
+
+INPUT TYPE:
+BriefAssemblerInput {
+  primitives: {
+    p1: PrimitiveAssessment
+    p2: PrimitiveAssessment
+    p3: PrimitiveAssessment
+    p4: PrimitiveAssessment
+    p5: PrimitiveAssessment
+    p6: PrimitiveAssessment & { aiLeverageClass: AILeverageClass }
+    p7: PrimitiveAssessment
+  }
+  groupA: RawGroupA
+  groupB: RawGroupB
+  groupD: RawGroupD
+  flags: AntiGamingFlag[]
+  employmentRungs: EmploymentRungResult[]
+  seniorityTarget: SeniorityTier
+  archetypeTarget: RoleArchetype
+  mode: 'light' | 'deep'
+  reposAnalysed: number
+  reposCloned?: number
+  sectionF?: SectionF    // optional — only when JD matching ran
+}
+
+METHOD: buildBrief(input: BriefAssemblerInput): EvidenceBrief
+
+SECTION ASSEMBLY RULES:
+
+Section A — Profile in 90 Seconds:
+- operatingStyleArchetype: derive from top 2 primitives by confidence + seniority weights
+  Logic: get seniority weights, find which 2 primitives are 'primary' for this tier, map to archetype label
+  Archetype label mapping: p1+p4 dominant → 'Production Engineer'; p2+p3 dominant → 'Systems Architect'; p3+p4 dominant → 'Specialist'; p1+p5 dominant → 'Ops-Focused'; p4 only strong → 'Technical Specialist'; p3 strong → 'OSS Contributor'; fallback → 'Generalist Builder'
+- topThreeCapabilities: pick top 3 primitives by confidence level (strong > moderate > low), extract first keyEvidence item from each
+- aiLeverageClassification: p6.aiLeverageClass
+- employmentVerification: employmentRungs mapped to EmploymentVerification[]
+- recommendedInterviewDepth: 
+  if any hard_stop flag OR profileLevelGate → 'deep'
+  elif primitives all ≥ moderate_evidence → 'light'
+  else → 'standard'
+
+Section B — Tech Reality vs CV Claims:
+- languages: from groupB.repos, aggregate by language, mark evidenced=true for languages with >5% of total repos; claimed=false for all (no CV in Light Mode — caller sets claimed flags if CV provided)
+- frameworks: scan groupB topics and descriptions for known frameworks, evidenced=true if found
+  Known frameworks to detect: React, Vue, Angular, Svelte, Next.js, NestJS, Django, FastAPI, Flask, Rails, Spring, Laravel, Express, Gin, Echo, Actix, Rocket, Phoenix, Nuxt
+- infrastructure: scan topics/descriptions for: Docker, Kubernetes, Terraform, AWS, GCP, Azure, Pulumi, Helm, Ansible
+- zeroEvidenceClaims: [] (empty in Light Mode without CV — caller populates)
+
+Section C — Work Pattern Intelligence:
+- shippingVelocity: derive from p1.keyEvidence narrative — extract the velocity description or generate: "Active in ${activeWeeks} of last 52 weeks. Typical PR cycle: [probe-to-merge data if available]"
+- qualityDisciplineTrajectory: from p1 + p2 keyEvidence — "Quality signals [improving/stable/declining] based on [evidence]"
+- collaborationStyle: from p3 — if observability_gap: "Primarily working in private contexts — collaboration style unverified from public data"
+- aiLeverageEvidence: from p6.keyEvidence[0] + aiLeverageClass mapped to human-readable string
+- communicationQuality: from p3 review quality signals or "Not assessable from available public data"
+
+Section D — Red Flags & Verification Gaps:
+- flags: input.flags (the AntiGamingFlag[] passed in)
+- credentialLeakDetected: flags.some(f => f.type === 'credential_leak')
+- verificationGaps: collect all observabilityGaps from all 7 primitives, deduplicate
+
+Section E — Interview Intelligence:
+- Delegate to InterviewProbeGeneratorService.generate(primitives, flags)
+- This service is injected, call it here
+
+Section F: pass through input.sectionF if present
+
+Section G — always present, never omitted:
+epistemicBoundaries (hardcoded — these never change):
+1. "System design thinking and architectural decision-making in ambiguous situations"
+2. "Communication quality, stakeholder management, and technical leadership under pressure"  
+3. "Cultural alignment, values, and team dynamics fit"
+4. "Performance under conditions unlike those observed in public repositories"
+5. "Management capability, mentoring effectiveness, and organisational influence"
+6. "Motivation, career trajectory, and long-term growth orientation"
+
+routedProbes: map each boundary to a specific interview probe
+1. "Present a system design problem relevant to the role. Observe how they handle ambiguity, trade-offs, and requirements clarification."
+2. "Describe a time you had to communicate a complex technical decision to non-technical stakeholders. What happened?"
+3. "What does your ideal team look like, and what role do you typically play in it?"
+4. "Tell me about a production incident you were central to resolving. Walk me through your decision-making."
+5. "How do you approach mentoring engineers at earlier career stages?"
+6. "Where do you want to be technically in 3 years, and what's your plan to get there?"
+
+Meta: populate from input fields + check if >50% of primitives are insufficient_data → profileLevelGate = true
+
+IMPORTANT: Never return a composite score. Assert this in a TypeScript comment: // NO COMPOSITE SCORE — by design. See v5 spec §8 Critical Design Principle.
+
+---
+###  PROMPT 3.2 — Employment Verification Service
+Model: Claude
+Why Claude: Rung logic has precise conditional rules and mandatory output language.
+Target file: src/employment/verification-ladder.service.ts
+Build EmploymentVerificationService with the 3-rung employment verification ladder.
+
+RUNG DEFINITIONS AND MANDATORY OUTPUT LANGUAGE:
+
+Rung 0 — No signal:
+rungText = "Rung 0 — No verifiable signal available for claimed role. This is a system limitation, not a candidate failure. Proceed to interview with suggested probe."
+
+Rung 1 — Email domain match:
+Detection: any commitEmailDomain from groupA matches @[employer].com or @[employer].* domain
+rungText = "Rung 1 only — email domain match. Contribution scope unconfirmed — recommend interview verification."
+
+Rung 2 — Org membership (Deep Mode only):
+Detection: groupA.orgMemberships contains org matching employer name
+rungText = "Rung 2 — Organisation membership confirmed. Active GitHub seat in claimed organisation verified."
+
+Rung 3 — Contribution fingerprint (Deep Mode only):
+Detection: contributions in org repos are temporally consistent with stated tenure
+rungText = "Rung 3 — Contribution fingerprint confirmed: active engineering activity in claimed organisation during stated period."
+
+METHOD:
+verify(groupA: RawGroupA, mode: 'light' | 'deep', claimedEmployers: string[]): EmploymentRungResult[]
+
+If claimedEmployers is empty: return []
+
+For each employer in claimedEmployers:
+1. Always attempt Rung 1 (both modes)
+2. Only attempt Rungs 2+3 in Deep Mode
+3. Return the highest rung achieved for each employer
+
+EMPLOYER NAME MATCHING (fuzzy):
+- normalise: lowercase, strip 'inc', 'ltd', 'llc', 'corp', 'technologies', 'software', special chars
+- compare normalised strings
+- also try: employer.split(' ')[0] (first word match)
+
+In Light Mode: claimedEmployers comes from groupA.company field (parse comma-separated if multiple).
+In Deep Mode: additionally check org memberships list.
+
+Where does claimedEmployers come from in the caller? The analysis input may include a parsedCV field with employer list. If absent, extract from groupA.company. Document this in a JSDoc comment.
+
+Return EmploymentRungResult[] sorted by rung descending (highest verification first).
+
+---
+### PROMPT 3.3 — Interview Probe Generator
+Model: Claude
+Why Claude: Template logic with conditional rules — small and precise.
+Target file: src/brief/interview-probe-generator.service.ts
+Build InterviewProbeGeneratorService that generates Section E of the Evidence Brief.
+
+METHOD: generate(primitives: Record<string, PrimitiveAssessment & { aiLeverageClass?: AILeverageClass }>, flags: AntiGamingFlag[], archetypeTarget: RoleArchetype): SectionE
+
+SectionE: {
+  technicalQuestions: Array<{ question: string; rationale: string }>
+  gapProbes: Array<{ question: string; gap: string }>
+  flagProbes: Array<{ question: string; flagType: string }>
+  suggestedInterviewerPairing: string
+}
+
+RULES:
+
+technicalQuestions (3–5 questions):
+- These come from actual evidence in the brief — specific to what was observed
+- For each primitive with strong_evidence: generate a "go deeper" question based on keyEvidence[0]
+  e.g. if p4.keyEvidence[0] = "68% of commits in Rust across 8 repos" → "You appear to work primarily in Rust. Walk me through the most complex ownership/lifetime problem you've solved."
+- Cap at 5 questions — prioritise primitives with highest confidence
+- Rationale must reference the specific evidence that generated the question
+
+gapProbes (1 per observability_gap primitive):
+- For each primitive where confidence === 'observability_gap' OR 'insufficient_data':
+  extract the recommended interview question from the primitive's interviewProbes[0]
+  wrap it as: { question: probe, gap: "No public evidence for [primitive name]" }
+
+flagProbes (1 per flag):
+- For each AntiGamingFlag in flags:
+  use flag.interviewProbe verbatim
+  DO NOT reveal the detection mechanism in the question (the probe is already written to avoid this)
+  wrap as: { question: flag.interviewProbe, flagType: flag.type }
+
+suggestedInterviewerPairing:
+- Based on archetypeTarget:
+  BACKEND → "Pair with a senior backend engineer who can probe system design and data layer decisions"
+  FRONTEND → "Pair with a senior frontend engineer who can evaluate component architecture and accessibility awareness"
+  PLATFORM_DEVOPS_SRE → "Pair with a staff SRE or platform engineer familiar with the production stack"
+  DATA_ML → "Pair with a data engineer or ML engineer who can probe productionisation and pipeline quality"
+  SECURITY → "Pair with a security engineer — all flag probes should be led by them"
+  MOBILE → "Pair with a mobile engineer from the relevant platform (iOS/Android) based on detected stack"
+
+---
+### PROMPT 3.4 — Light Analysis BullMQ Processor
+Model: Claude
+Why Claude: Pipeline orchestration with precise error handling and progress tracking.
+Target file: src/queues/light-analysis.processor.ts
+Build the LightAnalysisProcessor BullMQ processor for a NestJS GitHub analysis system.
+
+This is the main orchestrator for Light Mode analysis. It runs all services in the correct order and writes progress updates to the AnalysisJob record.
+
+QUEUE NAME: 'light-analysis'
+JOB DATA TYPE: LightAnalysisJobData { analysisJobId: string, githubUsername: string, seniorityTarget: SeniorityTier, archetypeTarget: RoleArchetype, mode: 'LIGHT' }
+
+PIPELINE STEPS (in order):
+
+1. Update AnalysisJob status='processing', progress=5
+2. Check cache: BriefCacheService.get(key) — if hit, store result and mark complete, return early
+3. progress=10 — LightFetcherService.fetch(username) → rawLightData
+4. progress=35 — ExternalSignalService.fetch(username, rawLightData.groupB.repos) → merge into groupF
+5. progress=45 — GroupMapperService.map(rawLightData) → primitiveInputMap
+6. progress=50 — Run all 7 primitive services in parallel (Promise.all):
+     p1 = P1Service.evaluate(primitiveInputMap.p1)
+     p2 = P2Service.evaluate(primitiveInputMap.p2)
+     ... etc
+7. progress=65 — Run anti-gaming services in parallel:
+     [commitFlag, forkFlag, burstFlag] = await Promise.all([...])
+     launderingFlag = await RepoLaunderingService.analyze(...) (async — external API)
+     flags = [commitFlag, forkFlag, burstFlag, launderingFlag].filter(Boolean)
+8. progress=75 — EmploymentVerificationService.verify(...)
+9. progress=80 — BriefAssemblerService.buildBrief(...) → brief
+10. progress=90 — BriefCacheService.set(key, brief, ttl)
+11. progress=95 — Update AnalysisJob: result=brief, flags=flags, status='completed', progress=100
+12. If Candidate linked to job: update Candidate.scorecard = brief, Candidate.activeBriefJobId = jobId
+
+ERROR HANDLING:
+- Wrap entire pipeline in try/catch
+- On any unhandled error: Update AnalysisJob status='failed', error=err.message, progress=0
+- If LightFetcherService throws RateLimitExhaustedException: set error='Rate limit exhausted — retry after [X] minutes', re-queue with delay
+- Individual service failures (primitives, anti-gaming): log warning, continue with partial result, add to brief.meta.warnings[]
+- Never let a single primitive failure kill the entire brief
+
+INJECT: all services listed above + PrismaService + Logger
+
+Use @nestjs/bullmq @Processor and @Process() decorators. Update job.progress() via the BullMQ Job object throughout.
+
+---
+
+### PROMPT 3.5 — API Endpoints
+Model: Claude
+Why Claude: NestJS controller patterns with specific validation and response shapes.
+Target files: src/modules/analysis/analysis.controller.ts (extended), src/modules/analysis/analysis.service.ts (extended)
+Extend the existing AnalysisController and AnalysisService for v5.
+
+CONTEXT: The existing analysis module has basic CRUD. Extend it — do not replace it.
+
+NEW/UPDATED ENDPOINTS:
+
+1. POST /analysis (replace existing)
+Body (Zod validated):
+{
+  githubUsername: string (min 1, max 39)
+  mode: 'LIGHT' | 'DEEP' (default: 'LIGHT')
+  seniorityTarget: SeniorityTier (optional, default: 'MID')
+  archetypeTarget: RoleArchetype (optional, default: 'BACKEND')
+}
+Auth: optional (candidateId attached if authenticated, null otherwise)
+Logic:
+  - Create AnalysisJob record with all fields
+  - Add to BullMQ 'light-analysis' queue (for LIGHT mode) or 'deep-analysis' (for DEEP)
+  - Return: { jobId, status: 'pending', estimatedMinutes: mode === 'LIGHT' ? 3 : 15 }
+
+2. GET /analysis/:jobId/brief
+Auth: optional (but if job has candidateId, only that candidate or HR roles can access)
+Logic:
+  - Fetch AnalysisJob by id
+  - If status !== 'completed': return { status, progress, estimatedMinutes }
+  - If status === 'completed': return { status, brief: job.result, flags: job.flags, generatedAt: job.updatedAt }
+  - If job.expiresAt < now: return 410 Gone with message "Brief has expired. Request a new analysis."
+
+3. GET /analysis/:jobId/status (keep existing, update response)
+Returns: { status, progress, stage: map progress% to stage name }
+Stage mapping:
+  0-10 → 'queued'
+  10-50 → 'fetching_data'
+  50-75 → 'analysing_signals'
+  75-90 → 'building_brief'
+  90-100 → 'complete'
+
+4. POST /analysis/:jobId/rerun (new)
+Auth: HR_ADMIN or ADMIN role only
+Logic: Creates a new AnalysisJob with same input, queues it. Returns new jobId.
+
+Use nestjs-zod for body validation. Use existing guards for auth. Add swagger decorators (@ApiOperation, @ApiResponse) for each endpoint.
+
+---
+### Phase 4 — Anti-Gaming Detection (Week 4)
+**Goal:** All 6 detection algorithms live, feeding Section D and P7.
+
+| Step | Task |
+|---|---|
+| 4.1 | `CommitInflationService` — size histogram, 30% threshold |
+| 4.2 | `ForkDumpingService` — gitinspector-free for Light Mode (API patterns) |
+| 4.3 | `BurstDormancyService` — contribution heatmap, 5× burst detection |
+| 4.4 | `RepoLaunderingService` — GitHub Code Search API, Copyleaks integration |
+| 4.5 | `CredentialLeakService` (Light Mode stub — gitleaks not available yet) |
+| 4.6 | Wire all flags into `P7AuthenticityConfidenceService` |
+| 4.7 | Populate Section D of Evidence Brief |
+| 4.8 | Hard stop logic for credential leaks |
+| 4.9 | Tests: each detection algorithm against crafted edge cases |
+
+---
+
 
 ### PROMPT 4.1-4.3 — Anti-Gaming Bundle (Commit Inflation + Fork Dumping + Burst/Dormancy)
 **Model:** Gemini  
@@ -925,6 +883,124 @@ IMPORTANT:
 - Copyleaks calls are fire-and-forget with a 10s timeout — don't block the pipeline
 - The Copyleaks API base URL and endpoints should come from env config
 ```
+---
+
+### PROMPT 4.5 — Credential Leak Stub (Light Mode)
+Model: Codex
+Why Codex: Stub service with precise conditional logic — mechanical function body.
+Target file: src/anti-gaming/credential-leak.service.ts
+Build CredentialLeakService stub for Light Mode.
+
+In Light Mode, gitleaks cannot run (no repo cloning). This stub provides a best-effort signal from API data only.
+
+METHOD: analyze(groupB: RawGroupB, groupE: RawGroupE): AntiGamingFlag | null
+
+LIGHT MODE DETECTION (API-only, imprecise):
+1. Check groupB.repos for any repo named like: '.env-backup', 'secrets', 'credentials', 'api-keys' (case-insensitive, exact name matches only — do not flag partial matches)
+2. Check groupE — there is no direct credential signal in API-level GroupE. Return null.
+
+In practice this service will almost always return null in Light Mode. That is correct behaviour.
+
+When a flag IS returned (only for the repo-name pattern):
+{
+  type: 'credential_leak',
+  severity: 'hard_stop',
+  evidence: "Repository named '${repoName}' may contain credentials. Verify manually.",
+  confidenceScore: 20,  // low confidence — this is a heuristic
+  interviewProbe: "I noticed a repository in your account named [name]. Can you tell me about it?",
+  autoReject: false
+}
+
+Add a JSDoc comment: "In Deep Mode, GitleaksService replaces this stub with full git history scanning."
+
+---
+
+### PROMPT 4.6+4.7+4.8 — P7 Full Implementation + Section D Wiring
+Model: Claude
+Why Claude: Wiring all flags into P7 and Section D requires careful conditional logic.
+Target file: src/signals/primitives/p7-authenticity-confidence.service.ts (replace stub from Phase 2)
+Replace the P7 stub with full implementation. Anti-gaming services now exist.
+
+P7 AuthenticityConfidenceService — full implementation.
+
+CORE QUESTION: "Is the evidence trustworthy and the identity coherent?"
+
+INPUT: P7AuthenticityConfidenceInput {
+  groupA: RawGroupA
+  groupG: RawGroupG  // populated by anti-gaming services before P7 runs
+  gitleaks?: GitleaksOutput
+  employmentRungs: EmploymentRungResult[]
+}
+
+Also accept directly: flags: AntiGamingFlag[]  — add this to the input type
+
+HARD STOP RULE (check first, return immediately):
+If gitleaks?.leaksFound OR flags.some(f => f.type === 'credential_leak'):
+  return {
+    score: null,
+    confidence: 'low_evidence',
+    confidenceText: "Credential leak detected in git history. Hard stop — escalated to hiring manager. Cannot be cleared by the system. Requires interview or background check.",
+    keyEvidence: ["Credential detected: " + (gitleaks?.findings[0]?.ruleId ?? 'unknown rule')],
+    observabilityGaps: [],
+    interviewProbes: ["A credential was found in your git history. Can you walk us through what happened and how you resolved it?"]
+  }
+
+SCORING LOGIC (no hard stop):
+
+1. Employment verification score:
+   - Max rung across all employers:
+     Rung 3 → +40 points
+     Rung 2 → +25 points
+     Rung 1 → +15 points
+     Rung 0 → +0 points
+
+2. Gaming flag deductions:
+   For each flag in flags:
+     commit_inflation → -15
+     fork_dumping → -10
+     burst_dormancy → -20 (strongest signal of profile gaming)
+     repo_laundering → -30
+     ai_generation_gap → -10
+
+3. Base score: 70 (neutral starting point)
+4. Final score = Math.max(0, Math.min(100, base + employment - deductions))
+
+CONFIDENCE FROM SCORE:
+score >= 70 AND no flags → strong_evidence
+score >= 50 AND flags.length <= 1 → moderate_evidence
+score >= 30 → low_evidence
+score < 30 OR flags.length >= 3 → low_evidence with hard escalation note
+
+IMPORTANT: Never use confidence='observability_gap' for P7. If data is absent, use 'low_evidence' with note "Authenticity cannot be assessed without public activity data."
+
+keyEvidence should list:
+- Employment rung achieved (if > 0)
+- Any flags that fired (without revealing the exact detection algorithm)
+  e.g. "Commit pattern anomaly detected — interview probe included"
+
+Build a separate method:
+buildSectionD(flags: AntiGamingFlag[], primitives: Record<string, PrimitiveAssessment>): SectionD
+  Returns {
+    flags: flags,
+    credentialLeakDetected: flags.some(f => f.type === 'credential_leak'),
+    verificationGaps: deduplicate all observabilityGaps across all primitives
+  }
+
+---
+
+### Phase 5 — LLM Integration (Week 5)
+**Goal:** Replace rule-based stubs with LLM calls for commit quality, PR depth, AI-gen detection.
+
+| Step | Task |
+|---|---|
+| 5.1 | `LLMClientService` — Anthropic API wrapper, rate handling, retry |
+| 5.2 | `CommitQualityPrompt` — evaluates informativeness, intent, message patterns |
+| 5.3 | `PRDepthPrompt` — review comment substance, root cause vs symptom |
+| 5.4 | `AIGenerationPrompt` — style discontinuity, entropy anomaly detection |
+| 5.5 | `READMEScorerPrompt` — quality, clarity, documentation discipline |
+| 5.6 | Wire LLM outputs into P1 (commit quality), P3 (PR depth), P6 (AI-gen), P7 (style) |
+| 5.7 | Fallback: if LLM call fails, primitive reverts to rule-based with `low_evidence` |
+| 5.8 | Token budget management — batch LLM calls in single request per analysis job |
 
 ---
 
@@ -983,6 +1059,116 @@ You are an expert at detecting AI-generated code patterns. Given 5 code snippets
 Return JSON with scores + classification: 'likely_human' | 'mixed' | 'likely_ai' | 'inconclusive'
 Note: inconclusive is preferred over false positives. Err toward 'likely_human'.
 ```
+
+---
+
+### PROMPT 5.5 — README Scorer Prompt
+Model: Claude
+Why Claude: Prompt engineering for a structured scoring output — needs precise JSON schema spec.
+Target file: src/llm/readme-scorer.prompt.ts
+Build the README scorer LLM prompt builder.
+
+Export: buildREADMEScorerPrompt(readmeContents: Array<{ repoName: string; content: string }>): LLMPromptRequest
+
+This prompt evaluates README quality across a candidate's top repos.
+
+System prompt:
+"You are evaluating GitHub README files for engineering documentation quality. You will receive up to 5 README files. Respond ONLY with a valid JSON object — no preamble, no explanation, no markdown fences."
+
+User content format:
+For each README: "=== README: [repoName] ===\n[first 2000 chars of content]\n\n"
+
+Evaluate:
+1. clarity (0-10): is the purpose of the project immediately clear?
+2. technical_depth (0-10): does it explain architecture, design decisions, or non-obvious choices?
+3. setup_quality (0-10): does it have working setup/installation instructions?
+4. maintenance_signals (0-10): does it show active upkeep (badges, changelogs, contribution guides)?
+5. overall_documentation_tier: 'exemplary' | 'solid' | 'minimal' | 'absent'
+
+Return JSON:
+{
+  "per_repo": [{ "repo": string, "clarity": number, "technical_depth": number, "setup_quality": number, "maintenance_signals": number }],
+  "average_scores": { "clarity": number, "technical_depth": number, "setup_quality": number, "maintenance_signals": number },
+  "overall_documentation_tier": string,
+  "standout_example": string | null  // repo name with best documentation, if any
+}
+
+maxTokens: 800
+
+Note: README content must be truncated to 2000 chars per file before sending. Add this truncation in the builder function itself.
+
+---
+
+### PROMPT 5.6+5.7 — LLM Output Wiring + Fallback
+Model: Claude
+Why Claude: Conditional wiring with fallback paths is constraint-heavy.
+Target file: src/signals/llm-signal-merger.service.ts
+Build LLMSignalMergerService — wires LLM analysis outputs back into primitive assessments.
+
+PURPOSE: After LLM calls complete, their outputs need to upgrade or refine the rule-based primitive assessments. This service takes the rule-based primitives + LLM outputs and returns upgraded primitives.
+
+METHOD:
+merge(
+  primitives: PrimitiveInputMap results (the rule-based outputs),
+  llmOutputs: {
+    commitQuality?: CommitQualityResult
+    prDepth?: PRDepthResult
+    aiGeneration?: AIGenerationResult
+    readmeScore?: READMEScorerResult
+  }
+): Record<string, PrimitiveAssessment>
+
+WIRING RULES:
+
+commitQuality → P1 (Execution Reliability):
+  If commitQuality.informativeness >= 7: upgrade P1 confidence by one tier (low→moderate, moderate→strong)
+  Add to P1.keyEvidence: "Commit messages score ${commitQuality.informativeness}/10 for informativeness"
+  If commitQuality.ai_generation_likelihood > 70: add to P1.observabilityGaps: "High AI generation likelihood in commit messages — may not reflect genuine work patterns"
+
+prDepth → P3 (Collaboration Leverage):
+  If prDepth.substantive_rate >= 60: upgrade P3 confidence by one tier
+  Add to P3.keyEvidence: "Review comments are ${prDepth.substantive_rate}% substantive (non-trivial)"
+  If prDepth.architectural_thinking >= 7: add "Reviews show architectural thinking, not just style concerns"
+
+aiGeneration → P6 (AI Leverage) and P7 (Authenticity):
+  P6: use aiGeneration.classification to refine aiLeverageClass
+    'likely_human' + existing class is 'traditional_engineer' → keep
+    'likely_ai' + no refinement commits → downgrade to 'ai_passenger' if not already
+    'likely_ai' + refinement commits detected → keep 'ai_operator'
+  P7: if aiGeneration.overall_ai_likelihood > 80: add AntiGamingFlag of type 'ai_generation_gap'
+
+readmeScore → P2 (Systems Evolution) and P4 (Technical Depth):
+  P2: if readmeScore.overall_documentation_tier === 'exemplary': add supporting evidence
+  P4: if readmeScore.average_scores.technical_depth >= 7: add "READMEs demonstrate technical depth in documentation"
+
+FALLBACK RULE (Phase 5.7):
+If any llmOutput is undefined/null (LLM call failed):
+  That primitive remains at its rule-based confidence level
+  Add to the primitive's observabilityGaps: "LLM analysis unavailable — rule-based assessment only"
+  Never change confidence to insufficient_data just because LLM failed
+
+This service must be stateless and pure — same inputs always produce same outputs.
+
+---
+
+### Phase 6 — Deep Mode Infrastructure (Week 6)
+**Goal:** GitHub App installed, tokens managed, repos cloned, local tools run.
+
+| Step | Task |
+|---|---|
+| 6.1 | `EvaluationLinkModule` — link generation, email send, GitHub App OAuth flow |
+| 6.2 | `DeepFetcherService` — installation token management, full repo crawl |
+| 6.3 | `RepoClonerService` — HTTPS clone of top 30 repos, parallel 4 workers |
+| 6.4 | Tool wrapper services: `SccService`, `TokeiService`, `GitinspectorService` |
+| 6.5 | `GitleaksService` — full history scan, credential detection |
+| 6.6 | `SemgrepService` — lightweight SAST on candidate code samples |
+| 6.7 | `ActionlintService` — GitHub Actions workflow validation |
+| 6.8 | `DeepAnalysisProcessor` — full pipeline wiring |
+| 6.9 | Employment verification Rungs 2 + 3 (org membership + contribution fingerprint) |
+| 6.10 | Data retention enforcement — in-memory only for source code, purge on completion |
+| 6.11 | Employer notification on Deep Mode completion |
+| 6.12 | Integration test: full Deep Mode on test GitHub App installation |
+
 
 ---
 
@@ -1129,6 +1315,219 @@ Parse: JSON report file after execution
 Output type: GitleaksResult { leaksFound: boolean, count: number, findings: Array<{ruleId, file, commit, secret_preview: string (first 4 chars + "****")}> }
 IMPORTANT: If leaksFound=true, this is a HARD STOP — log at ERROR level with repoName and count. The processor must surface this to the brief immediately regardless of other results.
 ```
+---
+### PROMPT 6.6 — Semgrep Service
+Model: Codex
+Why Codex: CLI wrapper with JSON output parsing — mechanical function body.
+Target file: src/tools/semgrep.service.ts
+Build SemgrepService NestJS @Injectable wrapper.
+
+Binary: semgrep (installed globally)
+Command: semgrep --config=p/owasp-top-ten --config=p/secrets --json --timeout 60 [repoPath]
+
+Note: use only these two rulesets — fast enough for screening, covers the most important vulnerability classes.
+
+Method: run(repoPath: string): Promise<SemgrepOutput | null>
+
+- execFile with timeout 120s
+- Parse stdout as JSON: { results: Array<{ check_id, path, start: {line}, message, extra: { severity } }> }
+- Map to SemgrepOutput:
+  findings: results.map(r => ({ ruleId: r.check_id, file: r.path, severity: r.extra.severity.toUpperCase(), message: r.message }))
+  totalFindings: results.length
+  errorCount: results.filter(r => r.extra.severity === 'ERROR').length
+- On parse error or timeout: log warning, return null
+- On semgrep exit code 1 (findings exist, not an error): parse normally — exit code 1 means findings, not failure
+- On exit code 2+ (actual error): return null
+
+IMPORTANT: semgrep can be slow on large repos. Add a pre-check: if repoPath directory size > 100MB (use du -sh), skip and return null with a log warning.
+
+---
+
+### PROMPT 6.7 — Actionlint Service
+Model: Codex
+Why Codex: CLI wrapper — mechanical.
+Target file: src/tools/actionlint.service.ts
+Build ActionlintService NestJS @Injectable wrapper.
+
+Binary: actionlint (installed globally)
+Command: actionlint -format '{{json .}}' [repoPath]/.github/workflows/*.yml
+
+Method: run(repoPath: string): Promise<ActionlintOutput | null>
+
+Pre-check: if .github/workflows directory does not exist in repoPath → return { issues: [], totalIssues: 0 } (not null — absence of CI is a valid signal, already captured in GroupE)
+
+Parse JSON array output: Array<{ message, filepath, line, column, kind }>
+Map to ActionlintOutput:
+  issues: results.map(r => ({ file: r.filepath, line: r.line, message: r.message, severity: r.kind }))
+  totalIssues: results.length
+
+On parse error: return null.
+
+Note: actionlint exits 0 with empty array when no issues. Non-zero exit with JSON output means issues found — parse normally.
+
+---
+
+### PROMPT 6.8 — Deep Analysis Processor
+Model: Gemini
+Why Gemini: Full orchestration across many services with parallel tool execution — needs large context.
+Target file: src/queues/deep-analysis.processor.ts
+Build DeepAnalysisProcessor BullMQ processor for Deep Mode GitHub analysis.
+
+QUEUE NAME: 'deep-analysis'
+JOB DATA TYPE: DeepAnalysisJobData { analysisJobId: string, evaluationLinkId: string, seniorityTarget: SeniorityTier, archetypeTarget: RoleArchetype }
+
+PIPELINE (ordered steps with progress %):
+
+5%: Load EvaluationLink by evaluationLinkId. Decrypt installationToken using CryptoUtil.decrypt(). If token expired (>1hr): refresh via GitHub App JWT. Update AnalysisJob status='processing'.
+
+10%: DeepFetcherService.crawl(installationToken, grantedRepoIds) → rawDeepData (~60s)
+
+25%: RepoClonerService.cloneTop30(repos, installationToken, jobId) → cloneResults (~5-8min)
+     Log which repos cloned, which failed.
+
+50%: Run tool suite in parallel across all cloned repos (Promise.all):
+     For each successfully cloned repo:
+       scc = SccService.run(clonePath)
+       tokei = TokeiService.run(clonePath)
+       gitinspector = GitinspectorService.run(clonePath, candidateEmails)
+       gitleaks = GitleaksService.run(clonePath)
+       semgrep = SemgrepService.run(clonePath)
+       actionlint = ActionlintService.run(clonePath)
+     Aggregate across repos: merge SccOutput (sum complexity), merge TokeiOutput (sum lines), concat GitleaksOutput findings, concat SemgrepOutput findings.
+     
+     HARD STOP CHECK: if any GitleaksOutput.leaksFound === true:
+       Update AnalysisJob immediately with hard stop flag.
+       Continue pipeline (do not abort) — brief is still generated, but credential flag will be in Section D.
+
+60%: ExternalSignalService.fetch() + EmploymentVerificationService.verify() in parallel (rungs 2+3 available in Deep Mode)
+
+70%: GroupMapperService.map(rawDeepData) → primitiveInputMap (with tool outputs merged in)
+
+75%: All 7 primitive services in parallel (same as Light Mode processor)
+
+80%: Anti-gaming full suite (includes gitleaks results now available)
+
+85%: LLMBatchManagerService.batchAnalyze(tasks) — full corpus analysis
+
+87%: LLMSignalMergerService.merge(primitives, llmOutputs)
+
+90%: BriefAssemblerService.buildBrief(...) — full Deep Mode brief
+
+93%: RepoClonerService.cleanup(jobId) — DELETE all cloned repos from disk
+     Log cleanup success/failure. Continue even if cleanup fails.
+
+95%: BriefCacheService.set() + AnalysisJob update (completed)
+
+98%: Notify employer (send email or webhook — use NotificationService, inject it, stub the call)
+
+100%: Mark complete.
+
+ERROR HANDLING:
+- Same fallback pattern as Light Mode processor
+- On clone failure for a specific repo: log, exclude from tool analysis, continue
+- On ALL repos failing to clone: abort with status='failed', error='Repository access failed'
+- Cleanup (step 93%) must run even if prior steps fail — use try/finally
+
+INJECT: all services + PrismaService + CryptoUtil + Logger
+
+---
+
+### PROMPT 6.9 — Employment Verification Rungs 2+3
+Model: Claude
+Why Claude: Precise rung logic upgrade — small targeted extension.
+Target file: src/employment/verification-ladder.service.ts (extend existing)
+Extend the existing EmploymentVerificationService with Rung 2 and Rung 3 logic.
+
+CONTEXT: The existing service has Rung 0 and Rung 1. Add Rungs 2 and 3 as Deep Mode enhancements.
+
+Rung 2 — GitHub Org Membership:
+INPUT: groupA.orgMemberships (now populated in Deep Mode with private org data)
+DETECTION: any orgMembership.org matches (fuzzy) employer name
+UPGRADE: if Rung 1 already achieved for this employer → upgrade to Rung 2
+If Rung 1 not achieved but org found → set to Rung 2 directly
+
+Rung 3 — Contribution Fingerprint:
+INPUT: RawDeepData includes orgContributions: Array<{ org: string, firstContributionAt: string, lastContributionAt: string, totalCommits: number }>
+DETECTION:
+  - Find orgContributions entry matching the employer
+  - Check temporal consistency: does the contribution window overlap with claimed employment dates?
+  - If claimedStartDate and claimedEndDate provided: verify overlap
+  - If only org name known (no dates): Rung 3 requires at least 10 commits in org repos
+UPGRADE: Rung 2 → Rung 3 only if temporal consistency confirmed OR commit count >= 10
+
+Add claimedEmployers to the method signature with optional date ranges:
+claimedEmployers: Array<{ name: string; startDate?: string; endDate?: string }>
+
+This is additive — do not change existing Rung 0/1 logic. Just extend the method to attempt Rungs 2+3 when mode === 'deep'.
+
+
+---
+
+### Phase 7 — Role/JD Matching + Section F (Week 7)
+**Goal:** Section F live; JD parsing active.
+
+| Step | Task |
+|---|---|
+| 7.1 | `JobDescriptionModule` — CRUD, LLM extraction of required signals |
+| 7.2 | `RoleStackMatchService` — evidenced stack vs JD requirements |
+| 7.3 | Gap analysis → specific interview probes (Section E extension) |
+| 7.4 | `JDIntentExtractor` — LLM prompt to extract actual requirements beyond keywords |
+| 7.5 | Wire Section F into Brief Assembler (only when JD provided + Deep Mode) |
+
+
+---
+
+### PROMPT 7.1 — Job Description Module
+Model: Claude
+Why Claude: NestJS CRUD module with LLM extraction — small, precise.
+Target files: src/modules/job-description/ (controller + service + module)
+Build the JobDescription NestJS module.
+
+PURPOSE: Employers create and manage job descriptions. LLM extracts structured requirements from raw text.
+
+MODEL (already in Prisma schema):
+JobDescription { id, title, rawText, extractedSignals: Json?, companyId, createdAt }
+extractedSignals shape: {
+  requiredLanguages: string[]
+  requiredTools: string[]
+  requiredFrameworks: string[]
+  niceToHave: string[]
+  senioritySignals: string[]
+  inferredArchetype: RoleArchetype
+  inferredSeniority: SeniorityTier
+}
+
+ENDPOINTS:
+
+POST /job-descriptions
+Body: { title: string, rawText: string }
+Auth: RequireCompany guard
+Logic:
+  1. Create JobDescription record with extractedSignals: null
+  2. Queue LLM extraction as a background task (add to a 'jd-extraction' BullMQ queue)
+  3. Return: { id, title, status: 'processing' }
+
+GET /job-descriptions/:id
+Returns full record including extractedSignals (null if still processing)
+
+PUT /job-descriptions/:id/confirm
+Body: { extractedSignals: ExtractedSignals } — HR can edit the LLM extraction before confirming
+Updates extractedSignals, sets requirementsConfirmedAt (add this field to JobDescription in Prisma)
+
+DELETE /job-descriptions/:id
+Soft delete (add deletedAt field) — do not hard delete, referenced by AnalysisJobs
+
+JD EXTRACTION PROCESSOR:
+Queue: 'jd-extraction'
+Calls LLMClientService with buildJDExtractionPrompt(rawText)
+Stores extractedSignals back on the record
+
+BUILD the JD extraction prompt inline:
+System: "Extract structured technical requirements from a job description. Respond only with valid JSON."
+User: "[raw JD text, truncated to 3000 chars]"
+Response schema: the ExtractedSignals shape above
+inferredArchetype: map the role to the closest RoleArchetype enum value
+inferredSeniority: map seniority language to SeniorityTier
 
 ---
 
@@ -1169,6 +1568,131 @@ IMPORTANT: This service only runs when both conditions are true:
 2. jobDescriptionId is set on the AnalysisJob
 If either condition is false, return null. BriefAssembler handles the null → sectionF absent.
 ```
+
+---
+### PROMPT 7.4 — JD Intent Extractor Prompt
+Model: Claude
+Why Claude: Prompt that needs to go beyond keyword matching requires careful instruction.
+Target file: src/llm/jd-intent.prompt.ts
+Build the JD intent extraction LLM prompt builder.
+
+Export: buildJDIntentPrompt(rawJD: string): LLMPromptRequest
+
+PURPOSE: Extract what the role ACTUALLY needs, beyond keyword matching. Many JDs list desired skills that are not actually critical to day-to-day work, or omit skills that are.
+
+System prompt:
+"You are a senior engineering hiring consultant. Analyse this job description and identify what this role genuinely requires vs. what is aspirational boilerplate. Respond ONLY with valid JSON."
+
+User: first 3000 chars of rawJD
+
+Return JSON:
+{
+  "core_technical_requirements": string[],   // non-negotiable technical skills
+  "nice_to_have": string[],                  // explicitly or implicitly optional
+  "likely_day_to_day": string[],             // what they will actually do most of the time
+  "boilerplate_detected": string[],          // standard JD filler that's not specific to this role
+  "hidden_requirements": string[],           // skills implied but not stated (e.g. "distributed systems" when "designs data pipelines" is mentioned)
+  "seniority_signals": string[],             // phrases that indicate the real seniority expectation
+  "intent_summary": string                   // 2-sentence plain English: what this role is really about
+}
+
+maxTokens: 600
+
+The intent_summary becomes EvidenceBrief.sectionF.jdIntentSummary.
+---
+
+### Phase 8 — Hardening & Outcomes (Week 8)
+**Goal:** Production-ready, GDPR compliant, outcome data schema live.
+
+| Step | Task |
+|---|---|
+| 8.1 | `HireOutcome` model + POST /outcomes endpoint |
+| 8.2 | Anti-gaming calibration hook — flag → outcome correlation schema |
+| 8.3 | GDPR deletion — hard delete + Redis flush |
+| 8.4 | Load test: 50 concurrent Light Mode jobs, p95 < 3 min |
+| 8.5 | Load test: 10 concurrent Deep Mode jobs |
+| 8.6 | Cache hit verification |
+| 8.7 | Sentry error tracking wired to all processors |
+| 8.8 | Full E2E test suite: 5 seed profiles × 2 modes |
+
+---
+
+### PROMPT 8.1 — Hire Outcome Endpoint
+Model: Codex
+Why Codex: Simple CRUD endpoint — mechanical.
+Target files: src/modules/outcomes/outcomes.controller.ts, outcomes.service.ts, outcomes.module.ts
+Build the HireOutcome NestJS module.
+
+MODEL (already in Prisma): HireOutcome { id, analysisJobId, hired, performanceRating, flagsWereAccurate, notes, recordedAt }
+
+ENDPOINTS:
+
+POST /outcomes
+Auth: HR_ADMIN or ADMIN role only
+Body (Zod):
+{
+  analysisJobId: string (uuid)
+  hired: boolean
+  performanceRating?: number (int, 1-5, only valid if hired=true)
+  flagsWereAccurate?: boolean  (were the anti-gaming flags correct?)
+  notes?: string (max 500 chars)
+}
+Logic: upsert HireOutcome (one per analysisJob, update if exists)
+Return: { id, recordedAt }
+
+GET /outcomes/summary
+Auth: ADMIN only
+Returns aggregate stats:
+{
+  totalRecorded: number
+  hireRate: number (0-1)
+  avgPerformanceRating: number | null
+  flagAccuracyRate: number | null  // % of flagged profiles where flag was correct
+  byArchetype: Record<RoleArchetype, { hired: number, total: number }>
+}
+Use Prisma groupBy and aggregate queries.
+
+GET /outcomes/calibration
+Auth: ADMIN only
+Returns the data needed for anti-gaming calibration:
+For each AntiGamingFlag type: how often was it present in hired candidates who performed well vs poorly
+Format: Array<{ flagType, totalFlagged, hiredWithFlag, avgPerformanceWhenFlagged }>
+Use raw Prisma query to join AnalysisJob.flags JSONB with HireOutcome.
+
+---
+### PROMPT 8.3 — GDPR Deletion
+Model: Claude
+Why Claude: Cascade deletion with soft-anonymise logic needs precise ordering.
+Target file: src/modules/profile/gdpr.service.ts
+Build GDPRService for hard delete + data anonymisation.
+
+METHOD: deleteCandidate(candidateId: string): Promise<void>
+
+DELETION ORDER (respect FK constraints):
+
+1. Flush Redis: delete all cache keys matching 'brief:*' for this candidate's GitHub username
+   Get username from GithubProfile first, then flush.
+
+2. Anonymise Shortlist records (do NOT delete — preserve for employer audit):
+   Update all Shortlists where candidateId: set frozenScorecard=null, gapReport=null, decisionCard=null, interviewQuestions=null, candidateNote=null
+   Keep: jobPostId, status, pipelineStage, pipelineStageHistory (these are employer records)
+   Update candidateId to point to an anonymous candidate record (create one per deletion batch)
+
+3. Delete AnalysisJob records (hard delete)
+4. Delete HireOutcome records (hard delete — no audit value without the job)
+5. Delete GithubProfile (hard delete — contains encrypted token)
+6. Delete Web3Profile (hard delete)
+7. Delete DeveloperProfile (hard delete)
+8. Delete Vouch records (hard delete — vouches reference the candidate)
+9. Delete AuthAccount records (hard delete)
+10. Update User: set email=null, username=`deleted_${userId}`, name=null, firstName=null, lastName=null, accountStatus=SUSPENDED
+11. Update Candidate: set bio=null, avatarUrl=null, location=null, website=null, scorecard=null
+
+Run all steps in a Prisma transaction where possible. Log each step. On failure: log error + step that failed, throw GDPRDeletionException with step name.
+
+METHOD: anonymiseCandidate(candidateId: string): Promise<void>
+Softer version: nulls PII but keeps the account active. Used for account pause, not deletion.
+Same as above but skip steps 3-9, and don't delete the User record.
 
 ---
 

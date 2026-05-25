@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AnalysisResult } from '../types/result.types';
-import { GapReport } from '../gap-analysis/gap-analysis.service';
+// import { GapReport } from '../gap-analysis/gap-analysis.service';
 
 export interface DecisionCard {
   verdict: 'PROCEED' | 'REVIEW' | 'REJECT';
@@ -14,7 +14,11 @@ export interface DecisionCard {
 
 @Injectable()
 export class DecisionCardService {
-  generate(gapReport: GapReport, analysisResult: AnalysisResult): DecisionCard {
+
+
+  // generate(gapReport, analysisResult: AnalysisResult): DecisionCard {
+  generate(gapReport, analysisResult: AnalysisResult): DecisionCard {
+
     const verdict = this.computeVerdict(gapReport, analysisResult);
     const strengths = this.extractStrengths(analysisResult);
     const risks = this.extractRisks(gapReport, analysisResult);
@@ -50,7 +54,8 @@ export class DecisionCardService {
   }
 
   private computeVerdict(
-    gapReport: GapReport,
+    // gapReport,
+    gapReport,
     analysisResult: AnalysisResult,
   ): DecisionCard['verdict'] {
     const hasLowConfidence = Object.values(analysisResult.capabilities).some(
@@ -126,7 +131,7 @@ export class DecisionCardService {
   }
 
   private extractRisks(
-    gapReport: GapReport,
+    gapReport,
     analysisResult: AnalysisResult,
   ): string[] {
     const risks: string[] = [];
@@ -185,7 +190,7 @@ export class DecisionCardService {
   }
 
   private generateTechnicalSummary(
-    gapReport: GapReport,
+    gapReport,
     analysisResult: AnalysisResult,
   ): string {
     const caps = analysisResult.capabilities;

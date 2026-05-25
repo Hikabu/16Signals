@@ -6,14 +6,12 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { GapAnalysisService } from '../scoring/gap-analysis/gap-analysis.service';
 import { DecisionCardService } from '../scoring/decision-card/decision-card.service';
 import { InterviewQuestionService } from './interview-question.service';
 import {
   JobStatus,
   PipelineStage,
   ShortlistStatus,
-  FitTier,
   Prisma,
 } from '@prisma/client';
 import { AnalysisResult } from '../scoring/types/result.types';
@@ -28,17 +26,14 @@ export class ApplicantsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly gapAnalysisService: GapAnalysisService,
     private readonly decisionCardService: DecisionCardService,
     private readonly interviewQuestionService: InterviewQuestionService,
-    private readonly scorecardService: ScorecardService,
   ) {}
 
   async findByJob(
     jobId: string,
     companyId: string,
     filters: {
-      fitTier?: FitTier;
       minScore?: number;
       pipelineStage?: PipelineStage;
     },
@@ -47,13 +42,12 @@ export class ApplicantsService {
       where: {
         jobPostId: jobId,
         jobPost: { companyId },
-        ...(filters.fitTier && { fitTier: filters.fitTier }),
         ...(filters.minScore && {
           roleFitScore: { gte: Number(filters.minScore) },
         }),
         ...(filters.pipelineStage && { pipelineStage: filters.pipelineStage }),
       },
-      orderBy: { roleFitScore: 'desc' },
+      // orderBy: { roleFitScore: 'desc' },
       include: {
         candidate: {
           include: {
@@ -290,8 +284,8 @@ export class ApplicantsService {
       companyName: app.jobPost.company?.name || 'Unknown Company',
       pipelineStage: app.pipelineStage,
       appliedAt: app.appliedAt,
-      fitTier: app.fitTier,
-      roleFitScore: app.roleFitScore,
+      // fitTier: app.fitTier,
+      // roleFitScore: app.roleFitScore,
       status: app.status,
     }));
   }
@@ -327,34 +321,31 @@ export class ApplicantsService {
     }
 
     const analysisResult = latestAnalysis.result as unknown as AnalysisResult;
-    const gapReport = this.gapAnalysisService.compute(analysisResult, job);
+    // const gapReport = this.gapAnalysisService.compute(analysisResult, job);
+    const gapReport = 0;
     const decisionCard = this.decisionCardService.generate(
       gapReport,
       analysisResult,
     );
 
-    const verdictMap: Record<string, FitTier> = {
-      PROCEED: FitTier.STRONG,
-      REVIEW: FitTier.PROBE,
-      REJECT: FitTier.PASS,
-    };
-    const fitTier = verdictMap[decisionCard.verdict] || FitTier.PASS;
+
     const roleFitScore = this.computeRoleFitScore(gapReport, analysisResult);
 
-    const safeGaps = gapReport.gaps.map((g) => ({
-      dimension: g.dimension,
-      severity: g.severity,
-      description: `${g.actual} vs required ${g.expected}${g.mitigatingContext ? '. ' + g.mitigatingContext : ''}`,
-    }));
+    // const safeGaps = gapReport.gaps.map((g) => ({
+    //   dimension: g.dimension,
+    //   severity: g.severity,
+    //   description: `${g.actual} vs required ${g.expected}${g.mitigatingContext ? '. ' + g.mitigatingContext : ''}`,
+    // }));
+    const safeGaps = [];
 
     return {
       jobId,
-      fitTier,
+      // fitTier,
       reviewOutcome: (decisionCard as any).reviewOutcome,
       roleFitScore,
       gapSummary: decisionCard.hrSummary,
-      matchedTechnologies: gapReport.matchedTechnologies,
-      missingTechnologies: gapReport.missingTechnologies,
+      // matchedTechnologies: gapReport.matchedTechnologies,
+      // missingTechnologies: gapReport.missingTechnologies,
       gaps: safeGaps,
       skillsGap: this.buildSkillsGap(gapReport, job),
       scorecard: buildFrozenScorecard(analysisResult, candidate),
@@ -409,8 +400,8 @@ export class ApplicantsService {
     const analysisResult = latestAnalysis.result as unknown as AnalysisResult;
 
     // 5. Gap Analysis
-    const gapReport = this.gapAnalysisService.compute(analysisResult, job);
-
+    // const gapReport = this.gapAnalysisService.compute(analysisResult, job);
+const gapReport = 0;
     // 6. Decision Card
     const decisionCard = this.decisionCardService.generate(
       gapReport,
@@ -418,12 +409,12 @@ export class ApplicantsService {
     );
 
     // 7. Map verdict → FitTier
-    const verdictMap: Record<string, FitTier> = {
-      PROCEED: FitTier.STRONG,
-      REVIEW: FitTier.PROBE,
-      REJECT: FitTier.PASS,
-    };
-    const fitTier = verdictMap[decisionCard.verdict] || FitTier.PASS;
+    // const verdictMap: Record<string, FitTier> = {
+    //   PROCEED: FitTier.STRONG,
+    //   REVIEW: FitTier.PROBE,
+    //   REJECT: FitTier.PASS,
+    // };
+    // const fitTier = verdictMap[decisionCard.verdict] || FitTier.PASS;
 
     // 8. roleFitScore
     const roleFitScore = this.computeRoleFitScore(gapReport, analysisResult);
@@ -437,11 +428,11 @@ export class ApplicantsService {
       data: {
         jobPostId: jobId,
         candidateId,
-        roleFitScore,
-        fitTier,
-        confidenceTier: (analysisResult as any).confidenceTier ?? null,
-        fraudTier: (analysisResult as any).fraudTier ?? 'CLEAN',
-        behaviorPattern: (analysisResult as any).behaviorPattern ?? null,
+        // roleFitScore,
+        // fitTier,
+        // confidenceTier: (analysisResult as any).confidenceTier ?? null,
+        // fraudTier: (analysisResult as any).fraudTier ?? 'CLEAN',
+        // behaviorPattern: (analysisResult as any).behaviorPattern ?? null,
         frozenScorecard: frozenScorecard as any,
         decisionCard: decisionCard as unknown as Prisma.JsonObject,
         gapReport: gapReport as unknown as Prisma.JsonObject,

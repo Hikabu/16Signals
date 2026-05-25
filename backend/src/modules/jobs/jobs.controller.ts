@@ -34,8 +34,8 @@ import {
 } from './dto/confirm-requirements.dto';
 import { GetJobsQueryDto } from './dto/getJobsQuery.dto';
 import { GetMyJobsQueryDto } from './dto/get-my-jobs-query.dto';
-import { JobDescriptionParserService } from '../scoring/gap-analysis/job-description-parser.service';
-import { diffParsedRequirements } from '../scoring/gap-analysis/jd-diff.util';
+// import { JobDescriptionParserService } from '../scoring/gap-analysis/job-description-parser.service';
+// import { diffParsedRequirements } from '../scoring/gap-analysis/jd-diff.util';
 import { BaseController } from '../../shared/base.controller';
 import { JwtAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
 import { Public } from '../auth-employer/decorators/public.decorator';
@@ -51,7 +51,7 @@ export class JobsController extends BaseController {
 
   constructor(
     private readonly jobsService: JobsService,
-    private readonly parserService: JobDescriptionParserService,
+    // private readonly parserService: JobDescriptionParserService,
   ) {
     super();
   }
@@ -266,12 +266,15 @@ async getPublicJobs(@Query() query: GetJobsQueryDto) {
   ) {
     await this.jobsService.verifyOwnership(id, req.user.id);
 
-    const parsed = await this.parserService.parse(body.jdText);
-    const diff = diffParsedRequirements(parsed);
+    // const parsed = await this.parserService.parse(body.jdText);
+    // const diff = diffParsedRequirements(parsed);
+    const parsed = 0;
+    const diff = 0;
 
     return this.handleSuccess({
       parsed,
-      requiresReview: parsed.parserConfidence < 0.75,
+      // requiresReview: parsed.parserConfidence < 0.75,
+            requiresReview: 0,
       diff,
     });
   }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Seniority, RiskLevel } from '@prisma/client';
+import { Seniority } from '@prisma/client';
 
 /**
  * Capability item (structured UI representation)
@@ -34,7 +34,7 @@ export const ScorecardUiSchema = z.object({
 
   trust: z.object({
     level: z.string(), // FULL | PARTIAL | LOW | MINIMAL (kept flexible)
-    risk: z.nativeEnum(RiskLevel),
+    // risk: z.nativeEnum(RiskLevel),
     label: z.string(),
     guidance: z.string(),
   }),

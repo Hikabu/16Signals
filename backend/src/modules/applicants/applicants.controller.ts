@@ -35,7 +35,7 @@ import { UpdateShortlistResponseDto } from './dto/updateStatusResponse.dto';
 import { ApplicantsService } from './applicants.service';
 import { ScorecardRendererService } from './scorecard-renderer.service';
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
-import { UserRole, PipelineStage, FitTier } from '@prisma/client';
+import { UserRole, PipelineStage } from '@prisma/client';
 import { JwtAuthGuard as HrAuthGuard } from '../auth-employer/guards/jwt-auth.guard';
 import { ApplyResponseDto } from './dto/applyResponse.dto';
 import { ErrorResponseDto } from './dto/common.dto';
@@ -209,12 +209,6 @@ export class ApplicantsController extends BaseController {
   @ApiParam({
     name: 'jobId',
     example: 'job_123',
-  })
-  @ApiQuery({
-    name: 'fitTier',
-    required: false,
-    enum: FitTier,
-    example: 'STRONG',
   })
   @ApiQuery({
     name: 'minScore',

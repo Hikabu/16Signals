@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Seniority, RiskLevel } from '@prisma/client';
+import { Seniority } from '@prisma/client';
 
 export const RawScorecardSchema = z.object({
   summary: z.string(),
@@ -92,7 +92,7 @@ export const ScorecardUiSchema = z.object({
 
   trust: z.object({
     level: z.string(),
-    risk: z.nativeEnum(RiskLevel),
+    // risk: z.nativeEnum(RiskLevel),
     label: z.string(),
     guidance: z.string(),
   }),

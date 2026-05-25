@@ -1,0 +1,14 @@
+{
+  "user": {
+    "bio": "Linux kernel creator",
+    "company": "@linux",
+    "websiteUrl": "https://torvalds.com",
+    "isHireable": false,
+    "location": "Portland, OR",
+    "createdAt": "2010-01-01T00:00:00Z",
+    "organizations": { "nodes": [] },
+    "contributionsCollection": { "contributionCalendar": { "weeks": [] }, "pullRequestReviewContributions": { "nodes": [] } },
+    "pullRequests": { "nodes": [] },
+    "pinnedItems": { "nodes": [] }
+  }
+}

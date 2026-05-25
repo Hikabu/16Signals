@@ -4,7 +4,7 @@ import { CommitInflationService } from './commit-inflation.service';
 import { ForkDumpingService } from './fork-dumping.service';
 import { BurstDormancyService } from './burst-dormancy.service';
 import { RepoLaunderingService } from './repo-laundering.service';
-import { RateLimitModule } from '../github/rate-limit/rate-limit.module';
+import { RateLimitModule } from '../github-analyse/rate-limit/rate-limit.module';
 
 @Module({
   imports: [RateLimitModule, ConfigModule],
@@ -21,4 +21,4 @@ import { RateLimitModule } from '../github/rate-limit/rate-limit.module';
     RepoLaunderingService,
   ],
 })
-export class AntiGamingModule {}
+export class AntiGamingModule { }

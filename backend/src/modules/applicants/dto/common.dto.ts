@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PipelineStage, FitTier } from '@prisma/client';
+import { PipelineStage } from '@prisma/client';
 
 export class ErrorResponseDto {
   @ApiProperty({ example: 400 })

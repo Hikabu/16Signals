@@ -206,7 +206,7 @@ async mapToUiModel(
         },
         trust: {
           level: 'PARTIAL' as any,
-          risk: 'LOW_RISK' as any,
+          // risk: 'LOW_RISK' as any,
           label: 'NEUTRAL',
           guidance: 'Awaiting updated scoring analysis.',
         },
@@ -294,7 +294,7 @@ async mapToUiModel(
       },
       trust: {
         level: this.mapConfidenceLevel(real),
-        risk: 'LOW_RISK' as any,
+        // risk: 'LOW_RISK' as any,
         label: this.mapTrustLabel(real),
         guidance: this.mapGuidance(real),
       },
