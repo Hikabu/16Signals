@@ -9,7 +9,7 @@ export const envSchema = z.object({
   FRONTEND_URL: z.string(),
   REDIS_URL: z.string(),
 
-  GITHUB_APP_ID: z.coerce.number(),
+  GITHUB_APP_ID: z.string(),
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
   GITHUB_PRIVATE_KEY: z.string(),
@@ -56,6 +56,26 @@ export const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+
+  GITHUB_APP_PRIVATE_KEY: z.string(),
+  GITHUB_APP_WEBHOOK_SECRET: z.string(),
+
+  ANTHROPIC_API_KEY: z.string(),
+
+  COPYLEAKS_API_KEY: z.string().optional().default(''),
+
+  DEEP_MODE_WORKER_CONCURRENCY: z.coerce.number().min(1).max(8).optional().default(4),
+  BRIEF_CACHE_TTL_SECONDS: z.coerce.number().optional().default(86400),
+  DEEP_BRIEF_RETENTION_DAYS: z.coerce.number().optional().default(90),
+  SOURCE_CODE_PURGE_ON_COMPLETION: z
+    .preprocess((val) => {
+      if (val === 'true' || val === true || val === undefined) return true;
+      if (val === 'false' || val === false) return false;
+      return true;
+    }, z.boolean())
+    .optional()
+    .default(true),
+  MAX_REPOS_TO_CLONE: z.coerce.number().max(50).optional().default(30),
 });
 
 // export function validateEnv(config: Record<string, unknown>) {

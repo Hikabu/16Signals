@@ -46,6 +46,7 @@ model Company {
   updatedAt DateTime @updatedAt
 
   jobPosts JobPost[]
+  evaluationLinks EvaluationLink[]
 
   @@map("companies")
 }
@@ -131,12 +132,6 @@ model JobPost {
 
 // ─── APPLICATION / SHORTLIST ──────────────────────────────────────────────────
 
-enum FraudTier {
-  CLEAN
-  FLAGGED
-  DISQUALIFIED
-}
-
 enum ShortlistStatus {
   PENDING
   REVIEWED
@@ -145,35 +140,6 @@ enum ShortlistStatus {
   REJECTED
 }
 
-enum RiskLevel {
-  LOW_RISK
-  MEDIUM_RISK
-  HIGH_RISK
-  INSUFFICIENT_DATA
-}
-
-enum ConfidenceTier {
-  FULL
-  PARTIAL
-  LOW
-  MINIMAL
-}
-
-enum BehaviorPattern {
-  REVIEW_HEAVY_SENIOR
-  COMMIT_HEAVY_MIDLEVEL
-  BALANCED_CONTRIBUTOR
-  OSS_COLLABORATOR
-  EARLY_CAREER
-  RETURNING_DEVELOPER
-  WEB3_SPECIALIST
-}
-
-enum FitTier {
-  STRONG
-  PROBE
-  PASS
-}
 
 enum PipelineStage {
   APPLIED
@@ -193,25 +159,24 @@ model Shortlist {
   candidateId String
   status      ShortlistStatus @default(PENDING)
 
-  // Scoring
-  roleFitScore    Float            @default(0)
-  fraudTier       FraudTier        @default(CLEAN)
-  riskLevel       RiskLevel?
-  confidenceTier  ConfidenceTier?
-  behaviorPattern BehaviorPattern?
-  fitTier         FitTier          @default(PASS)
+  // REPLACE old scoring fields with v5-aligned fields
+  // OLD: roleFitScore Float, fraudTier FraudTier, riskLevel RiskLevel,
+  //      confidenceTier ConfidenceTier, behaviorPattern BehaviorPattern, fitTier FitTier
+  // NEW:
+  authenticityFlag  AuthenticityFlag  @default(CLEAN)   // replaces fraudTier
+  hasHardStop       Boolean           @default(false)   // credential leak or critical flag
+  recommendedDepth  InterviewDepth?                     // from Section A of brief
+  profileLevelGate  Boolean           @default(false)   // insufficient data flag
 
-  // Frozen snapshots, captured at apply-time, never mutated
-  frozenScorecard Json? // Full AnalysisResult snapshot
-  decisionCard    Json? // { verdict, strengths[], risks[], reputationNote }
-  gapReport       Json? // GapReport object
+  // Keep these — they're still valid
+  frozenScorecard Json?  // now stores EvidenceBrief snapshot
+  decisionCard    Json?
+  gapReport       Json?
 
-  // Pipeline tracking
   pipelineStage        PipelineStage @default(APPLIED)
-  pipelineStageHistory Json? // append-only log: [{ stage, changedAt, changedBy }]
-  interviewQuestions   Json? // InterviewQuestionSet[]
+  pipelineStageHistory Json?
+  interviewQuestions   Json?
 
-  // Notes
   candidateNote String? @db.VarChar(280)
   hrNotes       String?
 
@@ -222,7 +187,7 @@ model Shortlist {
   candidate Candidate @relation(fields: [candidateId], references: [id])
 
   @@unique([jobPostId, candidateId])
-  @@index([jobPostId, roleFitScore(sort: Desc)])
+  @@index([jobPostId, appliedAt(sort: Desc)])  // replace score-sorted index
   @@map("shortlists")
 }
 
@@ -317,6 +282,9 @@ model Candidate {
   // Cooldown for AI scorecard generation (path-agnostic)
   generateCooldownUntil DateTime?
 
+  // NEW — tracks which analysis job produced the current scorecard
+  activeBriefJobId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -380,6 +348,12 @@ model GithubProfile {
 
   rawDataSnapshot Json?
 
+  // NEW — Deep Mode App installation
+  installationId    String?
+  installationToken String?  // AES-256-GCM encrypted, same pattern as encryptedToken
+  grantedRepoIds    Json?    // string[] of repo IDs candidate consented to
+  deepModeEnabledAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -436,18 +410,68 @@ model Vouch {
 }
 
 // ─── ANALYSIS JOB ─────────────────────────────────────────────────────────────
-// Tracks async analysis tasks. Linked to Candidate by candidateId (Candidate.id).
 
+enum AnalysisMode {
+  LIGHT
+  DEEP
+}
+
+// Replaces the old SeniorityTier which didn't exist — maps to JobPost.Seniority
+// but kept separate because analysis targets and job post seniority can diverge
+enum SeniorityTier {
+  INTERN_JUNIOR
+  MID
+  SENIOR
+  STAFF_LEAD
+  PRINCIPAL_PLUS
+}
+
+// Note: RoleArchetype is more specific than JobPost.RoleType — keep both
+enum RoleArchetype {
+  BACKEND
+  FRONTEND
+  PLATFORM_DEVOPS_SRE
+  DATA_ML
+  SECURITY
+  MOBILE
+}
+
+// Replaces FraudTier (which implied binary clean/dirty)
+enum AuthenticityFlag {
+  CLEAN
+  SOFT_CONCERN    // flags present, interview required
+  HARD_STOP       // credential leak — escalate immediately
+}
+
+enum InterviewDepth {
+  LIGHT
+  STANDARD
+  DEEP
+}
+
+// Tracks async analysis tasks. Linked to Candidate by candidateId (Candidate.id).
 model AnalysisJob {
   id          String     @id @default(uuid())
   candidateId String?
   candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
 
-  status   String  @default("pending") // "pending" | "processing" | "completed" | "failed"
+  // NEW
+  mode            AnalysisMode    @default(LIGHT)
+  seniorityTarget SeniorityTier?
+  archetypeTarget RoleArchetype?
+  evaluationLinkId String?
+  evaluationLink  EvaluationLink? @relation(fields: [evaluationLinkId], references: [id])
+  hireOutcome HireOutcome?
+
+  status   String  @default("pending")
   progress Int     @default(0)
-  input    Json // { githubUsername, walletAddress, mode, useGithubCache }
-  result   Json?
+  input    Json
+  result   Json?   // EvidenceBrief shape
+  flags    Json?   // NEW — AntiGamingFlag[] array
   error    String?
+
+  // NEW — Deep Mode expiry (briefs expire per data retention policy)
+  expiresAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -459,7 +483,7 @@ model AnalysisJob {
 
 model CachedResult {
   id        String   @id @default(cuid())
-  cacheKey  String   @unique // "analysis:{username}" | "analysis:{username}:{walletAddress}"
+  cacheKey  String   @unique // "brief:{username}:light:v5" (or "brief:{username}:deep:v5")
   result    Json
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -526,4 +550,58 @@ model CandidateInterestedWaitlist {
   createdAt DateTime @default(now())
 
   @@map("candidate_interested_waitlist")
+}
+
+
+// ─── EVALUATION LINK (Deep Mode entry point) ──────────────────────────────────
+
+enum LinkStatus {
+  PENDING
+  CONSENTED
+  ANALYSING
+  COMPLETE
+  EXPIRED
+}
+
+model EvaluationLink {
+  id             String        @id @default(uuid())
+  token          String        @unique @default(uuid())
+  candidateEmail String
+  status         LinkStatus    @default(PENDING)
+
+  seniorityTarget SeniorityTier
+  archetypeTarget RoleArchetype
+
+  // Populated on candidate consent
+  installationId String?
+  pendingState   String?       // GitHub App OAuth state param
+
+  // Who created this link
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  analysisJobs AnalysisJob[]
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@map("evaluation_links")
+}
+
+// ─── HIRE OUTCOME (feedback loop for anti-gaming calibration) ─────────────────
+
+model HireOutcome {
+  id            String      @id @default(uuid())
+  analysisJobId String      @unique
+  analysisJob   AnalysisJob @relation(fields: [analysisJobId], references: [id])
+
+  hired             Boolean
+  performanceRating Int?      // 1–5 at 90 days
+  flagsWereAccurate Boolean?  // did anti-gaming flags prove correct?
+  notes             String?
+
+  recordedAt DateTime @default(now())
+
+  @@map("hire_outcomes")
 }
