@@ -459,9 +459,9 @@ export interface EvidenceBrief {
     Verify each is on PATH: scc --version, tokei --version, etc.
 
 [ ] 0.3 — Add to .env:
-    GITHUB_APP_ID=
-    GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
-    GITHUB_APP_WEBHOOK_SECRET=
+    GITHUB_ID=
+    GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
+    GITHUB_WEBHOOK_SECRET=
     ANTHROPIC_API_KEY=
     COPYLEAKS_API_KEY=          # optional, for secondary laundering detection
     DEEP_MODE_WORKER_CONCURRENCY=4
@@ -657,16 +657,16 @@ Extend the existing Zod env schema for a NestJS application with the following n
 
 ADD to the existing Zod schema (do not replace existing vars):
 
-GITHUB_APP_ID: z.string().min(1)           // GitHub App numeric ID as string
-GITHUB_APP_PRIVATE_KEY: z.string().min(100) // PEM key — will contain \n characters
-GITHUB_APP_WEBHOOK_SECRET: z.string().min(10)
+GITHUB_ID: z.string().min(1)           // GitHub App numeric ID as string
+GITHUB_PRIVATE_KEY: z.string().min(100) // PEM key — will contain \n characters
+GITHUB_WEBHOOK_SECRET: z.string().min(10)
 ANTHROPIC_API_KEY: z.string().startsWith('sk-ant-')
 COPYLEAKS_API_KEY: z.string().optional()    // optional — secondary laundering detection
 DEEP_MODE_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(4)
 ENCRYPTION_KEY: z.string().length(64)       // 32-byte hex = 64 hex chars
 
 Validation notes:
-- GITHUB_APP_PRIVATE_KEY will have literal \n sequences in the env var — add a transform: .transform(v => v.replace(/\\n/g, '\n')) so the key is usable by the JWT library
+- GITHUB_PRIVATE_KEY will have literal \n sequences in the env var — add a transform: .transform(v => v.replace(/\\n/g, '\n')) so the key is usable by the JWT library
 - ENCRYPTION_KEY must be exactly 64 hex characters (validate with: .regex(/^[0-9a-f]{64}$/i))
 - DEEP_MODE_WORKER_CONCURRENCY caps at 8 (above this, disk I/O becomes the bottleneck before CPU)
 
@@ -736,7 +736,7 @@ STEP 3 — Compute derived fields:
 
 RATE LIMIT: inject RateLimitService. Call rateLimitService.checkBudget() before each REST call. Use rateLimitService.trackGraphQL() for GraphQL queries.
 
-GITHUB APP TOKEN: inject as GITHUB_APP_TOKEN from config (the platform installation token, auto-refreshed separately).
+GITHUB APP TOKEN: inject as GITHUB_TOKEN from config (the platform installation token, auto-refreshed separately).
 
 ERROR HANDLING:
   - On 404 (user not found): throw UserNotFoundException

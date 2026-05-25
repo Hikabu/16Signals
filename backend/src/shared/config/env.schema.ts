@@ -9,7 +9,7 @@ export const envSchema = z.object({
   FRONTEND_URL: z.string(),
   REDIS_URL: z.string(),
 
-  GITHUB_APP_ID: z.string(),
+  GITHUB_ID: z.string(),
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
   GITHUB_PRIVATE_KEY: z.string(),
@@ -57,8 +57,7 @@ export const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
 
-  GITHUB_APP_PRIVATE_KEY: z.string(),
-  GITHUB_APP_WEBHOOK_SECRET: z.string(),
+  GITHUB_WEBHOOK_SECRET: z.string(),
 
   ANTHROPIC_API_KEY: z.string(),
 

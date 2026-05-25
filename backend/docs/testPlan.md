@@ -27,7 +27,7 @@ The rule: **never start a new phase with a failing test from the previous one.**
 [ ] gitleaks version          → prints version, not "command not found"
 [ ] semgrep --version         → prints version
 [ ] echo $ANTHROPIC_API_KEY   → not empty
-[ ] echo $GITHUB_APP_ID       → not empty
+[ ] echo $GITHUB_ID       → not empty
 ```
 
 ### LLM Test Prompt — Phase 0
@@ -114,11 +114,11 @@ describe('Phase 0 — Type Contracts') {
 
 describe('Phase 0 — Env Schema') {
   test('Required env vars are defined in schema') {
-    // Import the env schema, check ANTHROPIC_API_KEY and GITHUB_APP_ID are required fields
+    // Import the env schema, check ANTHROPIC_API_KEY and GITHUB_ID are required fields
     // Use zod schema inspection: schema.shape.ANTHROPIC_API_KEY should not be optional
     const schema = require('../../src/config/env.schema')
     expect(schema.ANTHROPIC_API_KEY).toBeDefined()
-    expect(schema.GITHUB_APP_ID).toBeDefined()
+    expect(schema.GITHUB_ID).toBeDefined()
   }
 }
 
@@ -1050,7 +1050,7 @@ describe('EvaluationLinkModule') {
 
   test('webhook with valid HMAC creates Deep Mode AnalysisJob') {
     const payload = { action: 'created', installation: { id: 12345 }, repositories: [{ id: 1, full_name: 'user/repo' }] }
-    const sig = computeHMAC(JSON.stringify(payload), process.env.GITHUB_APP_WEBHOOK_SECRET!)
+    const sig = computeHMAC(JSON.stringify(payload), process.env.GITHUB_WEBHOOK_SECRET!)
     const response = await request(app)
       .post('/webhooks/github')
       .set('X-Hub-Signature-256', `sha256=${sig}`)

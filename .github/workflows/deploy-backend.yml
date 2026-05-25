@@ -197,7 +197,7 @@ jobs:
               RESEND_API_KEY=RESEND_API_KEY:latest,\
               GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,\
               ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest,\
-              GITHUB_APP_ID=GITHUB_APP_ID:latest,\
+              GITHUB_ID=GITHUB_ID:latest,\
               GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,\
               REDIS_HOST=REDIS_HOST:latest,\
               CLOUDINARY_API_SECRET=CLOUDINARY_API_SECRET:latest,\

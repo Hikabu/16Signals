@@ -287,20 +287,6 @@
             }
           },
           {
-            "name": "fitTier",
-            "required": false,
-            "in": "query",
-            "description": "Filter by fit tier",
-            "schema": {
-              "enum": [
-                "STRONG",
-                "PROBE",
-                "PASS"
-              ],
-              "type": "string"
-            }
-          },
-          {
             "name": "minScore",
             "required": false,
             "in": "query",
@@ -4825,15 +4811,6 @@
               "level": {
                 "type": "string"
               },
-              "risk": {
-                "type": "string",
-                "enum": [
-                  "LOW_RISK",
-                  "MEDIUM_RISK",
-                  "HIGH_RISK",
-                  "INSUFFICIENT_DATA"
-                ]
-              },
               "label": {
                 "type": "string"
               },
@@ -4843,7 +4820,6 @@
             },
             "required": [
               "level",
-              "risk",
               "label",
               "guidance"
             ]

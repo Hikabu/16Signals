@@ -1199,11 +1199,11 @@ GitHub App install URL format: https://github.com/apps/[APP_NAME]/installations/
 Marks link as CONSENTED.
 
 POST /webhooks/github (webhook receiver)
-Validates GITHUB_APP_WEBHOOK_SECRET via HMAC-SHA256
+Validates GITHUB_WEBHOOK_SECRET via HMAC-SHA256
 On event type = 'installation' and action = 'created':
   - Extract installationId, repositories[] from payload
   - Find EvaluationLink by state param (stored in DB as pendingState field)
-  - Generate installation token (JWT RS256 using GITHUB_APP_PRIVATE_KEY + GITHUB_APP_ID)
+  - Generate installation token (JWT RS256 using GITHUB_PRIVATE_KEY + GITHUB_ID)
   - Encrypt token: AES-256-GCM using ENCRYPTION_KEY env var
   - Update link: installationId, installationToken (encrypted), grantedRepoIds, status=CONSENTED
   - Queue Deep Mode AnalysisJob via BullMQ
@@ -1792,9 +1792,9 @@ These must be done by a human before LLM prompts are run. They are fast but requ
     brew install actionlint      # or: go install github.com/rhysd/actionlint/cmd/actionlint@latest
 
 [ ] 3. Create .env additions:
-    GITHUB_APP_ID=
-    GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
-    GITHUB_APP_WEBHOOK_SECRET=
+    GITHUB_ID=
+    GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
+    GITHUB_WEBHOOK_SECRET=
     ANTHROPIC_API_KEY=
     COPYLEAKS_API_KEY=          # optional
     DEEP_MODE_WORKER_CONCURRENCY=4
