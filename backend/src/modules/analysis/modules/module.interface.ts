@@ -11,6 +11,22 @@ import { SignalCorpus, CorpusGroup } from '../corpus/corpus.types';
 import { ModuleResult } from './module-result.types';
 
 /**
+ * A single claim extracted from a candidate's CV/resume.
+ * Used by the EV module and Brief Assembler Section B for
+ * claim-by-claim cross-referencing against the Signal Corpus.
+ */
+export interface CvClaim {
+  /** Type of claim */
+  type: 'company' | 'role' | 'date_range' | 'tech_stack' | 'education';
+  /** The claimed value (e.g. 'Google', 'Senior Engineer', '2019-2022') */
+  value: string;
+  /** How clearly the claim was stated in the CV */
+  confidence: 'explicit' | 'inferred' | 'ambiguous';
+  /** Raw text snippet the claim was extracted from */
+  source_text: string;
+}
+
+/**
  * Analysis configuration passed to every module at runtime.
  * Determines seniority adjustments and role archetype weighting.
  */
@@ -31,6 +47,14 @@ export interface AnalysisConfig {
     | 'mobile'
     | 'generalist';
   jd_text?: string;
+  /**
+   * Optional CV claims for cross-referencing against the Signal Corpus.
+   * Populated by the CV Claim Extractor service (Stage 6).
+   * When present, the EV module enriches its analysis with claim-by-claim
+   * verification, and the Brief Assembler Section B renders a detailed
+   * cross-reference table.
+   */
+  cv_claims?: CvClaim[];
 }
 
 /**

@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This document defines a concrete, stage-by-stage refactor plan to migrate from the current 16Signals monolithic NestJS analyser (single `SignalComputeProcessor.process()`, monolithic `ScoringService.score()`, 8 raw signals) to the GitIntel 3-layer composable architecture with 14 analysis modules, 6 anti-gaming detectors, employment verification, and evidence brief assembly — all backed by **Deepseek v4** as the LLM provider.
+This document defines a concrete, stage-by-stage refactor plan to migrate from the current 16Signals monolithic NestJS analyser (single `SignalComputeProcessor.process()`, monolithic `ScoringService.score()`, 8 raw signals) to the GitIntel 3-layer composable architecture with 14 analysis modules, 6 anti-gaming detectors, employment verification, CV claim cross-referencing, and evidence brief assembly — all backed by **Deepseek v4** as the LLM provider.
 
 The refactor is designed so that **each stage is independently testable, deployable, and reversible**. Strategic `console.log` calls are embedded at every architectural boundary to allow following the new pipeline execution in real-time during development and production debugging.
 
@@ -120,55 +120,54 @@ Deepseek v4 uses the same chat completion interface as OpenAI. The system/user m
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        API LAYER (NestJS)                       │
-│  /api/v2/analysis  |  /api/v2/analysis/deep  |  /api/v2/batch  │
+│  /api/v2/analysis/light  |  /api/v2/analysis/deep              │
+│  /api/v2/analysis/cv-verify  (thin wrapper, Stage 7)            │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
                     ┌──────▼──────┐
                     │ Job Dispatcher│  ← NEW Stage 7
-                    │ (multi-mode) │
+                    │ (modes: light│
+                    │  or deep)    │
                     └──────┬──────┘
                            │
-              ┌────────────┼────────────┐
-              │            │            │
-        ┌─────▼────┐ ┌────▼─────┐ ┌───▼──────┐
-        │  Light   │ │  Deep    │ │   CV     │
-        │  Mode    │ │  Mode    │ │ Verifier │
-        └─────┬────┘ └────┬─────┘ └───┬──────┘
-              │            │            │
-              └────────────┼────────────┘
+              ┌────────────┼──────────────┐
+              │            │              │
+        ┌─────▼────┐ ┌────▼─────┐        │
+        │  Light   │ │  Deep    │  CV claims enriched
+        │  Mode    │ │  Mode    │  via config.cv_claims
+        └─────┬────┘ └────┬─────┘        │
+              │            │              │
+              └────────────┼──────────────┘
                            │
               ┌────────────▼────────────┐
-              │   DATA COLLECTOR LAYER  │  ← REFACTORED Stage 4
+              │   DATA COLLECTOR LAYER  │
               │  (Group A–G collectors) │
-              │  RateLimitGuard         │
+              │  (same for all modes)   │
               │  CircuitBreaker         │
               └────────────┬────────────┘
                            │
               ┌────────────▼────────────┐
-              │    SIGNAL CORPUS        │  ← NEW Stage 1
+              │    SIGNAL CORPUS        │
               │  (Redis, 7d TTL)        │
               │  CorpusCache            │
               │  CorpusBuilder          │
               └────────────┬────────────┘
                            │
               ┌────────────▼────────────┐
-              │   WAVE ORCHESTRATOR     │  ← NEW Stage 3
-              │  Wave 1: AG1-AG3 (∥)    │
-              │  Wave 2a: AG4 (cond)    │
-              │  Wave 2b: P1,P2,P5 (∥)  │
-              │  Wave 2c: P3 (∥)        │
-              │  Wave 2d: P4 (∥)        │
-              │  Wave 3: LLM batch (∥)  │
-              │  Wave 4: Brief assembly │
+              │   WAVE ORCHESTRATOR     │
+              │  (CV claims passed via   │
+              │   config to EV module)   │
               └────────────┬────────────┘
                            │
-         ┌─────────────────┼─────────────────┐
-         │                 │                 │
-  ┌──────▼──────┐  ┌──────▼──────┐  ┌───────▼──────┐
-  │ 14 Analysis │  │Deepseek v4  │  │Brief Assembler│
-  │  Modules    │  │LLM Service  │  │               │
-  │ Stage 2     │  │Stage 5      │  │Stage 6        │
-  └─────────────┘  └─────────────┘  └───────────────┘
+         ┌─────────────────┼──────────────────┐
+         │                 │                  │
+  ┌──────▼──────┐  ┌──────▼──────┐  ┌────────▼─────────┐
+  │ 14 Analysis │  │Deepseek v4  │  │ Brief Assembler  │
+  │  Modules    │  │LLM Service  │  │ + CV Claim       │
+  │ (EV enriched│  │Stage 5      │  │   Extractor      │
+  │  with CV    │  │             │  │ + Section B      │
+  │  claims)    │  │             │  │   cross-ref table│
+  └─────────────┘  └─────────────┘  └──────────────────┘
                            │
               ┌────────────▼────────────┐
               │    EVIDENCE BRIEF       │
@@ -187,7 +186,7 @@ Deepseek v4 uses the same chat completion interface as OpenAI. The system/user m
 | Cache strategy | Redis 24h + Postgres fallback for AnalysisResult | Redis 7d for SignalCorpus, Postgres for EvidenceBrief |
 | Output format | `AnalysisResult` (3 composites) | `EvidenceBrief` (7-primitive sections + flags + interview q's) |
 | Anti-gaming | None | 6 AG modules + employment verification |
-| Multi-mode | Single path (github-only / github+wallet / wallet-only) | Light / Deep / CV Verifier modes |
+| Multi-mode | Single path (github-only / github+wallet / wallet-only) | Light Mode / Deep Mode (CV claims as optional config enrichment) |
 
 ---
 
@@ -2088,7 +2087,7 @@ describe('Stage 6 — Brief Assembler', () => {
 ## Stage 7: Multi-Mode Dispatcher & API Migration
 
 ### Objective
-Create the multi-mode job dispatcher that routes Light/Deep/CV Verifier requests through the correct collection + analysis pipeline. Expose new `/api/v2/analysis` endpoints while preserving legacy `/api/analysis`.
+Create the dual-mode job dispatcher (Light/Deep) with a thin CV verification wrapper. CV verification is NOT a separate mode — it enriches the pipeline with CV claims via `config.cv_claims`. The endpoint accepts a CV file, extracts claims, then dispatches Light Mode (or Deep Mode if requested) with the enriched config. Expose new `/api/v2/analysis` endpoints while preserving legacy `/api/analysis`.
 
 ### Files to Create/Modify
 
@@ -2361,12 +2360,12 @@ describe('Stage 8 — Deep Mode', () => {
 
 ```
          ┌──────────┐
-         │  E2E (5)  │  Full pipeline: Light + Deep + CV Verifier
+         │  E2E (5)  │  Full pipeline: Light Mode + Deep Mode + CV verify
          ├──────────┤
          │  INT (20)  │  Wave orchestration, LLM integration, Brief assembly
          ├──────────┤
          │  UNIT (200+)│  14 modules × 10 tests, 7 collectors × 5 tests, 
-         └──────────┘   Corpus, Cache, Circuit breaker, LLM client
+         └──────────┘   Corpus, Cache, Circuit breaker, LLM client, CV extractor
 ```
 
 ### Test File Count by Stage

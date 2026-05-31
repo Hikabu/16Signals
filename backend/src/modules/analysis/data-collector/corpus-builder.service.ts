@@ -1,0 +1,183 @@
+/**
+ * CorpusBuilderService — Assembles a complete SignalCorpus from raw collector outputs.
+ *
+ * Acts as the bridge between the DataCollector layer (7 group collectors)
+ * and the Signal Corpus cache. The builders map each group collector's output
+ * into the SignalCorpus structure.
+ *
+ * Architecture: Stateless builder. Each group's data is independently assigned.
+ * Missing groups are tracked via groups_present and collection_errors.
+ *
+ * Reference: DEEPSEEK_V4_REFACTOR_PLAN.md Stage 1
+ */
+
+import { Injectable } from '@nestjs/common';
+import { SignalCorpus, CorpusGroup, CollectionMode } from '../corpus/corpus.types';
+import {
+  IdentitySignals,
+  RepositorySignal,
+  CommitSignals,
+  CollaborationSignals,
+  EngineeringPracticeSignals,
+  ImpactSignals,
+  AntiGamingInputs,
+} from '../corpus/corpus.types';
+
+export interface GroupCollectionResult {
+  group: CorpusGroup;
+  data: any;
+  error: string | null;
+}
+
+@Injectable()
+export class CorpusBuilderService {
+  /**
+   * Build a complete SignalCorpus from the results of all 7 group collectors.
+   *
+   * @param username - GitHub username
+   * @param collectionMode - Light or Deep
+   * @param results - Array of GroupCollectionResult (one per group)
+   * @returns Fully assembled SignalCorpus
+   */
+  build(
+    username: string,
+    collectionMode: CollectionMode,
+    results: GroupCollectionResult[],
+  ): SignalCorpus {
+    console.log(
+      `[CorpusBuilder] phase=build_start username=${username} mode=${collectionMode}`,
+    );
+
+    const groupsPresent: CorpusGroup[] = [];
+    const errors: string[] = [];
+
+    for (const result of results) {
+      if (result.error) {
+        errors.push(`Group ${result.group}: ${result.error}`);
+        console.log(
+          `[CorpusBuilder] phase=group_error group=${result.group} error=${result.error}`,
+        );
+      } else {
+        groupsPresent.push(result.group);
+      }
+    }
+
+    const corpus: SignalCorpus = {
+      corpus_id: this.generateCorpusId(),
+      github_username: username,
+      collected_at: new Date().toISOString(),
+      collection_mode: collectionMode,
+      groups_present: groupsPresent,
+      collection_errors: errors,
+
+      identity: this.safeGet<IdentitySignals>(results, 'A', {
+        account_age_days: 0,
+        bio: null,
+        company_claim: null,
+        linked_urls: [],
+        commit_email_domains: [],
+        github_org_memberships: [],
+        hireable_flag: null,
+      }),
+      repositories: this.safeGet<RepositorySignal[]>(results, 'B', []),
+      commit_signals: this.safeGet<CommitSignals>(results, 'C', {
+        total_commits_lifetime: 0,
+        commit_frequency_by_month: {},
+        commit_size_histogram: [],
+        p25_commit_size_lines: 0,
+        median_commit_size_lines: 0,
+        sub_5_line_commit_ratio: 0,
+        merge_commit_ratio: 0,
+        commit_signing_rate: 0,
+        work_hour_distribution: {},
+        message_quality_raw: [],
+        message_quality_scores: [],
+        per_repo_author_stats: {},
+        complexity_trend_by_year: {},
+        test_to_code_ratio_by_repo: {},
+      }),
+      collaboration_signals: this.safeGet<CollaborationSignals>(results, 'D', {
+        pr_author_count: 0,
+        pr_reviewer_count: 0,
+        substantive_review_ratio: 0,
+        self_merge_rate: 0,
+        avg_pr_description_length_words: 0,
+        pr_size_distribution: [],
+        pr_description_raw: [],
+        review_comment_raw: [],
+        review_comment_depth_scores: [],
+        cross_repo_comment_count: 0,
+        issue_triage_quality_score: null,
+        avg_time_to_merge_hours: 0,
+      }),
+      engineering_practice_signals: this.safeGet<EngineeringPracticeSignals>(
+        results,
+        'E',
+        {
+          repos_with_test_dir: 0,
+          repos_with_ci_config: 0,
+          repos_with_docker: 0,
+          repos_with_iac: 0,
+          repos_with_linting: 0,
+          ci_pass_rate_trajectory: {},
+          semantic_versioning_discipline: false,
+          avg_dependabot_resolution_days: null,
+          secret_leak_detected: false,
+          secret_leak_details: [],
+          sast_finding_density: null,
+          observability_markers_present: [],
+          feature_flag_usage_detected: false,
+          ai_config_files_present: [],
+          actionlint_violations: 0,
+        },
+      ),
+      impact_signals: this.safeGet<ImpactSignals>(results, 'F', {
+        external_oss_contribution_count: 0,
+        contribution_calendar_active_weeks_12m: 0,
+        npm_packages: [],
+        pypi_packages: [],
+        cargo_packages: [],
+        stackoverflow_reputation: 0,
+        stackoverflow_accepted_answer_rate: null,
+        stackoverflow_top_tags: [],
+      }),
+      anti_gaming_inputs: this.safeGet<AntiGamingInputs>(results, 'G', {
+        burst_dormancy_ratio: 1.0,
+        burst_triggered_at_evaluation: false,
+        fork_dump_ratio: 0,
+        code_search_flags: [],
+        copyleaks_results: [],
+        commit_inflation_ratio: 0,
+        ai_pattern_confidence: 0,
+        style_discontinuity_events: [],
+      }),
+    };
+
+    console.log(
+      `[CorpusBuilder] phase=build_complete corpusId=${corpus.corpus_id} ` +
+      `username=${username} groupsPresent=${groupsPresent.join(',')} ` +
+      `errors=${errors.length}`,
+    );
+
+    return corpus;
+  }
+
+  /**
+   * Safe-get a group's data from the results array, returning a default value if missing.
+   */
+  private safeGet<T>(results: GroupCollectionResult[], group: CorpusGroup, defaultValue: T): T {
+    const result = results.find((r) => r.group === group);
+    if (result && !result.error && result.data !== undefined && result.data !== null) {
+      return result.data as T;
+    }
+    return defaultValue;
+  }
+
+  /**
+   * Generate a unique corpus ID.
+   */
+  private generateCorpusId(): string {
+    const crypto = require('crypto');
+    return `cor_${crypto.randomBytes(12).toString('hex')}`;
+  }
+}
