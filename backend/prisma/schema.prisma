@@ -1,63 +1,361 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider      = "prisma-client-js"
-  moduleFormat  = "cjs"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
+  moduleFormat  = "cjs"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl     = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// ─── COMPANY ──────────────────────────────────────────────────────────────────
-
 model Company {
-  id                 String  @id @default(uuid())
-  name               String
-  legalName          String? // exact registered business name
-  logoUrl            String?
-  website            String?
-  description        String?
-  registrationNumber String? @unique
-  country            String
-
-  // Trust & verification
-  isVerified      Boolean   @default(false)
-  verifiedAt      DateTime?
-  isVerifiedPayer Boolean   @default(false)
-  trustScore      Int       @default(0) // 0–100, application-maintained derived value
-
-  // Denormalised counters, incremented by application logic, never by DB triggers
-  totalJobsPosted      Int @default(0)
-  totalEscrowsFunded   Int @default(0)
-  totalEscrowsReleased Int @default(0)
-
-  // Identity / auth
-  email               String? @unique
-  walletAddress       String? @unique
-  smartAccountAddress String? @unique
-  privyId             String? @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  jobPosts JobPost[]
+  id                   String    @id @default(uuid())
+  name                 String
+  legalName            String?
+  logoUrl              String?
+  website              String?
+  description          String?
+  registrationNumber   String?   @unique
+  country              String
+  isVerified           Boolean   @default(false)
+  verifiedAt           DateTime?
+  totalJobsPosted      Int       @default(0)
+  totalEscrowsFunded   Int       @default(0)
+  totalEscrowsReleased Int       @default(0)
+  trustScore           Int       @default(0)
+  isVerifiedPayer      Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  email                String?   @unique
+  walletAddress        String?   @unique
+  smartAccountAddress  String?   @unique
+  privyId              String?   @unique
+  updatedAt            DateTime  @updatedAt
+  jobPosts             JobPost[]
 
   @@map("companies")
 }
 
-// ─── JOB POST ─────────────────────────────────────────────────────────────────
+model JobPost {
+  id                      String       @id @default(uuid())
+  companyId               String
+  title                   String
+  description             String
+  location                String?
+  employmentType          String?
+  bonusAmount             Decimal      @db.Decimal(10, 2)
+  currency                String       @default("USD")
+  status                  JobStatus    @default(DRAFT)
+  roleType                RoleType?
+  seniorityLevel          Seniority?
+  requiredSkills          String[]     @default([])
+  escrowId                BigInt?      @unique
+  escrowAddress           String?      @unique
+  candidateWallet         String?
+  escrowStatus            EscrowStatus @default(UNFUNDED)
+  escrowFundedAt          DateTime?
+  publishedAt             DateTime?
+  closedAt                DateTime?
+  createdAt               DateTime     @default(now())
+  parsedRequirements      Json?
+  dynamicWeights          Json?
+  isWeb3Role              Boolean      @default(false)
+  requirementsConfirmedAt DateTime?
+  updatedAt               DateTime     @updatedAt
+  company                 Company      @relation(fields: [companyId], references: [id])
+  shortlists              Shortlist[]
+
+  @@index([companyId, status, roleType])
+  @@map("job_posts")
+}
+
+model Shortlist {
+  id                   String           @id @default(uuid())
+  jobPostId            String
+  candidateId          String
+  status               ShortlistStatus  @default(PENDING)
+  roleFitScore         Float            @default(0)
+  fraudTier            FraudTier        @default(CLEAN)
+  riskLevel            RiskLevel?
+  confidenceTier       ConfidenceTier?
+  behaviorPattern      BehaviorPattern?
+  fitTier              FitTier          @default(PASS)
+  candidateNote        String?          @db.VarChar(280)
+  hrNotes              String?
+  appliedAt            DateTime         @default(now())
+  frozenScorecard      Json?
+  decisionCard         Json?
+  gapReport            Json?
+  pipelineStage        PipelineStage    @default(APPLIED)
+  pipelineStageHistory Json?
+  interviewQuestions   Json?
+  updatedAt            DateTime         @updatedAt
+  candidate            Candidate        @relation(fields: [candidateId], references: [id])
+  jobPost              JobPost          @relation(fields: [jobPostId], references: [id])
+
+  @@unique([jobPostId, candidateId])
+  @@index([jobPostId, roleFitScore(sort: Desc)])
+  @@map("shortlists")
+}
+
+model User {
+  id              String        @id @default(uuid())
+  email           String?       @unique
+  username        String?       @unique
+  firstName       String?
+  lastName        String?
+  name            String?
+  role            UserRole      @default(CANDIDATE)
+  accountStatus   AccountStatus @default(ACTIVE)
+  isEmailVerified Boolean       @default(false)
+  mfaEnabled      Boolean       @default(false)
+  mfaSecret       String?
+  mfaBackupCodes  String[]      @default([])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  authAccounts    AuthAccount[]
+  candidate       Candidate?
+
+  @@map("users")
+}
+
+model AuthAccount {
+  id           String       @id @default(uuid())
+  userId       String
+  provider     AuthProvider
+  providerId   String
+  passwordHash String?
+  createdAt    DateTime     @default(now())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@map("auth_accounts")
+}
+
+model Candidate {
+  id                    String            @id @default(uuid())
+  userId                String            @unique
+  avatarUrl             String?
+  bio                   String?           @db.VarChar(500)
+  location              String?           @db.VarChar(255)
+  website               String?           @db.VarChar(255)
+  careerPath            Int               @default(1)
+  generateCooldownUntil DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  devProfile            DeveloperProfile?
+  shortlist             Shortlist[]
+  vouches               Vouch[]
+
+  @@map("candidates")
+}
+
+model DeveloperProfile {
+  id                  String         @id @default(uuid())
+  candidateId         String         @unique
+  githubCooldownUntil DateTime?
+  walletCooldownUntil DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  candidate           Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  githubProfile       GithubProfile?
+  web3Profile         Web3Profile?
+
+  @@map("developer_profiles")
+}
+
+model GithubProfile {
+  id                 String            @id @default(uuid())
+  developerProfileId String?           @unique
+  githubUsername     String            @unique
+  githubUserId       String            @unique
+  encryptedToken     String
+  scopes             String[]          @default([])
+  syncStatus         SyncStatus        @default(NOT_SYNCED)
+  syncError          String?
+  lastSyncAt         DateTime?
+  rawDataSnapshot    Json?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  syncProgress       Int               @default(0)
+  installationId     String?
+  scorecard          Json?
+  scorecardUpdatedAt DateTime?
+  analysis_jobs      AnalysisJob[]
+  developerProfile   DeveloperProfile? @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
+
+  @@map("github_profiles")
+}
+
+model Web3Profile {
+  id                 String           @id @default(uuid())
+  developerProfileId String           @unique
+  solanaAddress      String?
+  verifiedContracts  Json?
+  onChainMetrics     Json?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
+
+  @@map("web3_profiles")
+}
+
+model Vouch {
+  id            String    @id @default(uuid())
+  candidateId   String
+  voucherWallet String
+  message       String    @db.VarChar(500)
+  txSignature   String    @unique
+  weight        String    @default("standard")
+  isActive      Boolean   @default(true)
+  flag          String?
+  confirmedAt   DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  candidate     Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateId, voucherWallet])
+  @@index([candidateId, isActive, expiresAt])
+  @@index([voucherWallet, isActive, expiresAt])
+  @@map("vouches")
+}
+
+model AnalysisJob {
+  id                  String                @id @default(uuid())
+  status              String                @default("pending")
+  input               Json
+  result              Json?
+  error               String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  progress            Int                   @default(0)
+  mode                AnalysisMode          @default(LIGHT)
+  githubProfileId     String
+  github_profiles     GithubProfile         @relation(fields: [githubProfileId], references: [id], onDelete: Cascade)
+  evidence_primitives evidence_primitives[]
+
+  @@map("analysis_jobs")
+}
+
+model CachedResult {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique
+  result    Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("cached_results")
+}
+
+model EmployerLaunchWaitlist {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@map("employer_launch_waitlist")
+}
+
+model EmployerWaitlist {
+  id                  String   @id @default(uuid())
+  email               String   @unique
+  companyName         String
+  website             String?
+  rolesHiring         String[] @default([])
+  usesGithub          Boolean  @default(false)
+  evalTools           String?
+  companyTypes        String[] @default([])
+  teamSize            String?
+  socialLinks         String?
+  createdAt           DateTime @default(now())
+  needsOtherRoleTools Boolean  @default(false)
+  otherRolesText      String?
+
+  @@map("employer_waitlist")
+}
+
+model CandidateInterestedWaitlist {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  tools     String?
+  createdAt DateTime @default(now())
+  name      String?
+  otherRole String?
+  role      String?
+
+  @@map("candidate_interested_waitlist")
+}
+
+model briefs {
+  id             String   @id
+  corpusId       String
+  createdAt      DateTime @default(now())
+  analysisConfig Json
+  markdown       String
+  analysisJson   Json
+  pdfPath        String?
+  isPartial      Boolean  @default(false)
+  corpus         corpus   @relation(fields: [corpusId], references: [id])
+}
+
+model corpus {
+  id                         String   @id
+  githubUsername             String
+  mode                       String
+  collectedAt                DateTime @default(now())
+  expiresAt                  DateTime
+  groupsPresent              String[]
+  collectionErrors           String[]
+  identity                   Json?
+  repositories               Json?
+  commitSignals              Json?
+  collaborationSignals       Json?
+  engineeringPracticeSignals Json?
+  impactSignals              Json?
+  antiGamingInputs           Json?
+  briefs                     briefs[]
+
+  @@unique([githubUsername, mode])
+  @@index([expiresAt])
+  @@index([githubUsername])
+}
+
+model evidence_primitives {
+  id            String          @id
+  analysisJobId String
+  primitive     PrimitiveType
+  confidence    ConfidenceLevel
+  evidenceText  String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  analysis_jobs AnalysisJob     @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([primitive, confidence])
+}
+
+model usage_events {
+  id        String    @id @default(uuid())
+  tenantId  String
+  eventType String
+  unitCount Float     @default(1.0)
+  jobId     String?
+  billedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([billedAt])
+  @@map("usage_events")
+}
 
 enum JobStatus {
   DRAFT
-  PENDING_PAYMENT // created, escrow not yet funded
-  ACTIVE // funded and live
-  CLOSED_PENDING // payment done but not yet published
-  CLOSED // finished, no longer accepting applications
+  PENDING_PAYMENT
+  ACTIVE
+  CLOSED_PENDING
+  CLOSED
 }
 
 enum Seniority {
@@ -89,47 +387,6 @@ enum EscrowStatus {
   RELEASED
   REFUNDED
 }
-
-model JobPost {
-  id             String     @id @default(uuid())
-  companyId      String
-  title          String
-  description    String
-  location       String?
-  employmentType String? // "full-time" | "part-time" | "contract"
-  bonusAmount    Decimal    @db.Decimal(10, 2)
-  currency       String     @default("USD")
-  status         JobStatus  @default(DRAFT)
-  roleType       RoleType?
-  seniorityLevel Seniority?
-  isWeb3Role     Boolean    @default(false)
-
-  // Skills & requirements (structured at confirm-requirements time)
-  requiredSkills          String[]  @default([])
-  parsedRequirements      Json?
-  dynamicWeights          Json? // { collaborationWeight, ownershipWeight, innovationWeight }
-  requirementsConfirmedAt DateTime?
-
-  // Escrow
-  escrowId        BigInt?      @unique
-  escrowAddress   String?      @unique
-  candidateWallet String?
-  escrowStatus    EscrowStatus @default(UNFUNDED)
-  escrowFundedAt  DateTime?
-
-  publishedAt DateTime?
-  closedAt    DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  company    Company     @relation(fields: [companyId], references: [id])
-  shortlists Shortlist[]
-
-  @@index([companyId, status, roleType])
-  @@map("job_posts")
-}
-
-// ─── APPLICATION / SHORTLIST ──────────────────────────────────────────────────
 
 enum FraudTier {
   CLEAN
@@ -187,47 +444,6 @@ enum PipelineStage {
   REJECTED
 }
 
-model Shortlist {
-  id          String          @id @default(uuid())
-  jobPostId   String
-  candidateId String
-  status      ShortlistStatus @default(PENDING)
-
-  // Scoring
-  roleFitScore    Float            @default(0)
-  fraudTier       FraudTier        @default(CLEAN)
-  riskLevel       RiskLevel?
-  confidenceTier  ConfidenceTier?
-  behaviorPattern BehaviorPattern?
-  fitTier         FitTier          @default(PASS)
-
-  // Frozen snapshots, captured at apply-time, never mutated
-  frozenScorecard Json? // Full AnalysisResult snapshot
-  decisionCard    Json? // { verdict, strengths[], risks[], reputationNote }
-  gapReport       Json? // GapReport object
-
-  // Pipeline tracking
-  pipelineStage        PipelineStage @default(APPLIED)
-  pipelineStageHistory Json? // append-only log: [{ stage, changedAt, changedBy }]
-  interviewQuestions   Json? // InterviewQuestionSet[]
-
-  // Notes
-  candidateNote String? @db.VarChar(280)
-  hrNotes       String?
-
-  appliedAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  jobPost   JobPost   @relation(fields: [jobPostId], references: [id])
-  candidate Candidate @relation(fields: [candidateId], references: [id])
-
-  @@unique([jobPostId, candidateId])
-  @@index([jobPostId, roleFitScore(sort: Desc)])
-  @@map("shortlists")
-}
-
-// ─── USER ─────────────────────────────────────────────────────────────────────
-
 enum UserRole {
   CANDIDATE
   HR
@@ -241,120 +457,15 @@ enum AccountStatus {
   SUSPENDED
 }
 
-model User {
-  id       String  @id @default(uuid())
-  email    String? @unique
-  username String? @unique
-
-  // Display name, stored on User so it is accessible without joining Candidate
-  firstName String?
-  lastName  String?
-  name      String?
-
-  role          UserRole      @default(CANDIDATE)
-  accountStatus AccountStatus @default(ACTIVE)
-
-  // Auth & security
-  isEmailVerified Boolean  @default(false)
-  mfaEnabled      Boolean  @default(false)
-  mfaSecret       String? // encrypted at rest (AES-256-GCM)
-  mfaBackupCodes  String[] @default([])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  authAccounts AuthAccount[]
-  candidate    Candidate?
-
-  @@map("users")
-}
-
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
-
 enum AuthProvider {
   LOCAL
   GITHUB
   GOOGLE
 }
 
-model AuthAccount {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  provider     AuthProvider
-  providerId   String
-  passwordHash String?
-
-  createdAt DateTime @default(now())
-
-  @@unique([provider, providerId])
-  @@map("auth_accounts")
-}
-
-// ─── CANDIDATE ────────────────────────────────────────────────────────────────
-// Candidate holds profile data that is common to all career paths (bitmask).
-// Path-specific data lives in the corresponding profile model (DeveloperProfile).
-
-model Candidate {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Public profile
-  avatarUrl String?
-  bio       String? @db.VarChar(500)
-  location  String? @db.VarChar(255)
-  website   String? @db.VarChar(255)
-
-  // Career path bitmask: 1 = DEVELOPER (extend as new paths are added)
-  careerPath Int @default(1)
-
-  // AI scorecard, path-agnostic, shape evolves per careerPath bitmask
-  // Current shape (developer): { roleType, seniorityLevel, signals: Record<string, unknown>, overallFit }
-  scorecard Json?
-
-  // Cooldown for AI scorecard generation (path-agnostic)
-  generateCooldownUntil DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  devProfile   DeveloperProfile?
-  shortlist    Shortlist[]
-  analysisJobs AnalysisJob[]
-  vouches      Vouch[]
-
-  @@map("candidates")
-}
-
-// ─── DEVELOPER PROFILE ────────────────────────────────────────────────────────
-// Owned 1-to-1 by Candidate. All developer-specific signals and scoring live here.
-// Linked by candidateId (Candidate.id), not by userId, to keep the FK chain clean.
-
-model DeveloperProfile {
-  id          String    @id @default(uuid())
-  candidateId String    @unique
-  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-
-  // Per-source sync cooldowns
-  githubCooldownUntil DateTime?
-  walletCooldownUntil DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  githubProfile GithubProfile?
-  web3Profile   Web3Profile?
-
-  @@map("developer_profiles")
-}
-
-// ─── GITHUB PROFILE ───────────────────────────────────────────────────────────
-
 enum SyncStatus {
   NOT_SYNCED
-  CONNECT_REQUEST // OAuth flow initiated
+  CONNECT_REQUEST
   CONNECT_SUCCESS
   SYNC_REQUEST
   SYNC_FETCH_REQUEST
@@ -363,167 +474,25 @@ enum SyncStatus {
   SYNC_FAILED
 }
 
-model GithubProfile {
-  id                 String           @id @default(uuid())
-  developerProfileId String           @unique
-  developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
-
-  githubUsername String   @unique
-  githubUserId   String   @unique
-  encryptedToken String // AES-256-GCM "v1:<iv>:<tag>:<cipher>"
-  scopes         String[] @default([])
-
-  syncStatus   SyncStatus @default(NOT_SYNCED)
-  syncProgress Int        @default(0)
-  syncError    String?
-  lastSyncAt   DateTime?
-
-  rawDataSnapshot Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("github_profiles")
+enum AnalysisMode {
+  LIGHT
+  DEEP
 }
 
-// ─── WEB3 PROFILE ─────────────────────────────────────────────────────────────
-// Opt-in. Wallet submitted by the candidate.
-// Solana signals use RPC-native methods (no Etherscan equivalent for Solana).
-
-model Web3Profile {
-  id                 String           @id @default(uuid())
-  developerProfileId String           @unique
-  developerProfile   DeveloperProfile @relation(fields: [developerProfileId], references: [id], onDelete: Cascade)
-
-  solanaAddress     String?
-  // [{ chain, contractAddress, txHash, attributionMethod, confidence }]
-  verifiedContracts Json?
-  onChainMetrics    Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("web3_profiles")
+enum ConfidenceLevel {
+  STRONG_EVIDENCE
+  MODERATE_EVIDENCE
+  LOW_EVIDENCE
+  OBSERVABILITY_GAP
+  INSUFFICIENT_DATA
 }
 
-// ─── VOUCHES ──────────────────────────────────────────────────────────────────
-
-model Vouch {
-  id String @id @default(uuid())
-
-  // FK to Candidate, not to GithubProfile, vouches survive profile resets
-  candidateId String
-  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-
-  // Voucher identity, wallet proving on-chain identity
-  voucherWallet String
-  message       String @db.VarChar(500)
-  txSignature   String @unique
-
-  // Weight & lifecycle
-  weight   String  @default("standard") // "verified" | "standard" | "new"
-  isActive Boolean @default(true)
-  flag     String? // "cluster_detected" | null
-
-  confirmedAt DateTime  @default(now())
-  expiresAt   DateTime
-  revokedAt   DateTime?
-
-  @@unique([candidateId, voucherWallet])
-  @@index([candidateId, isActive, expiresAt])
-  @@index([voucherWallet, isActive, expiresAt])
-  @@map("vouches")
-}
-
-// ─── ANALYSIS JOB ─────────────────────────────────────────────────────────────
-// Tracks async analysis tasks. Linked to Candidate by candidateId (Candidate.id).
-
-model AnalysisJob {
-  id          String     @id @default(uuid())
-  candidateId String?
-  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
-
-  status   String  @default("pending") // "pending" | "processing" | "completed" | "failed"
-  progress Int     @default(0)
-  input    Json // { githubUsername, walletAddress, mode, useGithubCache }
-  result   Json?
-  error    String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("analysis_jobs")
-}
-
-// ─── CACHE ────────────────────────────────────────────────────────────────────
-
-model CachedResult {
-  id        String   @id @default(cuid())
-  cacheKey  String   @unique // "analysis:{username}" | "analysis:{username}:{walletAddress}"
-  result    Json
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@map("cached_results")
-}
-
-// ─── EMPLOYER LAUNCH WAITLIST (candidate side) ───────────────────────────────
-// Candidates who want to be notified when employers go live.
-// The userId field links a signup to an account when known (nullable).
-
-model EmployerLaunchWaitlist {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  userId    String? // nullable, set when signed-in candidate subscribes
-  createdAt DateTime @default(now())
-
-  @@map("employer_launch_waitlist")
-}
-
-// ─── EMPLOYER WAITLIST ────────────────────────────────────────────────────────
-// Companies that want early access to 16Signals hiring platform.
-// Collects ICP signals: roles hiring, eval tooling, company profile.
-
-model EmployerWaitlist {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  companyName String
-  website     String?
-
-  // ICP signals (all optional — collected in step 2 of onboarding)
-  rolesHiring      String[] @default([]) // all selected role chips (eng + non-eng)
-  otherRolesText   String?  // free-text when "Other" chip is selected
-  usesGithub       Boolean  @default(false) // already use GitHub to evaluate engineers
-  evalTools        String?  // free-text: other tools for engineer evaluation
-  needsOtherRoleTools Boolean @default(false) // also wants tools for non-engineering roles
-  companyTypes     String[] @default([]) // multi-select: ["Startup", "Web3 / Crypto"]
-  teamSize         String?  // e.g. "11–50"
-  socialLinks      String?  // free-text: LinkedIn / Twitter URLs
-
-  createdAt DateTime @default(now())
-
-  @@map("employer_waitlist")
-}
-
-
-
-// ─── NON-DEVELOPER CANDIDATE WAITLIST ────────────────────────────────────────
-// People who work in tech but are not (yet) developers — designers, PMs, etc.
-// Collected to plan roadmap expansion; emailed when their role/tools are supported.
-
-model CandidateInterestedWaitlist {
-  id    String @id @default(uuid())
-  email String @unique
-  name  String?  // optional display name
-
-  // Role signals
-  role      String?  // primary role chip selected (e.g. "Designer")
-  otherRole String?  // free-text when "Other" is chosen
-
-  // Tooling signals
-  tools String?  // free-text: tools they use day-to-day (Figma, Notion, etc.)
-
-  createdAt DateTime @default(now())
-
-  @@map("candidate_interested_waitlist")
+enum PrimitiveType {
+  EXECUTION_RELIABILITY
+  SYSTEMS_EVOLUTION
+  COLLABORATION_LEVERAGE
+  TECHNICAL_DEPTH
+  OPERATIONAL_MATURITY
+  AI_LEVERAGE_QUALITY
+  AUTHENTICITY_CONFIDENCE
 }

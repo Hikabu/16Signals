@@ -416,17 +416,23 @@ let result: AnalysisResult = {
   private async persistScorecard(userId: string | null, result: AnalysisResult) {
     if (!userId) return;
 
-  const candidate = await this.prisma.candidate.findUnique({
-    where: { userId },
-  });
+    // Scorecard is now stored on GithubProfile instead of Candidate
+    const githubProfile = await this.prisma.githubProfile.findFirst({
+      where: {
+        developerProfile: {
+          candidate: { userId },
+        },
+      },
+    });
 
-  if (!candidate) return;
+    if (!githubProfile) return;
 
-  await this.prisma.candidate.update({
-    where: { id: candidate.id },
-    data: {
-      scorecard: result as any,
-    },
-  });
-}
+    await this.prisma.githubProfile.update({
+      where: { id: githubProfile.id },
+      data: {
+        scorecard: result as any,
+        scorecardUpdatedAt: new Date(),
+      },
+    });
+  }
 }

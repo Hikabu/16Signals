@@ -301,7 +301,6 @@ async deleteAccount(userId: string) {
         website: true,
         careerPath: true,
 avatarUrl: true, 
-        scorecard: true,
         createdAt: true,
         vouches: true,
         devProfile: {
@@ -313,6 +312,8 @@ avatarUrl: true,
                 githubUsername: true,
                 syncStatus: true,
                 lastSyncAt: true,
+                scorecard: true,
+                scorecardUpdatedAt: true,
                 syncProgress: true,
               },
             },
@@ -601,7 +602,11 @@ where: {
       where: { id: userId },
       select: {
         email: true,
-        candidate: { select: { scorecard: true } },
+        candidate: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
@@ -635,7 +640,14 @@ where: {
       data: { email: user.email, userId },
     });
 
-    const hasScorecard = !!user.candidate?.scorecard;
+    // Scorecard is stored on GithubProfile
+    const githubProfile = user.candidate?.id
+      ? await this.prisma.githubProfile.findFirst({
+          where: { developerProfile: { candidateId: user.candidate.id } },
+          select: { scorecard: true },
+        })
+      : null;
+    const hasScorecard = !!githubProfile?.scorecard;
 
     await this.emailQueue.add('send', {
       to: user.email,

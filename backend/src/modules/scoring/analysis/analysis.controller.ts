@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Post,
@@ -173,11 +174,35 @@ Optional if authenticated.
       }
     }
 
+    // Resolve githubProfileId for the AnalysisJob
+    let githubProfileId: string | undefined;
+    if (githubUsername) {
+      const profile = await this.prisma.githubProfile.findUnique({
+        where: { githubUsername },
+        select: { id: true },
+      });
+      if (profile) githubProfileId = profile.id;
+    }
+
+    // If no github profile exists, create a default one for the job
+    if (!githubProfileId && githubUsername) {
+      const created = await this.prisma.githubProfile.create({
+        data: {
+          githubUsername,
+          githubUserId: `gh_${githubUsername}`,
+          encryptedToken: 'placeholder-token-for-analysis',
+          scopes: [],
+        },
+      });
+      githubProfileId = created.id;
+    }
+
     const jobRecord = await this.prisma.analysisJob.create({
       data: {
         status: 'pending',
         input: { githubUsername, walletAddress, mode, useGithubCache } as any,
-        candidateId: req.user?.id ? (await this.prisma.candidate.findUnique({ where: { userId: req.user.id } }))?.id ?? null : null,
+        mode: 'LIGHT',
+        githubProfileId: githubProfileId ?? (() => { throw new Error('Cannot create analysis without github profile'); })(),
       },
     });
 
@@ -272,6 +297,16 @@ Use this for admin/system reprocessing.
       }
     }
 
+    // Resolve githubProfileId for the recompute
+    let recomputeGithubProfileId: string | undefined;
+    if (input.githubUsername) {
+      const recomputeProfile = await this.prisma.githubProfile.findUnique({
+        where: { githubUsername: input.githubUsername },
+        select: { id: true },
+      });
+      if (recomputeProfile) recomputeGithubProfileId = recomputeProfile.id;
+    }
+
     const jobRecord = await this.prisma.analysisJob.create({
       data: {
         status: 'pending',
@@ -281,8 +316,9 @@ Use this for admin/system reprocessing.
           mode: input.mode,
           useGithubCache: input.useGithubCache ?? false,
         } as any,
-        candidateId: (await this.prisma.candidate.findUnique({ where: { userId } }))?.id ?? null,
-      },
+        mode: 'LIGHT',
+        githubProfileId: recomputeGithubProfileId ?? (() => { throw new Error('Cannot create analysis without github profile'); })(),
+      } as any,
     });
 
     if (this.shouldProcessInlineForE2E()) {
@@ -426,8 +462,10 @@ Use this for admin/system reprocessing.
             mode: input.mode,
             useGithubCache: input.useGithubCache ?? false,
           } as any,
-        },
-        update: { status: 'processing' },
+          mode: 'LIGHT',
+          githubProfileId: 'e2e-inline-placeholder',
+        } as any,
+        update: { status: 'processing' } as any,
       });
 
       let rawData: any = null;
@@ -532,18 +570,20 @@ Use this for admin/system reprocessing.
             mode: input.mode,
             useGithubCache: input.useGithubCache ?? false,
           } as any,
+          mode: 'LIGHT',
+          githubProfileId: 'e2e-inline-placeholder',
           error:
             input.githubUsername && !input.walletAddress
               ? `Insufficient public data for ${input.githubUsername}`
               : error.message,
-        },
+        } as any,
         update: {
           status: 'failed',
           error:
             input.githubUsername && !input.walletAddress
               ? `Insufficient public data for ${input.githubUsername}`
               : error.message,
-        },
+        } as any,
       });
     }
   }
@@ -668,12 +708,14 @@ Use this for admin/system reprocessing.
           githubUsername: input.githubUsername,
           walletAddress: input.walletAddress,
         } as any,
+        mode: 'LIGHT',
+        githubProfileId: 'e2e-inline-placeholder',
         result: result as any,
-      },
+      } as any,
       update: {
         status: 'completed',
         result: result as any,
-      },
+      } as any,
     });
   }
 
@@ -824,12 +866,16 @@ Use this for admin/system reprocessing.
     });
 
     if (!candidate) return;
-await this.prisma.candidate.update({
-    where: { id: candidate.id },
-    data: {
-      scorecard: result as any,
-    },
-  });
+    // Scorecard stored on GithubProfile
+    const gp = await this.prisma.githubProfile.findFirst({
+      where: { developerProfile: { candidate: { id: candidate.id } } },
+    });
+    if (gp) {
+      await this.prisma.githubProfile.update({
+        where: { id: gp.id },
+        data: { scorecard: result as any, scorecardUpdatedAt: new Date() },
+      });
+    }
   } catch (err) {
     console.error('Failed to sync cached scorecard:', err);
   }
@@ -853,24 +899,30 @@ async resetAnalysis(@Req() req: any) {
   const githubUsername = candidate.devProfile?.githubProfile?.githubUsername;
   const walletAddress = candidate.devProfile?.web3Profile?.solanaAddress;
 
-  // 1. reset jobs
-  await this.prisma.analysisJob.updateMany({
-    where: { candidateId: candidate.id },
-    data: {
-      status: 'pending',
-      progress: 0,
-      result: Prisma.DbNull,
-      error: null,
-    },
-  });
+  // 1. reset jobs (link via githubProfileId)
+  const githubProfileForReset = candidate.devProfile?.githubProfile;
+  if (githubProfileForReset) {
+    await this.prisma.analysisJob.updateMany({
+      where: { githubProfileId: githubProfileForReset.id },
+      data: {
+        status: 'pending',
+        progress: 0,
+        result: Prisma.DbNull,
+        error: null,
+      },
+    });
+  }
 
-  // 2. clear scorecard
+  // 2. clear scorecard (now on GithubProfile)
+  if (githubProfileForReset) {
+    await this.prisma.githubProfile.update({
+      where: { id: githubProfileForReset.id },
+      data: { scorecard: Prisma.DbNull, scorecardUpdatedAt: new Date() },
+    });
+  }
   await this.prisma.candidate.update({
     where: { id: candidate.id },
-    data: { 
-      scorecard: Prisma.DbNull,
-      generateCooldownUntil: null
-     },
+    data: { generateCooldownUntil: null },
   });
 
   console.log("githubusername: ", githubUsername);

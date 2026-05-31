@@ -318,7 +318,14 @@ export class ApplicantsService {
     }
 
     const latestAnalysis = await this.prisma.analysisJob.findFirst({
-      where: { candidateId: candidate.id, status: 'completed' },
+      where: { 
+        github_profiles: {
+          developerProfile: {
+            candidateId: candidate.id,
+          },
+        },
+        status: 'completed',
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -396,7 +403,14 @@ export class ApplicantsService {
 
     // 4. Load candidate's latest completed AnalysisJob
     const latestAnalysis = await this.prisma.analysisJob.findFirst({
-      where: { candidateId: candidate.id, status: 'completed' },
+      where: { 
+        github_profiles: {
+          developerProfile: {
+            candidateId: candidate.id,
+          },
+        },
+        status: 'completed',
+      },
       orderBy: { createdAt: 'desc' },
     });
 

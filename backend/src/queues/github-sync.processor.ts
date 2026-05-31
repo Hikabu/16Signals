@@ -29,23 +29,17 @@ export class GithubSyncProcessor extends WorkerHost {
   ): Promise<any> {
     const { candidateId, githubProfileId } = job.data;
     const jobId = job.id?.toString();
-    this.logger.log(
-      {
-        jobId,
-        githubProfileId,
-      },
-      'github_sync_started',
-    );
+    this.logger.log({ jobId, githubProfileId }, 'github_sync_started');
 
     // (a) Load GithubProfile
     const profile = await this.prisma.githubProfile.findUnique({
-  where: { id: githubProfileId },
-  select: {
-    id: true,
-    githubUsername: true,
-    developerProfileId: true,
-  },
-});
+      where: { id: githubProfileId },
+      select: {
+        id: true,
+        githubUsername: true,
+        developerProfileId: true,
+      },
+    });
 
     if (!profile) {
       throw new Error(`GithubProfile ${githubProfileId} not found`);
@@ -69,35 +63,42 @@ export class GithubSyncProcessor extends WorkerHost {
         profile.githubUsername,
         jobId,
       );
-await this.prisma.$transaction([
-  this.prisma.developerProfile.update({
-    where: { id: profile.developerProfileId },
-    data: {
-      githubCooldownUntil: new Date(
-        Date.now() + 24 * 60 * 60 * 1000,
-      ),
-    },
-  }),
 
-  this.prisma.githubProfile.update({
-    where: { id: githubProfileId },
-    data: {
-      rawDataSnapshot: rawData as any,
-      lastSyncAt: new Date(),
-      syncError: null,
-      syncStatus: SyncStatus.SYNC_SUCCESS,
-      syncProgress: 100,
-    },
-  }),
-]);
-     
-      this.logger.log(
-        {
-          jobId,
-          githubProfileId,
-        },
-        'github_sync_completed',
+      // (d) Build transaction operations
+      const operations: any[] = [];
+
+      // DeveloperProfile cooldown update (if developerProfileId is set)
+      if (profile.developerProfileId) {
+        operations.push(
+          this.prisma.developerProfile.update({
+            where: { id: profile.developerProfileId },
+            data: {
+              githubCooldownUntil: new Date(
+                Date.now() + 24 * 60 * 60 * 1000,
+              ),
+            },
+          }),
+        );
+      }
+
+      // GithubProfile update
+      operations.push(
+        this.prisma.githubProfile.update({
+          where: { id: githubProfileId },
+          data: {
+            rawDataSnapshot: rawData as any,
+            lastSyncAt: new Date(),
+            syncError: null,
+            syncStatus: SyncStatus.SYNC_SUCCESS,
+            syncProgress: 100,
+          },
+        }),
       );
+
+      // (e) Execute transaction
+      await this.prisma.$transaction(operations);
+
+      this.logger.log({ jobId, githubProfileId }, 'github_sync_completed');
     } catch (error) {
       this.logger.error(
         `GitHub sync failed for profile ${githubProfileId}: ${error.message}`,

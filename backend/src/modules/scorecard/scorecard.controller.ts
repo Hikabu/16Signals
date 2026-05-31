@@ -157,7 +157,7 @@ export class ScorecardController {
   })
   async getMyScorecard(@Request() req) {
     const scorecard = await this.scorecardService.getScorecardForUser(
-      {userId: req.user.id},
+      req.user.id
     );
 
     console.log("scorecard? ", scorecard!!);
@@ -205,7 +205,7 @@ async getPublicUserScorecard(
   @Param('username') username: string,
 ) {
      const scorecard = await this.scorecardService.getScorecardForUser(
-      {username}
+      username
     );
 
     console.log("scorecard? ", scorecard!!);
