@@ -37,6 +37,7 @@
  *   Then same as Light Mode above with config.cv_claims populated
  *
  * Reference: DEEPSEEK_V4_REFACTOR_PLAN.md Stage 7
+ * Aligned with: USER_FLOWS_AND_GOALS_VERIFICATION.md Section 1
  */
 
 import { Injectable } from '@nestjs/common';
@@ -49,11 +50,24 @@ import { LLMIntegrationService } from '../llm/llm-integration.service';
 import { CvClaimExtractorService } from '../brief/cv-claim-extractor.service';
 import { AnalysisConfig } from '../modules/module.interface';
 import { SignalCorpus } from '../corpus/corpus.types';
+import { ModuleResult } from '../modules/module-result.types';
 
 export interface DispatcherResult {
   jobId: string;
   status: 'complete' | 'partial' | 'failed';
   briefMarkdown: string;
+  briefJson: Record<string, string>;
+  moduleResults: ModuleResult[];
+  flags: Array<{
+    flag_id: string;
+    flag_type: 'SOFT' | 'HARD';
+    severity: 'INFO' | 'WARNING' | 'CRITICAL';
+    module_id: string;
+    description: string;
+    escalate_to_hiring_manager: boolean;
+    clear_without_interview: boolean;
+    interview_probe: string | null;
+  }>;
   moduleCount: number;
   flagCount: number;
   totalDurationMs: number;
@@ -173,6 +187,9 @@ export class JobDispatcherService {
         jobId,
         status: 'complete',
         briefMarkdown: brief.briefMarkdown,
+        briefJson: brief.briefJson as unknown as Record<string, string>,
+        moduleResults,
+        flags: brief.redFlags,
         moduleCount: moduleResults.length,
         flagCount: brief.redFlags.length,
         totalDurationMs,

@@ -20,6 +20,9 @@ import { CvClaimExtractorService } from './cv-claim-extractor.service';
     SeniorityWeightingService,
     CvClaimExtractorService,
   ],
-  exports: [BriefAssemblerService],
+  exports: [
+    BriefAssemblerService,
+    CvClaimExtractorService,
+  ],
 })
 export class BriefModule {}

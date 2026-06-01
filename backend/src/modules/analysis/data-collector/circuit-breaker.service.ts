@@ -27,11 +27,7 @@ export class CircuitBreakerService {
   private remaining = 5000;
   private resetAt: Date | null = null;
   private reason: string | null = null;
-  private readonly abortThreshold: number;
-
-  constructor(abortThreshold = 500) {
-    this.abortThreshold = abortThreshold;
-  }
+  private readonly abortThreshold = 500;
 
   /**
    * Update the circuit breaker state from GitHub API response headers.

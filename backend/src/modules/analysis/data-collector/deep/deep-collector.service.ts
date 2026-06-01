@@ -16,6 +16,7 @@
  * Tracing: Every step emits structured console.log with timing.
  *
  * Reference: DEEPSEEK_V4_REFACTOR_PLAN.md Stage 8
+ * Aligned with: USER_FLOWS_AND_GOALS_VERIFICATION.md Section 1 Flow 3
  */
 
 import { Injectable } from '@nestjs/common';
@@ -31,7 +32,9 @@ export interface DeepCollectorOutput {
   groupsEnriched: CorpusGroup[];
   reposCloned: number;
   reposSucceeded: number;
+  reposFailed: number;
   totalDurationMs: number;
+  secretLeaksFound: number;
 }
 
 @Injectable()
@@ -87,7 +90,9 @@ export class DeepCollectorService {
         groupsEnriched: [],
         reposCloned: 0,
         reposSucceeded: 0,
+        reposFailed: 0,
         totalDurationMs: Date.now() - startTime,
+        secretLeaksFound: 0,
       };
     }
 
@@ -103,7 +108,7 @@ export class DeepCollectorService {
     );
 
     // ── 4. Extract Deep-only signals from tool outputs ──
-    const deepDelta = this.extractDeepDelta(succeeded, lightCorpus);
+    const { delta: deepDelta, totalSecretLeaks } = this.extractDeepDelta(succeeded, lightCorpus);
 
     // ── 5. Merge Deep delta into corpus and cache ──
     const mergedCorpus = await this.corpusCache.mergeDelta(lightCorpus, deepDelta);
@@ -112,7 +117,8 @@ export class DeepCollectorService {
       `[DeepCollector] phase=collect_complete jobId=${jobId} ` +
       `totalDurationMs=${Date.now() - startTime} ` +
       `groupsPresent=${mergedCorpus.groups_present.join(',')} ` +
-      `reposCloned=${cloneResults.length} reposSucceeded=${succeeded.length}`,
+      `reposCloned=${cloneResults.length} reposSucceeded=${succeeded.length} ` +
+      `secretLeaks=${totalSecretLeaks}`,
     );
 
     return {
@@ -120,7 +126,9 @@ export class DeepCollectorService {
       groupsEnriched: ['C', 'E', 'G'] as CorpusGroup[],
       reposCloned: cloneResults.length,
       reposSucceeded: succeeded.length,
+      reposFailed: failed.length,
       totalDurationMs: Date.now() - startTime,
+      secretLeaksFound: totalSecretLeaks,
     };
   }
 
@@ -224,11 +232,12 @@ export class DeepCollectorService {
   /**
    * Extract Deep-only signals from clone worker results.
    * Maps tool outputs into corpus fields for groups C, E, G.
+   * Returns both the delta and the total secret leak count for the API response.
    */
   private extractDeepDelta(
     results: CloneWorkerResult[],
     existingCorpus: SignalCorpus,
-  ): Partial<SignalCorpus> {
+  ): { delta: Partial<SignalCorpus>; totalSecretLeaks: number } {
     const perRepoAuthorStats: Record<string, any> = {};
     const complexityTrend: Record<string, number> = {};
     const testToCodeRatio: Record<string, number> = {};
@@ -296,8 +305,11 @@ export class DeepCollectorService {
     };
 
     return {
-      commit_signals: { ...existingCorpus.commit_signals, ...commitDelta },
-      engineering_practice_signals: { ...existingCorpus.engineering_practice_signals, ...engDelta },
+      delta: {
+        commit_signals: { ...existingCorpus.commit_signals, ...commitDelta },
+        engineering_practice_signals: { ...existingCorpus.engineering_practice_signals, ...engDelta },
+      },
+      totalSecretLeaks,
     };
   }
 }

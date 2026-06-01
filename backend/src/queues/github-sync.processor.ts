@@ -1,18 +1,31 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
 import { Logger, Inject } from '@nestjs/common';
-import { GithubAdapterService } from '../modules/scoring/github-adapter/github-adapter.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncStatus } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
 import { OctokitFactory } from '../modules/scoring/github-adapter/octokit.factory';
+import { DataCollectorService } from '../modules/analysis/data-collector/data-collector.service';
+import { CorpusCacheService } from '../modules/analysis/corpus/corpus-cache.service';
 
+/**
+ * GithubSyncProcessor — Refactored to use the new GitIntel pipeline.
+ *
+ * Previously used GithubAdapterService.fetchRawData() which returned GitHubRawData.
+ * Now uses:
+ *   1. DataCollectorService.collectLightMode() → SignalCorpus (7 groups A-G)
+ *   2. CorpusCacheService.set() → Redis 7d TTL cache
+ *   3. rawDataSnapshot still stored for backward compatibility
+ *
+ * Tracing: Every step emits structured console.log for real-time visibility.
+ */
 @Processor('github-sync', { concurrency: 5 })
 export class GithubSyncProcessor extends WorkerHost {
   private readonly logger = new Logger(GithubSyncProcessor.name);
 
   constructor(
-    private readonly githubAdapter: GithubAdapterService,
+    private readonly dataCollector: DataCollectorService,
+    private readonly corpusCache: CorpusCacheService,
     private readonly prisma: PrismaService,
     @InjectQueue('signal-compute') private readonly signalQueue: Queue,
     private readonly octokitFactory: OctokitFactory,
@@ -28,8 +41,9 @@ export class GithubSyncProcessor extends WorkerHost {
     }>,
   ): Promise<any> {
     const { candidateId, githubProfileId } = job.data;
-    const jobId = job.id?.toString();
+    const jobId = job.id?.toString() || 'sync';
     this.logger.log({ jobId, githubProfileId }, 'github_sync_started');
+    console.log(`[GithubSyncProcessor] phase=sync_start jobId=${jobId} githubProfileId=${githubProfileId}`);
 
     // (a) Load GithubProfile
     const profile = await this.prisma.githubProfile.findUnique({
@@ -45,8 +59,11 @@ export class GithubSyncProcessor extends WorkerHost {
       throw new Error(`GithubProfile ${githubProfileId} not found`);
     }
 
+    const username = profile.githubUsername;
+    console.log(`[GithubSyncProcessor] phase=profile_loaded jobId=${jobId} username=${username}`);
+
     try {
-      // (b) Set syncStatus = IN_PROGRESS, syncProgress = fetching_repos (20%)
+      // (b) Set syncStatus = IN_PROGRESS, syncProgress = 20%
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
@@ -54,17 +71,34 @@ export class GithubSyncProcessor extends WorkerHost {
           syncProgress: 20,
         },
       });
+      console.log(`[GithubSyncProcessor] phase=sync_progress jobId=${jobId} progress=20 status=SYNC_REQUEST`);
 
-      // (c) Call consolidated fetcher
+      // (c) Collect data using the new GitIntel DataCollectorService
+      // This produces a SignalCorpus with all 7 groups (A-G) and caching
       const resolvedUserId = job.data.userId;
       const octokit = await this.octokitFactory.forJob(resolvedUserId ?? null);
-      const rawData = await this.githubAdapter.fetchRawData(
+      console.log(`[GithubSyncProcessor] phase=collect_start jobId=${jobId} username=${username} mode=light`);
+
+      const { corpus, groupsCollected, errors } = await this.dataCollector.collectLightMode(
         octokit,
-        profile.githubUsername,
+        username,
         jobId,
       );
 
-      // (d) Build transaction operations
+      console.log(
+        `[GithubSyncProcessor] phase=collect_complete jobId=${jobId} ` +
+        `username=${username} groups=${groupsCollected.join(',')} ` +
+        `errors=${errors.length} corpusId=${corpus.corpus_id}`,
+      );
+
+      // (d) Store corpus in Redis cache with 7d TTL
+      await this.corpusCache.set(corpus);
+      console.log(
+        `[GithubSyncProcessor] phase=corpus_cached jobId=${jobId} ` +
+        `corpusId=${corpus.corpus_id} ttl=7d`,
+      );
+
+      // (e) Build transaction operations for DB persistence
       const operations: any[] = [];
 
       // DeveloperProfile cooldown update (if developerProfileId is set)
@@ -81,12 +115,12 @@ export class GithubSyncProcessor extends WorkerHost {
         );
       }
 
-      // GithubProfile update
+      // GithubProfile update — store corpus JSON for backward compatibility
       operations.push(
         this.prisma.githubProfile.update({
           where: { id: githubProfileId },
           data: {
-            rawDataSnapshot: rawData as any,
+            rawDataSnapshot: corpus as any,
             lastSyncAt: new Date(),
             syncError: null,
             syncStatus: SyncStatus.SYNC_SUCCESS,
@@ -95,22 +129,31 @@ export class GithubSyncProcessor extends WorkerHost {
         }),
       );
 
-      // (e) Execute transaction
+      // (f) Execute transaction
       await this.prisma.$transaction(operations);
 
+      console.log(
+        `[GithubSyncProcessor] phase=sync_complete jobId=${jobId} ` +
+        `username=${username} groups=${groupsCollected.join(',')} ` +
+        `corpusId=${corpus.corpus_id}`,
+      );
       this.logger.log({ jobId, githubProfileId }, 'github_sync_completed');
     } catch (error) {
+      console.log(
+        `[GithubSyncProcessor] phase=sync_error jobId=${jobId} ` +
+        `error=${(error as Error).message}`,
+      );
       this.logger.error(
         `GitHub sync failed for profile ${githubProfileId}: ${error.message}`,
       );
 
-      // (g) On error: set status = FAILED, syncProgress = 0, syncError = error.message
+      // (g) On error: set status = FAILED
       await this.prisma.githubProfile.update({
         where: { id: githubProfileId },
         data: {
           syncStatus: SyncStatus.SYNC_FAILED,
           syncProgress: 0,
-          syncError: error.message,
+          syncError: (error as Error).message,
         },
       });
 

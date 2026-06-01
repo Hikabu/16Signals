@@ -25,6 +25,7 @@ import { ApplicantsModule } from './modules/applicants/applicants.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { WalletSyncModule } from './modules/wallet-sync/wallet-sync.module';
 import { EscrowModule } from './modules/escrow/escrow.module';
+import { AnalysisV2Module } from './modules/analysis/analysis/analysis-v2.module';
 
 @Module({
   providers: [
@@ -59,6 +60,7 @@ import { EscrowModule } from './modules/escrow/escrow.module';
     PrismaModule,
     RedisModule,
     AnalyticsModule,
+    AnalysisV2Module,
     ApplicantsModule,
     GithubSyncModule,
     JobsModule,

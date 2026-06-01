@@ -67,6 +67,199 @@
         ]
       }
     },
+    "/api/v2/analysis/light": {
+      "post": {
+        "description": "Analyze a GitHub profile using public signals only. Returns a jobId immediately. Poll GET /api/v2/analysis/:jobId to get results.\n\n**Pipeline:** Corpus acquisition → Wave orchestration (14 modules) → LLM processing → Evidence Brief\n\n**Status flow:** queued → wave_1 → wave_2a(cond) → wave_2b/c/d → wave_3 → wave_4 → completed",
+        "operationId": "AnalysisV2Controller_createLightAnalysis",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLightAnalysisDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Analysis job created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisCreateResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Create Light Mode analysis",
+        "tags": [
+          "Analysis v2"
+        ]
+      }
+    },
+    "/api/v2/analysis/cv-verify": {
+      "post": {
+        "description": "Extract structured claims from CV text, then run Light Mode analysis enriched with those claims.\n\n**Status flow:** queued → wave_1 → wave_2a(cond) → wave_2b/c/d → wave_3 → wave_4 → completed",
+        "operationId": "AnalysisV2Controller_createCvVerify",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCvVerifyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "CV Verification job created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisCreateResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body — cvText must not be empty"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "CV Verification analysis",
+        "tags": [
+          "Analysis v2"
+        ]
+      }
+    },
+    "/api/v2/analysis/deep": {
+      "post": {
+        "description": "Analyze a GitHub profile with private repo access via GitHub App installation.\n\n**SLA:** 5–10 minutes. Poll GET /api/v2/analysis/:jobId for results.\n\n**Status flow:** queued → wave_1 → wave_2a(cond) → wave_2b/c/d → wave_3 → wave_4 → completed",
+        "operationId": "AnalysisV2Controller_createDeepAnalysis",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeepAnalysisDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Deep Mode analysis job created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisCreateResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "401": {
+            "description": "GitHub App installation not authorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Create Deep Mode analysis",
+        "tags": [
+          "Analysis v2"
+        ]
+      }
+    },
+    "/api/v2/analysis/{jobId}": {
+      "get": {
+        "description": "Poll this endpoint with the jobId returned from POST endpoints.\n\n**Status transitions:** queued → wave_1 → wave_2a(cond) → wave_2b → wave_2c → wave_2d → wave_3 → wave_4 → completed",
+        "operationId": "AnalysisV2Controller_getResult",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "description": "Job ID from POST endpoint",
+            "schema": {
+              "example": "light_a1b2c3_7f4e2d1a",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Analysis status and result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisStatusResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job ID not found"
+          }
+        },
+        "summary": "Get analysis status and result",
+        "tags": [
+          "Analysis v2"
+        ]
+      }
+    },
+    "/api/v2/analysis/status": {
+      "get": {
+        "operationId": "analysisV2HealthCheck",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2026-06-01T04:00:00.000Z"
+                    },
+                    "serviceVersion": {
+                      "type": "string",
+                      "example": "2.0.0"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "API health check",
+        "tags": [
+          "Analysis v2"
+        ]
+      }
+    },
     "/applications/me/gap-preview": {
       "get": {
         "description": "Returns gap analysis BEFORE applying.\n\nDoes not persist data.",
@@ -4592,6 +4785,251 @@
         "required": [
           "success",
           "data"
+        ]
+      },
+      "AnalysisConfigDto": {
+        "type": "object",
+        "properties": {
+          "seniority": {
+            "type": "string",
+            "description": "Candidate seniority level",
+            "enum": [
+              "intern",
+              "junior",
+              "mid",
+              "senior",
+              "staff",
+              "principal"
+            ],
+            "example": "senior"
+          },
+          "role_archetype": {
+            "type": "string",
+            "description": "Role archetype / specialization",
+            "enum": [
+              "backend",
+              "frontend",
+              "platform",
+              "data_ml",
+              "security",
+              "mobile",
+              "generalist"
+            ],
+            "example": "backend"
+          },
+          "jd_text": {
+            "type": "string",
+            "description": "Job description text for Section F role matching",
+            "example": "We are looking for a Senior Backend Engineer with 5+ years of experience in Node.js..."
+          }
+        },
+        "required": [
+          "seniority",
+          "role_archetype"
+        ]
+      },
+      "AnalysisResultDto": {
+        "type": "object",
+        "properties": {
+          "briefMarkdown": {
+            "type": "string",
+            "description": "Full Evidence Brief in Markdown format",
+            "example": "# Evidence Brief: @torvalds\n\n## A. Profile in 90 Seconds\n..."
+          },
+          "briefJson": {
+            "type": "object",
+            "description": "Parsed brief sections in structured JSON (sectionA–G keys)"
+          },
+          "moduleResults": {
+            "description": "All 14 module results with confidence, evidence, flags, and probes",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "flags": {
+            "description": "All flags raised across all modules",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "moduleCount": {
+            "type": "number",
+            "description": "Number of analysis modules executed (should always be 14)",
+            "example": 14
+          },
+          "flagCount": {
+            "type": "number",
+            "description": "Total number of flags raised across all modules",
+            "example": 0
+          },
+          "totalDurationMs": {
+            "type": "number",
+            "description": "Total analysis duration in milliseconds",
+            "example": 45200
+          }
+        },
+        "required": [
+          "briefMarkdown",
+          "briefJson",
+          "moduleResults",
+          "flags",
+          "moduleCount",
+          "flagCount",
+          "totalDurationMs"
+        ]
+      },
+      "CreateLightAnalysisDto": {
+        "type": "object",
+        "properties": {
+          "githubUsername": {
+            "type": "string",
+            "description": "GitHub username to analyze",
+            "example": "torvalds"
+          },
+          "config": {
+            "description": "Analysis configuration",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisConfigDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "githubUsername",
+          "config"
+        ]
+      },
+      "CreateCvVerifyDto": {
+        "type": "object",
+        "properties": {
+          "githubUsername": {
+            "type": "string",
+            "description": "GitHub username to analyze",
+            "example": "torvalds"
+          },
+          "cvText": {
+            "type": "string",
+            "description": "Raw CV text (paste from CV or ATS)",
+            "example": "Senior Backend Engineer at Acme Corp (2020-2025)\nLed the development of microservices architecture..."
+          },
+          "config": {
+            "description": "Analysis configuration",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisConfigDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "githubUsername",
+          "cvText",
+          "config"
+        ]
+      },
+      "CreateDeepAnalysisDto": {
+        "type": "object",
+        "properties": {
+          "githubUsername": {
+            "type": "string",
+            "description": "GitHub username to analyze",
+            "example": "torvalds"
+          },
+          "installationId": {
+            "type": "number",
+            "description": "GitHub App installation ID (obtained via OAuth consent flow)",
+            "example": 12345678
+          },
+          "config": {
+            "description": "Analysis configuration",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisConfigDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "githubUsername",
+          "installationId",
+          "config"
+        ]
+      },
+      "AnalysisCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "description": "The analysis job ID for status polling",
+            "example": "light_a1b2c3_7f4e2d1a"
+          },
+          "status": {
+            "type": "string",
+            "description": "Initial job status",
+            "enum": [
+              "queued",
+              "cached",
+              "failed"
+            ],
+            "example": "queued"
+          }
+        },
+        "required": [
+          "jobId",
+          "status"
+        ]
+      },
+      "AnalysisStatusResponseDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "description": "The analysis job ID",
+            "example": "light_a1b2c3_7f4e2d1a"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current pipeline stage",
+            "enum": [
+              "queued",
+              "wave_1",
+              "wave_2a",
+              "wave_2b",
+              "wave_2c",
+              "wave_2d",
+              "wave_3",
+              "wave_4",
+              "completed",
+              "failed"
+            ],
+            "example": "completed"
+          },
+          "progress": {
+            "type": "number",
+            "description": "Progress percentage (0-100)",
+            "example": 100
+          },
+          "result": {
+            "description": "Analysis result (present when status === \"completed\")",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisResultDto"
+              }
+            ]
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message (present when status === \"failed\")",
+            "example": "GitHub user not found"
+          }
+        },
+        "required": [
+          "jobId",
+          "status",
+          "progress"
         ]
       },
       "ErrorResponseDto": {

@@ -86,6 +86,9 @@ export interface EvidenceBriefOutput {
     severity: 'INFO' | 'WARNING' | 'CRITICAL';
     module_id: string;
     description: string;
+    escalate_to_hiring_manager: boolean;
+    clear_without_interview: boolean;
+    interview_probe: string | null;
   }>;
   /** Generated interview questions */
   interviewQuestions: InterviewQuestion[];

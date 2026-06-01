@@ -40,6 +40,7 @@ export class ModuleRegistry {
   /**
    * Wave → Module ID mapping as defined in spec Section 1.6.
    * Wave 2a is conditional (runs only if AG1 or AG3 fires).
+   * EV runs in Wave 3 alongside P6 and AG5 as part of the LLM batch.
    */
   private readonly waveMap: Record<string, string[]> = {
     wave_1: ['ag1_commit_inflation', 'ag2_fork_dump', 'ag3_burst_dormancy'],
@@ -51,7 +52,7 @@ export class ModuleRegistry {
     ],
     wave_2c: ['p3_collaboration_leverage'],
     wave_2d: ['p4_technical_depth'],
-    wave_3: ['p6_ai_leverage', 'ag5_ai_generation_detection'],
+    wave_3: ['p6_ai_leverage', 'ag5_ai_generation_detection', 'ev_employment_verification'],
   };
 
   constructor(
