@@ -8,9 +8,9 @@
  *   GET  /api/v2/analysis/:jobId       — Poll for result
  *   GET  /api/v2/analysis/status       — Health check
  *
- * All request/response DTOs have both @ApiProperty for Swagger AND
- * class-validator decorators for runtime validation.
- * Status enums show real wave-level pipeline progress per the target architecture spec.
+ * Two execution modes:
+ *   USE_SYNC_PIPELINE=true  → runs synchronously (dev/demo)
+ *   otherwise               → enqueues to BullMQ 'analysis' queue (production)
  */
 
 import {
@@ -30,6 +30,8 @@ import {
   ApiParam,
   ApiExtraModels,
 } from '@nestjs/swagger';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { JobDispatcherService } from '../orchestration/job-dispatcher.service';
 import { CvClaimExtractorService } from '../brief/cv-claim-extractor.service';
 import { OctokitFactory } from '../../scoring/github-adapter/octokit.factory';
@@ -85,7 +87,7 @@ function buildFullResult(
   }>,
   totalDurationMs: number,
 ) {
-  const data = {
+  return {
     briefMarkdown,
     briefJson,
     moduleResults: moduleResults.map((r) => ({
@@ -102,8 +104,7 @@ function buildFullResult(
     moduleCount: moduleResults.length,
     flagCount: flags.length,
     totalDurationMs,
-  };
-  return data as any;
+  } as any;
 }
 
 @ApiTags('Analysis v2')
@@ -124,6 +125,7 @@ export class AnalysisV2Controller {
     private readonly octokitFactory: OctokitFactory,
     private readonly deepCollector: DeepCollectorService,
     private readonly prisma: PrismaService,
+    @InjectQueue('analysis') private readonly analysisQueue: Queue,
   ) {}
 
   @Post('light')
@@ -156,30 +158,33 @@ export class AnalysisV2Controller {
       });
 
       if (process.env.USE_SYNC_PIPELINE === 'true') {
+        // Synchronous path (dev/demo)
         const config = buildAnalysisConfig(dto);
         const octokit = await this.octokitFactory.forJob(null);
         const result = await this.jobDispatcher.dispatchLightMode(octokit, jobId, dto.githubUsername, config);
-
         await this.prisma.analysisJob.update({
           where: { id: jobId },
           data: {
             status: 'completed',
             progress: 100,
-            result: buildFullResult(
-              result.briefMarkdown, result.briefJson,
-              result.moduleResults, result.flags, result.totalDurationMs,
-            ),
+            result: buildFullResult(result.briefMarkdown, result.briefJson, result.moduleResults, result.flags, result.totalDurationMs),
           },
         });
         console.log(`[AnalysisV2Controller] phase=light_complete jobId=${jobId} durationMs=${result.totalDurationMs}`);
+      } else {
+        // Production path: enqueue to BullMQ
+        await this.analysisQueue.add('light', {
+          jobId,
+          githubUsername: dto.githubUsername,
+          config: buildAnalysisConfig(dto),
+        });
+        console.log(`[AnalysisV2Controller] phase=light_enqueued jobId=${jobId} queue=analysis`);
       }
 
       return { jobId, status: 'queued' };
     } catch (error) {
       console.log(`[AnalysisV2Controller] phase=light_error jobId=${jobId} error=${(error as Error).message}`);
-      await this.prisma.analysisJob
-        .update({ where: { id: jobId }, data: { status: 'failed', error: (error as Error).message } })
-        .catch(() => {});
+      await this.prisma.analysisJob.update({ where: { id: jobId }, data: { status: 'failed', error: (error as Error).message } }).catch(() => {});
       throw new HttpException((error as Error).message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -193,7 +198,7 @@ export class AnalysisV2Controller {
   })
   @ApiBody({ type: CreateCvVerifyDto })
   @ApiResponse({ status: 201, description: 'CV Verification job created', type: AnalysisCreateResponseDto })
-  @ApiResponse({ status: 400, description: 'Invalid request body — cvText must not be empty' })
+  @ApiResponse({ status: 400, description: 'Invalid request body' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async createCvVerify(@Body() dto: CreateCvVerifyDto): Promise<AnalysisCreateResponseDto> {
     const jobId = this.generateJobId('cv_verify');
@@ -229,12 +234,17 @@ export class AnalysisV2Controller {
           data: {
             status: 'completed',
             progress: 100,
-            result: {
-              ...buildFullResult(result.briefMarkdown, result.briefJson, result.moduleResults, result.flags, result.totalDurationMs),
-              claimsExtracted: extraction.claims.length,
-            } as any,
+            result: { ...buildFullResult(result.briefMarkdown, result.briefJson, result.moduleResults, result.flags, result.totalDurationMs), claimsExtracted: extraction.claims.length } as any,
           },
         });
+      } else {
+        await this.analysisQueue.add('cv-verify', {
+          jobId,
+          githubUsername: dto.githubUsername,
+          cvText: dto.cvText,
+          config,
+        });
+        console.log(`[AnalysisV2Controller] phase=cv_enqueued jobId=${jobId} queue=analysis`);
       }
 
       return { jobId, status: 'queued' };
@@ -276,10 +286,8 @@ export class AnalysisV2Controller {
       if (process.env.USE_SYNC_PIPELINE === 'true') {
         const octokit = await this.octokitFactory.forJob(null);
         const deepResult = await this.deepCollector.collectDeepMode(octokit, octokit, dto.githubUsername, dto.installationId, jobId);
-
         const config = { seniority: dto.config.seniority, role_archetype: dto.config.role_archetype, jd_text: dto.config.jd_text };
         const dispatchResult = await this.jobDispatcher.dispatchLightMode(octokit, jobId, dto.githubUsername, config);
-
         await this.prisma.analysisJob.update({
           where: { id: jobId },
           data: {
@@ -287,17 +295,19 @@ export class AnalysisV2Controller {
             progress: 100,
             result: {
               ...buildFullResult(dispatchResult.briefMarkdown, dispatchResult.briefJson, dispatchResult.moduleResults, dispatchResult.flags, dispatchResult.totalDurationMs),
-              cloneStats: {
-                reposCloned: deepResult.reposCloned,
-                reposSucceeded: deepResult.reposSucceeded,
-                reposFailed: deepResult.reposFailed,
-                totalCloneTimeMs: deepResult.totalDurationMs,
-                secretLeaksFound: deepResult.secretLeaksFound ?? 0,
-              },
+              cloneStats: { reposCloned: deepResult.reposCloned, reposSucceeded: deepResult.reposSucceeded, reposFailed: deepResult.reposFailed, totalCloneTimeMs: deepResult.totalDurationMs, secretLeaksFound: deepResult.secretLeaksFound ?? 0 },
             } as any,
           },
         });
         console.log(`[AnalysisV2Controller] phase=deep_complete jobId=${jobId}`);
+      } else {
+        await this.analysisQueue.add('deep', {
+          jobId,
+          githubUsername: dto.githubUsername,
+          installationId: dto.installationId,
+          config: { seniority: dto.config.seniority, role_archetype: dto.config.role_archetype, jd_text: dto.config.jd_text },
+        });
+        console.log(`[AnalysisV2Controller] phase=deep_enqueued jobId=${jobId} queue=analysis`);
       }
 
       return { jobId, status: 'queued' };
@@ -348,18 +358,7 @@ export class AnalysisV2Controller {
 
   @Get('status')
   @ApiOperation({ summary: 'API health check', operationId: 'analysisV2HealthCheck' })
-  @ApiResponse({
-    status: 200,
-    description: 'Service is healthy',
-    schema: {
-      type: 'object',
-      properties: {
-        status: { type: 'string', example: 'healthy' },
-        timestamp: { type: 'string', example: '2026-06-01T04:00:00.000Z' },
-        serviceVersion: { type: 'string', example: '2.0.0' },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Service is healthy', schema: { type: 'object', properties: { status: { type: 'string', example: 'healthy' }, timestamp: { type: 'string', example: '2026-06-01T04:00:00.000Z' }, serviceVersion: { type: 'string', example: '2.0.0' } } } })
   getStatus(): { status: string; timestamp: string; serviceVersion: string } {
     return { status: 'healthy', timestamp: new Date().toISOString(), serviceVersion: '2.0.0' };
   }

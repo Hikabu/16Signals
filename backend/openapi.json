@@ -133,7 +133,7 @@
             }
           },
           "400": {
-            "description": "Invalid request body — cvText must not be empty"
+            "description": "Invalid request body"
           },
           "500": {
             "description": "Internal server error"
