@@ -57,14 +57,7 @@ export const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
 
-  DEEPSEEK_API_KEY: z.string().optional(),
-  DEEPSEEK_BASE_URL: z.string().optional(),
-  DEEPSEEK_TIMEOUT_MS: z.string().optional(),
-  DEEPSEEK_MODEL: z.string().optional(),
-  DEEPSEEK_MAX_TOKENS: z.string().optional(),
-  DEEPSEEK_TEMPERATURE: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
-  OPENAI_ADMIN_KEY: z.string().optional(),
+  PROCESS_CACHE: z.string().optional(),
 });
 
 // export function validateEnv(config: Record<string, unknown>) {

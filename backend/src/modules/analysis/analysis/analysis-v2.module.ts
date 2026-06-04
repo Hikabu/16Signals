@@ -6,7 +6,7 @@
  *                            CloneWorkerManager, CircuitBreakerService, CorpusBuilderService
  *   OrchestrationModule    → WaveOrchestratorService, JobDispatcherService
  *   BriefModule            → BriefAssemblerService, CvClaimExtractorService
- *   LLMModule              → LLMIntegrationService, DeepseekClient
+ *   LLMModule              → LLMIntegrationService, GeminiClient
  *   ModulesModule          → ModuleRegistry (14 analysis modules)
  *   CorpusModule           → CorpusCacheService
  *
@@ -22,6 +22,7 @@ import { LLMModule } from '../llm/llm.module';
 import { BriefModule } from '../brief/brief.module';
 import { ModulesModule } from '../modules/module.module';
 import { GithubAdapterModule } from '../../scoring/github-adapter/github-adapter.module';
+import { GitHubCredentialsModule } from '../../github-credentials/github-credentials.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { GithubAdapterModule } from '../../scoring/github-adapter/github-adapter
     LLMModule,
     BriefModule,
     GithubAdapterModule,
+    GitHubCredentialsModule,
   ],
   controllers: [AnalysisV2Controller],
 })

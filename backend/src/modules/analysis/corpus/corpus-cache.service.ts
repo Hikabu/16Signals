@@ -39,13 +39,13 @@ export class CorpusCacheService {
 
     if (raw) {
       console.log(
-        `[CorpusCache] phase=cache_hit username=${username} mode=${mode} key=${cacheKey}`,
+        `\t[CorpusCache] phase=cache_hit username=${username} mode=${mode} key=${cacheKey}`,
       );
       try {
         return JSON.parse(raw);
       } catch {
         console.log(
-          `[CorpusCache] phase=parse_error username=${username} mode=${mode}`,
+          `\t[CorpusCache] phase=parse_error username=${username} mode=${mode}`,
         );
         await this.redis.del(cacheKey);
         return null;

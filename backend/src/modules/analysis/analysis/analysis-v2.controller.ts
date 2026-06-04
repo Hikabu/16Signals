@@ -11,6 +11,12 @@
  * Two execution modes:
  *   USE_SYNC_PIPELINE=true  → runs synchronously (dev/demo)
  *   otherwise               → enqueues to BullMQ 'analysis' queue (production)
+ *
+ * Deep Mode authentication:
+ *   No longer accepts installationId in the request body. Instead, the backend
+ *   looks up the candidate's GithubProfile.installationId from the DB (populated
+ *   by the GitHub App webhook when the candidate installs the App). If the
+ *   candidate has not installed the App, Deep Mode is unavailable for that user.
  */
 
 import {
@@ -35,6 +41,7 @@ import { Queue } from 'bullmq';
 import { JobDispatcherService } from '../orchestration/job-dispatcher.service';
 import { CvClaimExtractorService } from '../brief/cv-claim-extractor.service';
 import { OctokitFactory } from '../../scoring/github-adapter/octokit.factory';
+import { GitHubCredentialsService } from '../../github-credentials/github-credentials.service';
 import {
   CreateLightAnalysisDto,
   CreateCvVerifyDto,
@@ -48,64 +55,8 @@ import {
 import { DeepCollectorService } from '../data-collector/deep/deep-collector.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AnalysisConfig } from '../modules/module.interface';
-import { ModuleResult } from '../modules/module-result.types';
+import { buildFullResult, resolveGithubProfileId } from './analysis-v2.helpers';
 
-async function resolveGithubProfileId(
-  prisma: PrismaService,
-  username: string,
-): Promise<string> {
-  const existing = await prisma.githubProfile.findUnique({
-    where: { githubUsername: username },
-    select: { id: true },
-  });
-  if (existing) return existing.id;
-
-  const newProfile = await prisma.githubProfile.create({
-    data: {
-      githubUsername: username,
-      githubUserId: `anon_${username}_${Date.now()}`,
-      encryptedToken: '',
-      scopes: [],
-    },
-  });
-  return newProfile.id;
-}
-
-function buildFullResult(
-  briefMarkdown: string,
-  briefJson: Record<string, string>,
-  moduleResults: ModuleResult[],
-  flags: Array<{
-    flag_id: string;
-    flag_type: 'SOFT' | 'HARD';
-    severity: 'INFO' | 'WARNING' | 'CRITICAL';
-    module_id: string;
-    description: string;
-    escalate_to_hiring_manager: boolean;
-    clear_without_interview: boolean;
-    interview_probe: string | null;
-  }>,
-  totalDurationMs: number,
-) {
-  return {
-    briefMarkdown,
-    briefJson,
-    moduleResults: moduleResults.map((r) => ({
-      module_id: r.module_id,
-      primitive_id: r.primitive_id,
-      confidence: r.confidence,
-      score_label: r.score_label,
-      evidence: r.evidence,
-      flags: r.flags,
-      interview_probe: r.interview_probe,
-      raw_signals_used: r.raw_signals_used,
-    })),
-    flags,
-    moduleCount: moduleResults.length,
-    flagCount: flags.length,
-    totalDurationMs,
-  } as any;
-}
 
 @ApiTags('Analysis v2')
 @ApiExtraModels(
@@ -123,6 +74,7 @@ export class AnalysisV2Controller {
     private readonly jobDispatcher: JobDispatcherService,
     private readonly cvExtractor: CvClaimExtractorService,
     private readonly octokitFactory: OctokitFactory,
+    private readonly credentialsService: GitHubCredentialsService,
     private readonly deepCollector: DeepCollectorService,
     private readonly prisma: PrismaService,
     @InjectQueue('analysis') private readonly analysisQueue: Queue,
@@ -143,7 +95,7 @@ export class AnalysisV2Controller {
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async createLightAnalysis(@Body() dto: CreateLightAnalysisDto): Promise<AnalysisCreateResponseDto> {
     const jobId = this.generateJobId('light');
-    console.log(`[AnalysisV2Controller] phase=light_request jobId=${jobId} username=${dto.githubUsername}`);
+    console.log(`\n[AnalysisV2Controller] phase=light_request jobId=${jobId} username=${dto.githubUsername}`);
 
     try {
       const profileId = await resolveGithubProfileId(this.prisma, dto.githubUsername);
@@ -157,29 +109,12 @@ export class AnalysisV2Controller {
         },
       });
 
-      if (process.env.USE_SYNC_PIPELINE === 'true') {
-        // Synchronous path (dev/demo)
-        const config = buildAnalysisConfig(dto);
-        const octokit = await this.octokitFactory.forJob(null);
-        const result = await this.jobDispatcher.dispatchLightMode(octokit, jobId, dto.githubUsername, config);
-        await this.prisma.analysisJob.update({
-          where: { id: jobId },
-          data: {
-            status: 'completed',
-            progress: 100,
-            result: buildFullResult(result.briefMarkdown, result.briefJson, result.moduleResults, result.flags, result.totalDurationMs),
-          },
-        });
-        console.log(`[AnalysisV2Controller] phase=light_complete jobId=${jobId} durationMs=${result.totalDurationMs}`);
-      } else {
-        // Production path: enqueue to BullMQ
-        await this.analysisQueue.add('light', {
-          jobId,
-          githubUsername: dto.githubUsername,
-          config: buildAnalysisConfig(dto),
-        });
-        console.log(`[AnalysisV2Controller] phase=light_enqueued jobId=${jobId} queue=analysis`);
-      }
+      await this.analysisQueue.add('light', {
+        jobId,
+        githubUsername: dto.githubUsername,
+        config: buildAnalysisConfig(dto),
+      });
+      console.log(`[AnalysisV2Controller] phase=light_enqueued jobId=${jobId} queue=analysis`);
 
       return { jobId, status: 'queued' };
     } catch (error) {
@@ -259,12 +194,14 @@ export class AnalysisV2Controller {
     summary: 'Create Deep Mode analysis',
     description:
       'Analyze a GitHub profile with private repo access via GitHub App installation.\n\n' +
+      'Requires the candidate to have installed the 16Signals GitHub App (via /sync/github/app/install). ' +
+      'If installed, Deep Mode uses the installation token to access private repositories.\n\n' +
       '**SLA:** 5–10 minutes. Poll GET /api/v2/analysis/:jobId for results.\n\n' +
       '**Status flow:** queued → wave_1 → wave_2a(cond) → wave_2b/c/d → wave_3 → wave_4 → completed',
   })
   @ApiBody({ type: CreateDeepAnalysisDto })
   @ApiResponse({ status: 201, description: 'Deep Mode analysis job created', type: AnalysisCreateResponseDto })
-  @ApiResponse({ status: 400, description: 'Invalid request body' })
+  @ApiResponse({ status: 400, description: 'Candidate has not installed the GitHub App' })
   @ApiResponse({ status: 401, description: 'GitHub App installation not authorized' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async createDeepAnalysis(@Body() dto: CreateDeepAnalysisDto): Promise<AnalysisCreateResponseDto> {
@@ -273,21 +210,69 @@ export class AnalysisV2Controller {
 
     try {
       const profileId = await resolveGithubProfileId(this.prisma, dto.githubUsername);
+
+      // Look up the candidate's installationId from their GithubProfile.
+      // This is populated when the candidate installs the GitHub App (webhook).
+      const githubProfile = await this.prisma.githubProfile.findUnique({
+        where: { id: profileId },
+        select: { installationId: true, githubUsername: true },
+      });
+
+      const installationId = githubProfile?.installationId;
+
+      if (!installationId) {
+        throw new HttpException(
+          `Candidate '${dto.githubUsername}' has not installed the 16Signals GitHub App. ` +
+          'The candidate must install the App to enable Deep Mode with private repository access.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      console.log(
+        `[AnalysisV2Controller] phase=deep_installation_resolved jobId=${jobId} ` +
+        `username=${dto.githubUsername} installationId=${installationId}`,
+      );
+
       await this.prisma.analysisJob.create({
         data: {
           id: jobId,
           githubProfileId: profileId,
           status: 'queued',
           progress: 0,
-          input: { githubUsername: dto.githubUsername, mode: 'deep', installationId: dto.installationId, config: dto.config } as any,
+          input: { githubUsername: dto.githubUsername, mode: 'deep', installationId, config: dto.config } as any,
         },
       });
 
-      if (process.env.USE_SYNC_PIPELINE === 'true') {
-        const octokit = await this.octokitFactory.forJob(null);
-        const deepResult = await this.deepCollector.collectDeepMode(octokit, octokit, dto.githubUsername, dto.installationId, jobId);
+      if (process.env.USE_SYNC_PIPELINE === 'true' && process.env.PROCESS_CACHE !== "bypass") {
+        // Resolve credentials via the pluggable provider system.
+        const { primary, installation, rawToken } = await this.credentialsService.resolve({
+          mode: 'deep',
+          githubUsername: dto.githubUsername,
+          installationId: Number(installationId),
+        });
+
+        if (!installation) {
+          throw new HttpException(
+            'GitHub App installation not authorized. Ensure GITHUB_APP_ID and GITHUB_PRIVATE_KEY are configured.',
+            HttpStatus.UNAUTHORIZED,
+          );
+        }
+
+        console.log(
+          `[AnalysisV2Controller] phase=deep_auth_resolved jobId=${jobId} ` +
+          `sources=${(primary as any).__githubTokenSource ?? 'system'}+installation`,
+        );
+
+        const deepResult = await this.deepCollector.collectDeepMode(
+          primary,
+          installation,
+          dto.githubUsername,
+          Number(installationId),
+          jobId,
+        );
+
         const config = { seniority: dto.config.seniority, role_archetype: dto.config.role_archetype, jd_text: dto.config.jd_text };
-        const dispatchResult = await this.jobDispatcher.dispatchLightMode(octokit, jobId, dto.githubUsername, config);
+        const dispatchResult = await this.jobDispatcher.dispatchLightMode(primary, jobId, dto.githubUsername, config);
         await this.prisma.analysisJob.update({
           where: { id: jobId },
           data: {
@@ -304,7 +289,7 @@ export class AnalysisV2Controller {
         await this.analysisQueue.add('deep', {
           jobId,
           githubUsername: dto.githubUsername,
-          installationId: dto.installationId,
+          installationId: Number(installationId),
           config: { seniority: dto.config.seniority, role_archetype: dto.config.role_archetype, jd_text: dto.config.jd_text },
         });
         console.log(`[AnalysisV2Controller] phase=deep_enqueued jobId=${jobId} queue=analysis`);
@@ -313,6 +298,8 @@ export class AnalysisV2Controller {
       return { jobId, status: 'queued' };
     } catch (error) {
       console.log(`[AnalysisV2Controller] phase=deep_error jobId=${jobId} error=${(error as Error).message}`);
+      if (error instanceof HttpException) throw error;
+      await this.prisma.analysisJob.update({ where: { id: jobId }, data: { status: 'failed', error: (error as Error).message } }).catch(() => {});
       throw new HttpException((error as Error).message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -342,7 +329,7 @@ export class AnalysisV2Controller {
     if ((job.status === 'completed' || job.status === 'complete') && job.result) {
       const r = job.result as Record<string, unknown>;
       response.result = {
-        briefMarkdown: (r.briefMarkdown as string) || '',
+        briefMarkdown: ((r.briefMarkdown as string) || '').replaceAll('\n', '<br>'),
         briefJson: (r.briefJson as Record<string, string>) || {},
         moduleResults: (r.moduleResults as any) || [],
         flags: (r.flags as any) || [],
@@ -350,6 +337,7 @@ export class AnalysisV2Controller {
         flagCount: (r.flagCount as number) || 0,
         totalDurationMs: (r.totalDurationMs as number) || 0,
       };
+      console.log(`[AnalysisV2Controller] phase=result_ready jobId=${jobId} durationMs=${response.result.totalDurationMs} flags=${response.result.flags.length} modules=${response.result.moduleResults.length}`);
     }
 
     if (job.status === 'failed' && job.error) response.error = job.error;

@@ -18,6 +18,7 @@ import { JobDispatcherService } from '../modules/analysis/orchestration/job-disp
 import { DeepCollectorService } from '../modules/analysis/data-collector/deep/deep-collector.service';
 import { CvClaimExtractorService } from '../modules/analysis/brief/cv-claim-extractor.service';
 import { OctokitFactory } from '../modules/scoring/github-adapter/octokit.factory';
+import { GitHubCredentialsService } from '../modules/github-credentials/github-credentials.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalysisConfig } from '../modules/analysis/modules/module.interface';
 
@@ -31,6 +32,7 @@ export class AnalysisProcessor extends WorkerHost {
     private readonly deepCollector: DeepCollectorService,
     private readonly cvExtractor: CvClaimExtractorService,
     private readonly octokitFactory: OctokitFactory,
+    private readonly credentialsService: GitHubCredentialsService,
     private readonly prisma: PrismaService,
   ) {
     super();
@@ -63,7 +65,7 @@ export class AnalysisProcessor extends WorkerHost {
    */
   async processLight(data: { jobId: string; githubUsername: string; config: AnalysisConfig; userId?: string | null }) {
     const { jobId, githubUsername, config, userId } = data;
-    console.log(`[AnalysisProcessor] phase=process_light jobId=${jobId} username=${githubUsername}`);
+    console.log(`1.[AnalysisProcessor] phase=process_light jobId=${jobId} username=${githubUsername}`);
 
     try {
       await this.updateJobStatus(jobId, 'collecting', 10);
@@ -146,6 +148,10 @@ export class AnalysisProcessor extends WorkerHost {
 
   /**
    * Process a Deep Mode analysis job.
+   *
+   * Uses GitHubCredentialsService to resolve:
+   *   - primary: system PAT Octokit for public corpus
+   *   - installation: App installation Octokit for private repos
    */
   async processDeep(data: { jobId: string; githubUsername: string; installationId: number; config: AnalysisConfig }) {
     const { jobId, githubUsername, installationId, config } = data;
@@ -154,11 +160,30 @@ export class AnalysisProcessor extends WorkerHost {
     try {
       await this.updateJobStatus(jobId, 'collecting', 10);
 
-      const octokit = await this.octokitFactory.forJob(null);
+      // Resolve credentials via the pluggable provider system
+      const { primary, installation } = await this.credentialsService.resolve({
+        mode: 'deep',
+        githubUsername,
+        installationId,
+      });
+
+      console.log(
+        `[AnalysisProcessor] phase=deep_auth_resolved jobId=${jobId} ` +
+        `sources=${(primary as any).__githubTokenSource ?? 'system'}${installation ? '+installation' : ''}`,
+      );
+
+      // If installation Octokit is available, use it for private repo access.
+      // Otherwise fall back to primary (legacy behavior for user PAT with repo scope).
+      const appOctokit = installation ?? primary;
+      if (!installation) {
+        this.logger.warn(
+          `No installation Octokit resolved for deep mode. Falling back to primary token. Private repos may be inaccessible.`,
+        );
+      }
 
       const deepResult = await this.deepCollector.collectDeepMode(
-        octokit,
-        octokit,
+        primary,
+        appOctokit,
         githubUsername,
         installationId,
         jobId,
@@ -166,7 +191,7 @@ export class AnalysisProcessor extends WorkerHost {
 
       await this.updateJobStatus(jobId, 'corpus_built', 50);
 
-      const result = await this.jobDispatcher.dispatchLightMode(octokit, jobId, githubUsername, config);
+      const result = await this.jobDispatcher.dispatchLightMode(primary, jobId, githubUsername, config);
 
       await this.prisma.analysisJob.update({
         where: { id: jobId },

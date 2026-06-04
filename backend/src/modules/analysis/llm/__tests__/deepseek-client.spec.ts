@@ -1,191 +1,115 @@
 /**
- * Stage 5 — DeepseekClient Unit Tests
+ * Stage 5 — GeminiClient Unit Tests
  *
- * Tests the Deepseek v4 HTTP client with mocked OpenAI SDK.
- * Focuses on: initialization, chat completion, retry logic, JSON mode.
- *
- * Reference: DEEPSEEK_V4_REFACTOR_PLAN.md Stage 5 test targets
+ * Tests the Gemini LLM client using the @google/genai SDK.
+ * Verifies initialization, chatCompletion, retry logic, and error handling.
  */
-
-jest.mock('openai', () => {
-  const mockCreate = jest.fn();
-  return {
-    __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      chat: {
-        completions: {
-          create: mockCreate,
-        },
-      },
-    })),
-  };
-});
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { DeepseekClient } from '../deepseek-client';
+import { GeminiClient } from '../gemini-client';
 
-describe('Stage 5 — DeepseekClient', () => {
-  let client: DeepseekClient;
-  let mockOpenAICreate: jest.Mock;
+// Mock @google/genai
+jest.mock('@google/genai', () => ({
+  GoogleGenAI: jest.fn().mockImplementation(() => ({
+    models: {
+      generateContent: jest.fn().mockResolvedValue({
+        text: '{"result": "ok"}',
+      }),
+    },
+  })),
+}));
 
-  function makeConfigService(overrides: Record<string, any> = {}) {
-    return {
-      getOrThrow: jest.fn((key: string) => {
-        const defaults: Record<string, any> = {
-          DEEPSEEK_API_KEY: 'test-key',
-          DEEPSEEK_BASE_URL: 'https://api.deepseek.com/v1',
-          DEEPSEEK_MODEL: 'deepseek-chat',
-          DEEPSEEK_MAX_TOKENS: 4096,
-          DEEPSEEK_TEMPERATURE: 0,
-          DEEPSEEK_TIMEOUT_MS: 35000,
-        };
-        return overrides[key] ?? defaults[key];
-      }),
-      get: jest.fn((key: string, defaultValue?: any) => {
-        const defaults: Record<string, any> = {
-          DEEPSEEK_TIMEOUT_MS: 35000,
-          DEEPSEEK_MAX_TOKENS: 4096,
-          DEEPSEEK_TEMPERATURE: 0,
-        };
-        return overrides[key] ?? defaults[key] ?? defaultValue;
-      }),
-    };
-  }
+describe('Stage 5 — GeminiClient', () => {
+  let client: GeminiClient;
+  let mockConfigService: jest.Mocked<Partial<ConfigService>>;
+  let mockGenerateContent: jest.Mock;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    mockGenerateContent = jest.fn().mockResolvedValue({
+      text: '{"result": "ok"}',
+    });
+
+    const { GoogleGenAI } = require('@google/genai');
+    GoogleGenAI.mockImplementation(() => ({
+      models: {
+        generateContent: mockGenerateContent,
+      },
+    }));
+
+    mockConfigService = {
+      getOrThrow: jest.fn().mockImplementation((key: string) => {
+        if (key === 'GOOGLE_AI_API_KEY') return 'test-api-key';
+        throw new Error(`Missing config: ${key}`);
+      }),
+      get: jest.fn().mockImplementation((key: string, defaultValue?: any) => {
+        return defaultValue;
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        DeepseekClient,
-        { provide: ConfigService, useValue: makeConfigService() },
+        GeminiClient,
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
-    client = module.get<DeepseekClient>(DeepseekClient);
-    const mockOpenAI = jest.requireMock('openai').default;
-    mockOpenAICreate = mockOpenAI().chat.completions.create;
+    client = module.get<GeminiClient>(GeminiClient);
   });
 
-  it('should initialize with correct model and base URL', () => {
-    const OpenAI = jest.requireMock('openai').default;
-    expect(OpenAI).toHaveBeenCalledWith(
-      expect.objectContaining({
-        apiKey: 'test-key',
-        baseURL: 'https://api.deepseek.com/v1',
-        timeout: 35000,
-        maxRetries: 2,
-      }),
-    );
+  it('should initialize with GOOGLE_AI_API_KEY', () => {
+    expect(client).toBeDefined();
+    expect(mockConfigService.getOrThrow).toHaveBeenCalledWith('GOOGLE_AI_API_KEY');
   });
 
-  it('should make a chat completion call and return response text', async () => {
-    mockOpenAICreate.mockResolvedValueOnce({
-      choices: [{ message: { content: 'Test response' } }],
-      usage: { total_tokens: 42 },
+  it('should make a chat completion call', async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      text: 'Hello from Gemini',
     });
 
     const result = await client.chatCompletion(
       'You are a helpful assistant.',
-      'Hello!',
+      'Say hello.',
     );
 
-    expect(result).toBe('Test response');
-    expect(mockOpenAICreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: 'deepseek-chat',
-        temperature: 0,
-        max_tokens: 4096,
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: 'Hello!' },
-        ],
-      }),
-    );
+    expect(result).toBe('Hello from Gemini');
+    expect(mockGenerateContent).toHaveBeenCalled();
   });
 
-  it('should handle JSON response format option', async () => {
-    mockOpenAICreate.mockResolvedValueOnce({
-      choices: [{ message: { content: '{"result":"ok"}' } }],
-      usage: { total_tokens: 10 },
-    });
+  it('should retry on transient errors', async () => {
+    mockGenerateContent
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce({ text: 'Success after retry' });
 
-    const result = await client.chatCompletion(
+    const result = await client.chatCompletionWithRetry(
       'System prompt',
       'User prompt',
-      { requireJson: true },
+      { maxRetries: 2 },
     );
 
-    expect(result).toBe('{"result":"ok"}');
-    expect(mockOpenAICreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        response_format: { type: 'json_object' },
-      }),
-    );
+    expect(result).toBe('Success after retry');
+    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
   });
 
-  it('should retry on network failure and succeed', async () => {
-    // Mock setTimeout to call immediately so retry tests are fast
-    const origSetTimeout = global.setTimeout;
-    global.setTimeout = ((fn: () => void, _ms?: number) => {
-      origSetTimeout(fn, 0);
-      return undefined as any;
-    }) as typeof global.setTimeout;
+  it('should throw on 4xx client errors without retrying', async () => {
+    const err = new Error('Invalid API key') as any;
+    err.status = 401;
 
-    mockOpenAICreate
-      .mockRejectedValueOnce(new Error('Network error'))
-      .mockResolvedValueOnce({
-        choices: [{ message: { content: 'Retry success' } }],
-        usage: { total_tokens: 10 },
-      });
-
-    const result = await client.chatCompletionWithRetry('System', 'User', { maxRetries: 1 });
-    expect(result).toBe('Retry success');
-    expect(mockOpenAICreate).toHaveBeenCalledTimes(2);
-
-    global.setTimeout = origSetTimeout;
-  });
-
-  it('should NOT retry on 4xx client errors', async () => {
-    const clientError = new Error('Bad request') as any;
-    clientError.status = 400;
-
-    mockOpenAICreate.mockRejectedValueOnce(clientError);
+    mockGenerateContent.mockRejectedValueOnce(err);
 
     await expect(
-      client.chatCompletionWithRetry('System', 'User'),
-    ).rejects.toThrow('Bad request');
+      client.chatCompletionWithRetry('System', 'User', { maxRetries: 2 }),
+    ).rejects.toThrow('Invalid API key');
 
-    expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
   });
 
-  it('should support custom temperature and maxTokens per call', async () => {
-    mockOpenAICreate.mockResolvedValueOnce({
-      choices: [{ message: { content: 'Custom response' } }],
-      usage: { total_tokens: 15 },
-    });
-
-    await client.chatCompletion('System', 'User', {
-      temperature: 0.7,
-      maxTokens: 100,
-    });
-
-    expect(mockOpenAICreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        temperature: 0.7,
-        max_tokens: 100,
-      }),
-    );
-  });
-
-  it('should return empty string when LLM returns null content', async () => {
-    mockOpenAICreate.mockResolvedValueOnce({
-      choices: [{ message: { content: null } }],
-      usage: { total_tokens: 0 },
-    });
+  it('should handle empty response gracefully', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: null });
 
     const result = await client.chatCompletion('System', 'User');
+
     expect(result).toBe('');
   });
 });

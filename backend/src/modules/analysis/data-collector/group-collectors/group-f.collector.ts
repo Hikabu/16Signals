@@ -24,7 +24,7 @@ export class GroupFCollector {
     circuitBreaker: CircuitBreakerService,
   ): Promise<ImpactSignals> {
     console.log(
-      `[GroupFCollector] phase=collect_start username=${username}`,
+      `	[$1_GroupCollector] phase=collect_start username=${username}`,
     );
 
     // External PR contributions — search for PRs by user in repos they don't own
@@ -40,7 +40,7 @@ export class GroupFCollector {
       externalContributionCount = (extPrResponse.data as any).total_count ?? 0;
     } catch {
       console.log(
-        `[GroupFCollector] phase=external_prs_skipped username=${username}`,
+        `	[$1_GroupCollector] phase=external_prs_skipped username=${username}`,
       );
     }
 
@@ -76,7 +76,7 @@ export class GroupFCollector {
       ).length;
     } catch {
       console.log(
-        `[GroupFCollector] phase=graphql_skipped username=${username}`,
+        `	[$1_GroupCollector] phase=graphql_skipped username=${username}`,
       );
     }
 
@@ -105,7 +105,7 @@ export class GroupFCollector {
     }
 
     console.log(
-      `[GroupFCollector] phase=collect_complete username=${username} ` +
+      `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
       `externalPRs=${externalContributionCount} activeWeeks=${activeWeeksLast12m} ` +
       `npmPackages=${npmPackages.length}`,
     );

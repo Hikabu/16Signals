@@ -111,13 +111,6 @@ export class CreateDeepAnalysisDto {
   githubUsername: string;
 
   @ApiProperty({
-    description: 'GitHub App installation ID (obtained via OAuth consent flow)',
-    example: 12345678,
-  })
-  @IsNumber()
-  installationId: number;
-
-  @ApiProperty({
     description: 'Analysis configuration',
     type: () => AnalysisConfigDto,
   })

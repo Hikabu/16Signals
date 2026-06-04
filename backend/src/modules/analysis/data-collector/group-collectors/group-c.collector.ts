@@ -32,7 +32,7 @@ export class GroupCCollector {
     circuitBreaker: CircuitBreakerService,
   ): Promise<CommitSignals> {
     console.log(
-      `[GroupCCollector] phase=collect_start username=${username}`,
+      `\t	[$1_GroupCollector] phase=collect_start username=${username}`,
     );
 
     // Only non-fork, non-archived repos, sorted by quality score
@@ -113,7 +113,7 @@ export class GroupCCollector {
         }
       } catch (err: any) {
         console.log(
-          `[GroupCCollector] phase=repo_error repo=${repo.name} ` +
+          `	[$1_GroupCollector] phase=repo_error repo=${repo.name} ` +
           `error=${err.message}`,
         );
         // Continue with next repo
@@ -141,7 +141,7 @@ export class GroupCCollector {
       : 0;
 
     console.log(
-      `[GroupCCollector] phase=collect_complete username=${username} ` +
+      `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
       `totalCommits=${totalNonMergeCommits} months=${Object.keys(freqByMonth).length} ` +
       `medianSize=${median} sub5Ratio=${sub5Ratio.toFixed(3)}`,
     );

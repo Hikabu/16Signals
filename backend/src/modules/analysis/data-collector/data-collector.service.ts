@@ -64,24 +64,26 @@ export class DataCollectorService {
   ): Promise<DataCollectorOutput> {
     const startTime = Date.now();
     console.log(
-      `[DataCollector] phase=collect_start jobId=${jobId} username=${username} mode=light`,
+      `3.3[DataCollector] phase=collect_start jobId=${jobId} username=${username} mode=light`,
     );
 
     // Reset circuit breaker for this collection cycle
     this.circuitBreaker.reset();
 
     // ── Phase 1: Independent groups (A, B, D, F) ──
+    console.log("3.3.1[DataCollector] phase 1: Independent groups (A, B, D, F)");
     const phase1Results = await this.safeCollectParallel([
       { group: 'A' as CorpusGroup, collector: () => this.groupA.collect(octokit, username, this.circuitBreaker) },
-      { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
-      { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
-      { group: 'F' as CorpusGroup, collector: () => this.groupF.collect(octokit, username, [], this.circuitBreaker) },
+      // { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
+      // { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
+      // { group: 'F' as CorpusGroup, collector: () => this.groupF.collect(octokit, username, [], this.circuitBreaker) },
     ]);
 
     const groupA = phase1Results.find((r) => r.group === 'A');
     const groupB = phase1Results.find((r) => r.group === 'B');
     const groupD = phase1Results.find((r) => r.group === 'D');
     const groupF = phase1Results.find((r) => r.group === 'F');
+    console.log("3.3.1[DataCollector] phase 1 results: ", phase1Results);
 
     const repos = groupB?.data ?? [];
     const errors: string[] = [];
@@ -108,9 +110,10 @@ export class DataCollectorService {
     }
 
     // ── Phase 2: Groups dependent on B (C, E) ──
+    console.log("\n3.3.2[DataCollector] phase 2: Groups dependent on B (C, E)");
     const phase2Results = await this.safeCollectParallel([
-      { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
-      { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
+      // { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
+      // { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
     ]);
 
     for (const result of phase2Results) {
@@ -124,21 +127,27 @@ export class DataCollectorService {
     const commitSignals = phase2Results.find((r) => r.group === 'C')?.data;
 
     // ── Phase 3: Group G (computational, depends on B + C) ──
+      console.log("\n3.3.3[DataCollector] phase 3: Group G (computational, depends on B + C)");
     if (!this.circuitBreaker.shouldAbort()) {
-      const antiGamingData = this.groupG.collectLight(commitSignals, repos);
-      phase2Results.push({
-        group: 'G',
-        data: antiGamingData,
-        error: null,
-      });
-      collectedGroups.push('G');
+      // const antiGamingData = this.groupG.collectLight(commitSignals, repos);
+      // phase2Results.push({
+      //   group: 'G',
+      //   data: antiGamingData,
+      //   error: null,
+      // });
+      // collectedGroups.push('G');
     }
 
     // Combine all results
     const allResults = [...phase1Results, ...phase2Results];
+    // console.log("\n3.3.4[DataCollector] ALL RESULTS: ", allResults);
 
     // Build corpus
     const corpus = this.corpusBuilder.build(username, 'light', allResults);
+    // console.log("\n3.3.5[DataCollector] BUILT CORPUS: ", corpus);
+    console.log("A RESULTS: ", allResults.find((r) => r.group === 'A'));
+    console.log("A CORPUS: ", corpus.identity);
+    console.log("\n\n");
 
     return this.finalize(
       startTime,

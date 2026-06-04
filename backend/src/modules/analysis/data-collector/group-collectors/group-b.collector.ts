@@ -26,7 +26,7 @@ export class GroupBCollector {
     circuitBreaker: CircuitBreakerService,
   ): Promise<RepositorySignal[]> {
     console.log(
-      `[GroupBCollector] phase=collect_start username=${username}`,
+      `	[$1_GroupCollector] phase=collect_start username=${username}`,
     );
 
     const response = await octokit.rest.repos.listForUser({
@@ -71,7 +71,7 @@ export class GroupBCollector {
     });
 
     console.log(
-      `[GroupBCollector] phase=collect_complete username=${username} ` +
+      `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
       `repos=${repos.length}`,
     );
 

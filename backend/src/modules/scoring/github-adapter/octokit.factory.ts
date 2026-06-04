@@ -26,9 +26,14 @@ export class OctokitFactory {
       {
         githubAuthEnabled: this.githubAuthEnabled,
         tokenLength: systemToken?.length ?? 0,
+        tokenHint: systemToken
+    ? `${systemToken.slice(0,8)}...${systemToken.slice(-4)}`
+    : 'missing'
       },
       'octokit_factory_ready',
     );
+
+    
   }
 
   async forJob(userId: string | null): Promise<Octokit> {
@@ -68,6 +73,7 @@ export class OctokitFactory {
               },
             },
           });
+         
           (octokit as any).__githubTokenSource = 'user';
           return octokit;
         } catch (err: any) {
@@ -99,14 +105,38 @@ export class OctokitFactory {
       },
       'octokit_using_system_token',
     );
+    // const octokit = new Octokit({
+    //   request: {
+    //     headers: {
+    //       authorization: `token ${systemToken}`,
+    //       'X-GitHub-Api-Version': '2022-11-28',
+    //     },
+    //   },
+    // });
     const octokit = new Octokit({
-      request: {
-        headers: {
-          authorization: `token ${systemToken}`,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      },
-    });
+  auth: systemToken, // Automatically creates the "Bearer/token" header
+  request: {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28', // Good practice to keep this!
+    },
+  },
+});
+     const rl = await octokit.graphql(`
+{
+  rateLimit {
+    limit
+    remaining
+    used
+    cost
+    resetAt
+  }
+}
+`);
+
+console.log(
+  '[GitHub GraphQL RateLimit]',
+  JSON.stringify(rl, null, 2)
+);
     (octokit as any).__githubTokenSource = 'system';
     return octokit;
   }

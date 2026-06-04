@@ -16,7 +16,9 @@ import { Injectable } from '@nestjs/common';
 
 export interface CircuitBreakerState {
   aborted: boolean;
+  limit: number;
   remaining: number;
+  used: number;
   resetAt: Date | null;
   reason: string | null;
 }
@@ -24,43 +26,58 @@ export interface CircuitBreakerState {
 @Injectable()
 export class CircuitBreakerService {
   private aborted = false;
-  private remaining = 5000;
+  private limit = 0;
+private used = 0;
+  private remaining = 500;
   private resetAt: Date | null = null;
   private reason: string | null = null;
-  private readonly abortThreshold = 500;
+  private readonly abortThreshold = 10;
 
   /**
    * Update the circuit breaker state from GitHub API response headers.
    */
   updateFromHeaders(headers: Record<string, string | number | undefined>): void {
-    if (this.aborted) return;
+  if (this.aborted) return;
 
-    const remaining = headers?.['x-ratelimit-remaining'];
-    const reset = headers?.['x-ratelimit-reset'];
+  const limit = headers?.['x-ratelimit-limit'];
+  const remaining = headers?.['x-ratelimit-remaining'];
+  const used = headers?.['x-ratelimit-used'];
+  const reset = headers?.['x-ratelimit-reset'];
 
-    if (remaining !== undefined) {
-      const parsed = Number(remaining);
-      if (!Number.isNaN(parsed)) {
-        this.remaining = parsed;
-      }
-    }
-
-    if (reset !== undefined) {
-      const parsed = Number(reset);
-      if (!Number.isNaN(parsed)) {
-        this.resetAt = new Date(parsed * 1000);
-      }
-    }
-
-    if (this.remaining < this.abortThreshold) {
-      this.aborted = true;
-      this.reason = `Rate limit remaining (${this.remaining}) below threshold (${this.abortThreshold})`;
-      console.log(
-        `[CircuitBreaker] phase=trip remaining=${this.remaining} ` +
-        `threshold=${this.abortThreshold} resetAt=${this.resetAt?.toISOString()}`,
-      );
-    }
+  if (limit !== undefined) {
+    this.limit = Number(limit);
   }
+
+  if (remaining !== undefined) {
+    this.remaining = Number(remaining);
+  }
+
+  if (used !== undefined) {
+    this.used = Number(used);
+  }
+
+  if (reset !== undefined) {
+    this.resetAt = new Date(Number(reset) * 1000);
+  }
+
+  console.log(
+    `\t\t[GitHubRateLimit] limit=${this.limit} ` +
+    `used=${this.used} ` +
+    `remaining=${this.remaining} ` +
+    `resetAt=${this.resetAt?.toISOString()}`
+  );
+
+  if (this.remaining < this.abortThreshold) {
+    this.aborted = true;
+    this.reason =
+      `Rate limit remaining (${this.remaining}) below threshold (${this.abortThreshold})`;
+
+    console.log(
+      `[CircuitBreaker] phase=trip remaining=${this.remaining} ` +
+      `threshold=${this.abortThreshold}`
+    );
+  }
+}
 
   /**
    * Whether collection should abort.
@@ -75,6 +92,8 @@ export class CircuitBreakerService {
   getState(): CircuitBreakerState {
     return {
       aborted: this.aborted,
+      limit: this.limit,
+      used: this.used,
       remaining: this.remaining,
       resetAt: this.resetAt,
       reason: this.reason,
@@ -86,7 +105,9 @@ export class CircuitBreakerService {
    */
   reset(): void {
     this.aborted = false;
-    this.remaining = 5000;
+    this.limit = 0;
+    this.used = 0;
+    this.remaining = 500;
     this.resetAt = null;
     this.reason = null;
   }

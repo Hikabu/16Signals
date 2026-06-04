@@ -26,6 +26,7 @@ import { CorpusBuilderService, GroupCollectionResult } from '../corpus-builder.s
 import { SignalCorpus, CorpusGroup, CommitSignals, EngineeringPracticeSignals } from '../../corpus/corpus.types';
 import { CloneWorkerManager, CloneWorkerResult } from './clone-worker-manager';
 import { CircuitBreakerService } from '../circuit-breaker.service';
+import { exit } from 'process';
 
 export interface DeepCollectorOutput {
   corpus: SignalCorpus;
@@ -76,7 +77,7 @@ export class DeepCollectorService {
       `corpusId=${lightCorpus.corpus_id} groups=${lightCorpus.groups_present.join(',')}`,
     );
 
-    // ── 2. Fetch private repos ──
+    // ── 2. Fetch private repos using the App installation Octokit ──
     const privateRepos = await this.fetchPrivateRepos(octokit, appOctokit, username, jobId);
     console.log(
       `[DeepCollector] phase=private_repos jobId=${jobId} ` +
@@ -96,8 +97,24 @@ export class DeepCollectorService {
       };
     }
 
-    // ── 3. Clone and analyze each private repo in parallel ──
-    const cloneResults = await this.cloneAllRepos(privateRepos, jobId);
+    // ── 3. Extract raw installation token for git clone auth ──
+    let installToken: string | undefined;
+    try {
+      const authResult = await (appOctokit as any).auth?.({ type: 'installation' });
+      installToken = authResult?.token;
+      if (installToken) {
+        console.log(
+          `[DeepCollector] phase=token_resolved jobId=${jobId} tokenHint=${installToken.slice(0, 8)}...`,
+        );
+      }
+    } catch (e) {
+      console.log(
+        `[DeepCollector] phase=token_error jobId=${jobId} error=${(e as Error).message}`,
+      );
+    }
+
+    // ── 4. Clone and analyze each private repo in parallel ──
+    const cloneResults = await this.cloneAllRepos(privateRepos, jobId, installToken);
 
     const succeeded = cloneResults.filter((r) => r.success);
     const failed = cloneResults.filter((r) => !r.success);
@@ -107,10 +124,10 @@ export class DeepCollectorService {
       `total=${cloneResults.length} succeeded=${succeeded.length} failed=${failed.length}`,
     );
 
-    // ── 4. Extract Deep-only signals from tool outputs ──
+    // ── 5. Extract Deep-only signals from tool outputs ──
     const { delta: deepDelta, totalSecretLeaks } = this.extractDeepDelta(succeeded, lightCorpus);
 
-    // ── 5. Merge Deep delta into corpus and cache ──
+    // ── 6. Merge Deep delta into corpus and cache ──
     const mergedCorpus = await this.corpusCache.mergeDelta(lightCorpus, deepDelta);
 
     console.log(
@@ -162,6 +179,9 @@ export class DeepCollectorService {
 
   /**
    * Fetch private repos accessible via the GitHub App installation.
+   * Uses the App installation Octokit (appOctokit) which is authenticated
+   * as the GitHub App installation and can see private repos within the
+   * installation's scope.
    */
   private async fetchPrivateRepos(
     octokit: Octokit,
@@ -201,12 +221,15 @@ export class DeepCollectorService {
 
   /**
    * Clone all private repos in parallel batches.
+   * Passes the installation token to each clone worker for authenticated git clone.
    */
   private async cloneAllRepos(
     repos: Array<{ name: string; full_name: string; clone_url: string }>,
     jobId: string,
+    installToken?: string,
   ): Promise<CloneWorkerResult[]> {
     const allResults: CloneWorkerResult[] = [];
+    const token = installToken || '';
 
     // Process in batches of maxWorkers
     for (let i = 0; i < repos.length; i += 4) {
@@ -214,12 +237,12 @@ export class DeepCollectorService {
       console.log(
         `[DeepCollector] phase=clone_batch jobId=${jobId} ` +
         `batch=${Math.floor(i / 4) + 1}/${Math.ceil(repos.length / 4)} ` +
-        `repos=${batch.map(r => r.name).join(',')}`,
+        `repos=${batch.map(r => r.name).join(',')} hasToken=${!!token}`,
       );
 
       const batchResults = await Promise.all(
         batch.map((repo) =>
-          this.cloneWorker.cloneAndAnalyze(repo.clone_url, repo.name, ''),
+          this.cloneWorker.cloneAndAnalyze(repo.clone_url, repo.name, token),
         ),
       );
 

@@ -26,6 +26,7 @@ import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { WalletSyncModule } from './modules/wallet-sync/wallet-sync.module';
 import { EscrowModule } from './modules/escrow/escrow.module';
 import { AnalysisV2Module } from './modules/analysis/analysis/analysis-v2.module';
+import { GitHubCredentialsModule } from './modules/github-credentials/github-credentials.module';
 
 @Module({
   providers: [
@@ -61,6 +62,7 @@ import { AnalysisV2Module } from './modules/analysis/analysis/analysis-v2.module
     RedisModule,
     AnalyticsModule,
     AnalysisV2Module,
+    GitHubCredentialsModule,
     ApplicantsModule,
     GithubSyncModule,
     JobsModule,

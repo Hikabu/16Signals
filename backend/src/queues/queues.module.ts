@@ -29,7 +29,7 @@ const MAX_REDIS_RETRY_DELAY_MS = 2000;
           defaultJobOptions: {
             removeOnComplete: 100,
             removeOnFail: 500,
-            attempts: 3,
+            attempts: 1,
             backoff: {
               type: 'exponential',
               delay: 2000,

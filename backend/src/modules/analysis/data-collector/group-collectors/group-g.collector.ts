@@ -25,7 +25,7 @@ export class GroupGCollector {
     commitSignals: CommitSignals,
     repos: RepositorySignal[],
   ): AntiGamingInputs {
-    console.log(`[GroupGCollector] phase=build_start mode=light`);
+    console.log(`	[$1_GroupCollector] phase=build_start mode=light`);
 
     // ── Burst/dormancy ratio ──
     const burstDormancyRatio = this.computeBurstDormancyRatio(
@@ -47,7 +47,7 @@ export class GroupGCollector {
     const styleEvents: StyleDiscontinuityEvent[] = [];
 
     console.log(
-      `[GroupGCollector] phase=build_complete ` +
+      `	[$1_GroupCollector] phase=build_complete ` +
       `burstRatio=${burstDormancyRatio.toFixed(2)} forkRatio=${forkDumpRatio.toFixed(2)} ` +
       `inflationRatio=${commitInflationRatio.toFixed(2)}`,
     );

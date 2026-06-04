@@ -72,9 +72,15 @@ export class CloneWorkerManager {
 
     try {
       // ── Step 1: Clone the repository ──
-      this.log(`phase=cloning repo=${repoName} target=${repoPath}`);
+      let authCloneUrl = cloneUrl;
+      if (installToken) {
+        authCloneUrl = cloneUrl.replace('https://', `https://x-access-token:${installToken}@`);
+        this.log(`phase=cloning repo=${repoName} auth=token_present`);
+      } else {
+        this.log(`phase=cloning repo=${repoName} auth=none target=${repoPath}`);
+      }
       const cloneResult = await this.execWithTimeout(
-        `git clone --depth=1 ${cloneUrl} ${repoPath}`,
+        `git clone --depth=1 ${authCloneUrl} ${repoPath}`,
         this.timeoutMs / 2,
       );
       results.clone = { success: cloneResult.code === 0, output: cloneResult.stdout.slice(0, 200) };

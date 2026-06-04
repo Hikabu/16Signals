@@ -1,5 +1,5 @@
 /**
- * LLMIntegrationService — Orchestrates all Deepseek v4 LLM calls for Waves 3 & 4.
+ * LLMIntegrationService — Orchestrates all LLM calls for Waves 3 & 4.
  *
  * Responsibilities:
  *   Wave 3: Batches 5 analysis tasks (commit quality, PR quality, review depth,
@@ -12,11 +12,15 @@
  * crashes the pipeline. If the LLM is down, all dependent modules get
  * conservative default values.
  *
+ * Swappable LLM: The LLM provider is injected via the LLM_CLIENT token.
+ * To switch providers, change the binding in LLMModule — no changes
+ * needed in this service.
+ *
  * Reference: DEEPSEEK_V4_REFACTOR_PLAN.md Stage 5
  */
 
-import { Injectable } from '@nestjs/common';
-import { DeepseekClient } from './deepseek-client';
+import { Injectable, Inject } from '@nestjs/common';
+import { LLM_CLIENT, LlmClient } from './llm-client.interface';
 import { LLMPromptTemplates } from './llm-prompt-templates';
 import {
   Wave3BatchOutput,
@@ -32,7 +36,7 @@ import { AnalysisConfig } from '../modules/module.interface';
 @Injectable()
 export class LLMIntegrationService {
   constructor(
-    private readonly deepseek: DeepseekClient,
+    @Inject(LLM_CLIENT) private readonly llm: LlmClient,
     private readonly prompts: LLMPromptTemplates,
   ) {}
 
@@ -52,14 +56,14 @@ export class LLMIntegrationService {
     previousResults: ModuleResult[],
   ): Promise<Wave3BatchOutput> {
     console.log(
-      `[DeepseekLLM] phase=call_start callType=wave3_batch ` +
+      `[LLMIntegration] phase=call_start callType=wave3_batch ` +
       `tokenEstimate=3500 username=${corpus.github_username}`,
     );
 
     const userPrompt = this.prompts.buildWave3BatchPrompt(corpus);
 
     try {
-      const rawResponse = await this.deepseek.chatCompletionWithRetry(
+      const rawResponse = await this.llm.chatCompletionWithRetry(
         this.prompts.WAVE_3_SYSTEM_PROMPT,
         userPrompt,
         { requireJson: true, maxTokens: 3000 },
@@ -67,7 +71,7 @@ export class LLMIntegrationService {
 
       const parsed = this.parseWave3Response(rawResponse);
       console.log(
-        `[DeepseekLLM] phase=wave3_parsed ` +
+        `[LLMIntegration] phase=wave3_parsed ` +
         `commitQuality=${parsed.commit_quality.length} ` +
         `prQuality=${parsed.pr_description_quality.length} ` +
         `reviewDepth=${parsed.review_depth.length} ` +
@@ -78,7 +82,7 @@ export class LLMIntegrationService {
       return parsed;
     } catch (error) {
       console.log(
-        `[DeepseekLLM] phase=fallback callType=wave3_batch ` +
+        `[LLMIntegration] phase=fallback callType=wave3_batch ` +
         `reason=${(error as Error).message}`,
       );
       return defaultWave3BatchOutput();
@@ -99,7 +103,7 @@ export class LLMIntegrationService {
     // Extract JSON object
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.log(`[DeepseekLLM] phase=json_parse_error error=no_json_found`);
+      console.log(`[LLMIntegration] phase=json_parse_error error=no_json_found`);
       return defaultWave3BatchOutput();
     }
 
@@ -141,7 +145,7 @@ export class LLMIntegrationService {
       };
     } catch (error) {
       console.log(
-        `[DeepseekLLM] phase=json_parse_error error=${(error as Error).message}`,
+        `[LLMIntegration] phase=json_parse_error error=${(error as Error).message}`,
       );
       return defaultWave3BatchOutput();
     }
@@ -177,7 +181,7 @@ export class LLMIntegrationService {
     corpus: SignalCorpus,
   ): Promise<NarrativeOutput> {
     console.log(
-      `[DeepseekLLM] phase=call_start callType=narrative ` +
+      `[LLMIntegration] phase=call_start callType=narrative ` +
       `tokenEstimate=2500 username=${corpus.github_username}`,
     );
 
@@ -188,7 +192,7 @@ export class LLMIntegrationService {
     );
 
     try {
-      const raw = await this.deepseek.chatCompletionWithRetry(
+      const raw = await this.llm.chatCompletionWithRetry(
         this.prompts.NARRATIVE_SYSTEM_PROMPT,
         userPrompt,
         { maxTokens: 2000 },
@@ -197,7 +201,7 @@ export class LLMIntegrationService {
       return this.parseNarrativeResponse(raw);
     } catch (error) {
       console.log(
-        `[DeepseekLLM] phase=fallback callType=narrative ` +
+        `[LLMIntegration] phase=fallback callType=narrative ` +
         `reason=${(error as Error).message}`,
       );
       return defaultNarrativeOutput();
@@ -256,7 +260,7 @@ export class LLMIntegrationService {
     corpus: SignalCorpus,
   ): Promise<InterviewQuestion[]> {
     console.log(
-      `[DeepseekLLM] phase=call_start callType=interview_questions ` +
+      `[LLMIntegration] phase=call_start callType=interview_questions ` +
       `tokenEstimate=2000 username=${corpus.github_username}`,
     );
 
@@ -266,7 +270,7 @@ export class LLMIntegrationService {
     );
 
     try {
-      const raw = await this.deepseek.chatCompletionWithRetry(
+      const raw = await this.llm.chatCompletionWithRetry(
         this.prompts.INTERVIEW_Q_SYSTEM_PROMPT,
         userPrompt,
         { requireJson: true, maxTokens: 2000 },
@@ -275,7 +279,7 @@ export class LLMIntegrationService {
       return this.parseInterviewQuestions(raw);
     } catch (error) {
       console.log(
-        `[DeepseekLLM] phase=fallback callType=interview_questions ` +
+        `[LLMIntegration] phase=fallback callType=interview_questions ` +
         `reason=${(error as Error).message}`,
       );
       return [];
@@ -319,7 +323,7 @@ export class LLMIntegrationService {
         .slice(0, 8);
     } catch {
       console.log(
-        `[DeepseekLLM] phase=json_parse_error callType=interview_questions`,
+        `[LLMIntegration] phase=json_parse_error callType=interview_questions`,
       );
       return [];
     }

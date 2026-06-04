@@ -101,19 +101,19 @@ export class JobDispatcherService {
   ): Promise<DispatcherResult> {
     const startTime = Date.now();
     console.log(
-      `[JobDispatcher] phase=dispatch jobId=${jobId} mode=light ` +
+      `\n2.[JobDispatcher] phase=dispatch jobId=${jobId} mode=light ` +
       `username=${username} seniority=${config.seniority} ` +
       `cvClaims=${config.cv_claims?.length ?? 0}`,
     );
 
     try {
       // ── Phase 1: Corpus Acquisition ──
-      console.log(`[JobDispatcher] phase=corpus_acquisition jobId=${jobId} username=${username}`);
+      console.log(`\n3.[JobDispatcher] phase=corpus_acquisition jobId=${jobId} username=${username}`);
       const corpus = await this.acquireCorpus(octokit, username, jobId);
 
       // ── Phase 2: Wave Orchestration ──
       console.log(
-        `[JobDispatcher] phase=wave_orchestration jobId=${jobId} ` +
+        `\n4[JobDispatcher] phase=wave_orchestration jobId=${jobId} ` +
         `corpusId=${corpus.corpus_id} groups=${corpus.groups_present.join(',')}`,
       );
       const moduleResults = await this.waveOrchestrator.orchestrate(
@@ -215,9 +215,9 @@ export class JobDispatcherService {
     // Check cache
     const cachedCorpus = await this.corpusCache.get(username, 'light');
 
-    if (cachedCorpus) {
+    if (cachedCorpus && process.env.PROCESS_CACHE !== "bypass") {
       console.log(
-        `[JobDispatcher] phase=corpus_cache_hit jobId=${jobId} ` +
+        `3.1.[JobDispatcher] phase=corpus_cache_hit jobId=${jobId} ` +
         `username=${username} corpusId=${cachedCorpus.corpus_id} ` +
         `groups=${cachedCorpus.groups_present.join(',')}`,
       );
@@ -226,7 +226,7 @@ export class JobDispatcherService {
 
     // Cache miss — collect data
     console.log(
-      `[JobDispatcher] phase=corpus_cache_miss jobId=${jobId} ` +
+      `3.2.[JobDispatcher] phase=corpus_cache_miss jobId=${jobId} ` +
       `username=${username} starting_collection`,
     );
 

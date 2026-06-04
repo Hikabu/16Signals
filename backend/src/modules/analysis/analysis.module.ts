@@ -36,7 +36,7 @@ export class AnalysisShellModule {}
  *   Stage 2: ModulesModule (14 analysis modules + module-registry)
  *   Stage 3: OrchestrationModule (wave-orchestrator, state-machine)
  *   Stage 4: DataCollectorModule (7 group collectors, circuit-breaker)
- *   Stage 5: LLMModule (deepseek-client, llm-integration, prompt-templates)
+ *   Stage 5: LLMModule (gemini-client, llm-integration, prompt-templates)
  *   Stage 6: BriefModule (brief-assembler, brief-renderer, seniority-weighting)
  *   Stage 7: JobDispatcherModule (multi-mode dispatcher, v2 controller)
  *   Stage 8: DeepCollectorModule (clone-workers, tool-runners)
