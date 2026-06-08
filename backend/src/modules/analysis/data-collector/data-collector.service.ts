@@ -140,14 +140,18 @@ export class DataCollectorService {
 
     // Combine all results
     const allResults = [...phase1Results, ...phase2Results];
-    // console.log("\n3.3.4[DataCollector] ALL RESULTS: ", allResults);
 
     // Build corpus
     const corpus = this.corpusBuilder.build(username, 'light', allResults);
-    // console.log("\n3.3.5[DataCollector] BUILT CORPUS: ", corpus);
-    console.log("A RESULTS: ", allResults.find((r) => r.group === 'A'));
-    console.log("A CORPUS: ", corpus.identity);
-    console.log("\n\n");
+    console.log(
+      `3.3.4.[DataCollector] phase=corpus_built jobId=${jobId} ` +
+      `groups=${corpus.groups_present.join(',')} ` +
+      `identity={ageDays=${corpus.identity.account_age_days} ` +
+      `orgs=${corpus.identity.github_org_memberships.length} ` +
+      `emailDomains=${corpus.identity.commit_email_domains.length} ` +
+      `urls=${corpus.identity.linked_urls.length} ` +
+      `hireable=${corpus.identity.hireable_flag}}`,
+    );
 
     return this.finalize(
       startTime,

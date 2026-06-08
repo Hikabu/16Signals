@@ -16,7 +16,7 @@ import { GithubSyncConnectStrategy } from './strategies/github.sync.connect.stra
 
 const githubAuthProviders =
   process.env.GITHUB_AUTH_ENABLED !== 'false' &&
-  Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET)
+  Boolean(process.env.GITHUB_AUTH_CLIENT_ID && process.env.GITHUB_AUTH_CLIENT_SECRET)
     ? [GithubStrategy, GithubLinkStrategy, GithubSyncConnectStrategy]
     : [];
 

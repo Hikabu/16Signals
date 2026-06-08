@@ -18,6 +18,7 @@ import { OrchestrationModule } from '../modules/analysis/orchestration/wave-orch
 import { LLMModule } from '../modules/analysis/llm/llm.module';
 import { BriefModule } from '../modules/analysis/brief/brief.module';
 import { ModulesModule } from '../modules/analysis/modules/module.module';
+import { GitHubCredentialsModule } from '../modules/github-credentials/github-credentials.module';
 
 const isTest = process.env.NODE_ENV === 'test';
 
@@ -37,6 +38,7 @@ const isTest = process.env.NODE_ENV === 'test';
     LLMModule,
     BriefModule,
     ModulesModule,
+    GitHubCredentialsModule,
     ...(isTest ? [] : [QueuesModule]),
   ],
   providers: isTest

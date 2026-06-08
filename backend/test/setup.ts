@@ -24,7 +24,6 @@ process.env.ENCRYPTION_KEY =
 process.env.INTERNAL_API_KEY ??= 'test-internal-key';
 process.env.INTERNAL_SERVICE_KEY ??= 'test-internal-key';
 process.env.SOLANA_RPC_URL ??= 'http://mock-rpc';
-process.env.GITHUB_APP_ID ??= '1';
 process.env.GITHUB_PRIVATE_KEY ??= 'test-key';
 process.env.GITHUB_SYSTEM_TOKEN ??= 'test-github-system-token';
 process.env.PRIVY_APP_ID ??= 'test-privy-app';

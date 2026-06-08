@@ -647,7 +647,7 @@ export class AuthCandidateService {
 
     const base = 'https://github.com/login/oauth/authorize';
 
-    const clientId = this.config.get('GITHUB_CLIENT_ID');
+    const clientId = this.config.get('GITHUB_AUTH_CLIENT_ID');
     const redirectUri = `${this.config.get('app.url')}${this.config.get('auth.githubLinkCallback')}`;
 
     return `${base}?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=user:email`;

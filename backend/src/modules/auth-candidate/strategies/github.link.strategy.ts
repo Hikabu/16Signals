@@ -15,8 +15,8 @@ export class GithubLinkStrategy extends PassportStrategy(
     // );
 
     super({
-      clientID: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      clientID: process.env.GITHUB_AUTH_CLIENT_ID,
+      clientSecret: process.env.GITHUB_AUTH_CLIENT_SECRET,
       callbackURL:
         config.get('app.url') + config.get('auth.githubLinkCallback'),
       scope: ['read:user'],

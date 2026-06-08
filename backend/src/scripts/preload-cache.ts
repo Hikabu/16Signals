@@ -20,9 +20,9 @@ async function bootstrap() {
   const scoringService = app.get(ScoringService);
   const cacheService = app.get(CacheService);
 
-  const token = process.env.GITHUB_TOKEN;
+  const token = process.env.GITHUB_SYSTEM_TOKEN;
   if (!token) {
-    logger.error('GITHUB_TOKEN environment variable is required');
+    logger.error('GITHUB_SYSTEM_TOKEN environment variable is required');
     await app.close();
     process.exit(1);
   }

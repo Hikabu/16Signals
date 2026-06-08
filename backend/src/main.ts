@@ -15,6 +15,7 @@ const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
     logger:
       process.env.NODE_ENV === 'production'
         ? ['log', 'error', 'warn']

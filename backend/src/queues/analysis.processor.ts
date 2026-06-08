@@ -160,30 +160,33 @@ export class AnalysisProcessor extends WorkerHost {
     try {
       await this.updateJobStatus(jobId, 'collecting', 10);
 
-      // Resolve credentials via the pluggable provider system
-      const { primary, installation } = await this.credentialsService.resolve({
+      // Resolve credentials via the pluggable provider system.
+      // Deep mode uses the installation Octokit as BOTH primary and
+      // app Octokit — this gives us 15,000/hr rate limit and access
+      // to user-scoped endpoints (listEmails, listOrgs).
+      const { installation } = await this.credentialsService.resolve({
         mode: 'deep',
         githubUsername,
         installationId,
       });
 
-      console.log(
-        `[AnalysisProcessor] phase=deep_auth_resolved jobId=${jobId} ` +
-        `sources=${(primary as any).__githubTokenSource ?? 'system'}${installation ? '+installation' : ''}`,
-      );
-
-      // If installation Octokit is available, use it for private repo access.
-      // Otherwise fall back to primary (legacy behavior for user PAT with repo scope).
-      const appOctokit = installation ?? primary;
       if (!installation) {
-        this.logger.warn(
-          `No installation Octokit resolved for deep mode. Falling back to primary token. Private repos may be inaccessible.`,
+        throw new Error(
+          'Installation Octokit could not be resolved. Ensure the GitHub App ' +
+          'is configured with GITHUB_ANALYSIS_APP_ID and GITHUB_ANALYSIS_PRIVATE_KEY.',
         );
       }
 
+      console.log(
+        `[AnalysisProcessor] phase=deep_auth_resolved jobId=${jobId} ` +
+        `source=installation(installId=${installationId})`,
+      );
+
+      // Run deep collection — installation Octokit used for both
+      // inline Light collection AND identity enrichment.
       const deepResult = await this.deepCollector.collectDeepMode(
-        primary,
-        appOctokit,
+        installation,
+        installation,
         githubUsername,
         installationId,
         jobId,
@@ -191,7 +194,20 @@ export class AnalysisProcessor extends WorkerHost {
 
       await this.updateJobStatus(jobId, 'corpus_built', 50);
 
-      const result = await this.jobDispatcher.dispatchLightMode(primary, jobId, githubUsername, config);
+      console.log(
+        `[AnalysisProcessor] phase=deep_corpus_ready jobId=${jobId} ` +
+        `groups=${deepResult.corpus.groups_present.join(',')} ` +
+        `enriched=${deepResult.groupsEnriched.join(',')}`,
+      );
+
+      // Route the deep-enriched corpus through the analysis pipeline.
+      // dispatchWithCorpus skips corpus acquisition and passes the
+      // pre-built corpus directly to wave orchestration.
+      const result = await this.jobDispatcher.dispatchWithCorpus(
+        deepResult.corpus,
+        config,
+        jobId,
+      );
 
       await this.prisma.analysisJob.update({
         where: { id: jobId },

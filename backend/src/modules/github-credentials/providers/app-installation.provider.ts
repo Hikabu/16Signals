@@ -2,7 +2,7 @@
  * AppInstallationProvider — GitHub App installation credential provider.
  *
  * Uses @octokit/auth-app's createAppAuth strategy to:
- *   1. Sign a JWT using GITHUB_APP_ID + GITHUB_PRIVATE_KEY
+ *   1. Sign a JWT using GITHUB_ANALYSIS_APP_ID + GITHUB_ANALYSIS_PRIVATE_KEY
  *   2. Exchange the JWT for an installation access token via
  *      POST /app/installations/{installationId}/access_tokens
  *   3. Return an Octokit instance authenticated with that installation token
@@ -14,7 +14,7 @@
  *   - getRawToken() fetches a fresh token on each call
  *
  * Private key format:
- *   - Stored in .env as GITHUB_PRIVATE_KEY
+ *   - Stored in .env as GITHUB_ANALYSIS_PRIVATE_KEY
  *   - Supports both base64-encoded PEM and raw PEM with \n literals
  *   - Real key must be generated from GitHub App settings page
  */
@@ -38,17 +38,17 @@ export class AppInstallationProvider implements IGitHubCredentialProvider {
   /**
    * This provider is active when:
    *   1. installationId is present in the context
-   *   2. GITHUB_APP_ID is configured
-   *   3. GITHUB_PRIVATE_KEY is configured
+   *   2. GITHUB_ANALYSIS_APP_ID is configured
+   *   3. GITHUB_ANALYSIS_PRIVATE_KEY is configured
    */
   canProvide(context: GitHubCredentialContext): boolean {
     const can =
       !!context.installationId &&
-      !!this.config.get<string | number>('GITHUB_APP_ID') &&
-      !!this.config.get<string>('GITHUB_PRIVATE_KEY');
+      !!this.config.get<string | number>('GITHUB_ANALYSIS_APP_ID') &&
+      !!this.config.get<string>('GITHUB_ANALYSIS_PRIVATE_KEY');
 
     this.logger.debug(
-      `canProvide=${can} installationId=${context.installationId} appId=${!!this.config.get('GITHUB_APP_ID')} keyPresent=${!!this.config.get('GITHUB_PRIVATE_KEY')}`,
+      `canProvide=${can} installationId=${context.installationId} appId=${!!this.config.get('GITHUB_ANALYSIS_APP_ID')} keyPresent=${!!this.config.get('GITHUB_ANALYSIS_PRIVATE_KEY')}`,
     );
 
     return can;
@@ -73,9 +73,9 @@ export class AppInstallationProvider implements IGitHubCredentialProvider {
   async createInstallationOctokit(
     context: GitHubCredentialContext,
   ): Promise<Octokit> {
-    const appId = this.requireConfig('GITHUB_APP_ID');
+    const appId = this.requireConfig('GITHUB_ANALYSIS_APP_ID');
     const privateKey = this.decodePrivateKey(
-      this.requireConfig('GITHUB_PRIVATE_KEY'),
+      this.requireConfig('GITHUB_ANALYSIS_PRIVATE_KEY'),
     );
 
     this.logger.log(
@@ -126,7 +126,7 @@ export class AppInstallationProvider implements IGitHubCredentialProvider {
    *   2. Base64-encoded PEM string
    *
    * For .env storage, base64 encoding is recommended to avoid newline escaping
-   * issues:  cat key.pem | base64 -w0  →  paste into GITHUB_PRIVATE_KEY=
+   * issues:  cat key.pem | base64 -w0  →  paste into GITHUB_ANALYSIS_PRIVATE_KEY=
    */
   private decodePrivateKey(encoded: string): string {
     // Already a raw PEM key (stored with literal \n or actual newlines)
@@ -145,11 +145,11 @@ export class AppInstallationProvider implements IGitHubCredentialProvider {
       if ((error as Error).message.includes('Decoded content')) throw error;
 
       this.logger.error(
-        'GITHUB_PRIVATE_KEY is not a valid base64-encoded PEM key. ' +
+        'GITHUB_ANALYSIS_PRIVATE_KEY is not a valid base64-encoded PEM key. ' +
           'Generate a real key from GitHub App settings and encode it with: cat key.pem | base64 -w0',
       );
       throw new Error(
-        'GITHUB_PRIVATE_KEY is not a valid base64-encoded PEM key. ' +
+        'GITHUB_ANALYSIS_PRIVATE_KEY is not a valid base64-encoded PEM key. ' +
           'Generate a key from GitHub App settings, then: cat key.pem | base64 -w0',
       );
     }
@@ -162,7 +162,7 @@ export class AppInstallationProvider implements IGitHubCredentialProvider {
     const value = this.config.get<string>(key);
     if (!value) {
       throw new Error(
-        `GitHub App config missing: ${key} is not set. Ensure GITHUB_APP_ID and GITHUB_PRIVATE_KEY are configured.`,
+        `GitHub App config missing: ${key} is not set. Ensure GITHUB_ANALYSIS_APP_ID and GITHUB_ANALYSIS_PRIVATE_KEY are configured.`,
       );
     }
     return value;

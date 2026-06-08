@@ -147,7 +147,7 @@
     },
     "/api/v2/analysis/deep": {
       "post": {
-        "description": "Analyze a GitHub profile with private repo access via GitHub App installation.\n\n**SLA:** 5–10 minutes. Poll GET /api/v2/analysis/:jobId for results.\n\n**Status flow:** queued → wave_1 → wave_2a(cond) → wave_2b/c/d → wave_3 → wave_4 → completed",
+        "description": "Analyze a GitHub profile with private repo access via GitHub App installation.\n\nRequires the candidate to have installed the 16Signals GitHub App (via /sync/github/app/install). If installed, Deep Mode uses the installation token to access private repositories.\n\n**SLA:** 5–10 minutes. Poll GET /api/v2/analysis/:jobId for results.\n\n**Status flow:** queued → wave_1 → wave_2a(cond) → wave_2b/c/d → wave_3 → wave_4 → completed",
         "operationId": "AnalysisV2Controller_createDeepAnalysis",
         "parameters": [],
         "requestBody": {
@@ -172,7 +172,7 @@
             }
           },
           "400": {
-            "description": "Invalid request body"
+            "description": "Candidate has not installed the GitHub App"
           },
           "401": {
             "description": "GitHub App installation not authorized"
@@ -1643,6 +1643,173 @@
         },
         "tags": [
           "GitHub Sync"
+        ]
+      }
+    },
+    "/sync/github/app/install": {
+      "get": {
+        "description": "Redirects the authenticated candidate to the GitHub App installation page.",
+        "operationId": "GitHubAppWebhookController_redirectToInstall",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Redirects to GitHub"
+          }
+        },
+        "summary": "Redirect to GitHub App installation page",
+        "tags": [
+          "GitHub App"
+        ]
+      }
+    },
+    "/sync/github/app/me/status": {
+      "get": {
+        "description": "Returns whether the authenticated candidate has installed the GitHub App.",
+        "operationId": "GitHubAppWebhookController_getCandidateStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Installation status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "installed": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "installationId": {
+                      "type": "string",
+                      "example": "12345678"
+                    },
+                    "githubUsername": {
+                      "type": "string",
+                      "example": "candidate"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Check GitHub App installation status",
+        "tags": [
+          "GitHub App"
+        ]
+      }
+    },
+    "/sync/github/app/public/status": {
+      "get": {
+        "description": "Returns whether a GitHub user has installed the GitHub App.",
+        "operationId": "GitHubAppWebhookController_getPublicStatus",
+        "parameters": [
+          {
+            "name": "githubUsername",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "candidate",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Installation status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "installed": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "installationId": {
+                      "type": "string",
+                      "example": "12345678"
+                    },
+                    "githubUsername": {
+                      "type": "string",
+                      "example": "candidate"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Check GitHub App installation status",
+        "tags": [
+          "GitHub App"
+        ]
+      }
+    },
+    "/sync/github/app/verify": {
+      "post": {
+        "description": "Uses the GitHub App JWT to list installations for the authenticated user. If found, stores the installationId on GithubProfile. Use this if the webhook was missed.",
+        "operationId": "GitHubAppWebhookController_verify",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Verification result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "linked": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "installationId": {
+                      "type": "string",
+                      "example": "12345678"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verify and link GitHub App installation",
+        "tags": [
+          "GitHub App"
+        ]
+      }
+    },
+    "/sync/github/app/uninstall": {
+      "delete": {
+        "description": "Manually clears the installationId from the authenticated user's GithubProfile.",
+        "operationId": "GitHubAppWebhookController_uninstall",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Clear GitHub App installation",
+        "tags": [
+          "GitHub App"
         ]
       }
     },
@@ -4938,11 +5105,6 @@
             "description": "GitHub username to analyze",
             "example": "torvalds"
           },
-          "installationId": {
-            "type": "number",
-            "description": "GitHub App installation ID (obtained via OAuth consent flow)",
-            "example": 12345678
-          },
           "config": {
             "description": "Analysis configuration",
             "allOf": [
@@ -4954,7 +5116,6 @@
         },
         "required": [
           "githubUsername",
-          "installationId",
           "config"
         ]
       },

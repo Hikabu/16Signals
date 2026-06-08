@@ -33,7 +33,7 @@ export class GithubSyncService {
     // Store userId against state for 5 minutes, same as link flow
     await this.redis.set(`github_sync_state:${state}`, userId, 'EX', 300);
 
-    const clientId = this.config.get('GITHUB_CLIENT_ID');
+    const clientId = this.config.get('GITHUB_AUTH_CLIENT_ID');
     const callbackUrl = `${this.config.get('app.url')}${this.config.get('auth.githubSyncConnectCallback')}`;
     // console.log('callback url: ', callbackUrl);
     const scopes = encodeURIComponent('read:user repo');
@@ -67,7 +67,7 @@ export class GithubSyncService {
         'Failed to ensure developer profile.',
       );
     }
-    const key = this.config.get<string>('AUTH_ENCRYPTION_KEY');
+    const key = this.config.get<string>('GITHUB_AUTH_ENCRYPTION_KEY');
     if (!key) {
       throw new InternalServerErrorException(
         'Encryption key is not configured.',

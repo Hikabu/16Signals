@@ -9,10 +9,16 @@ export const envSchema = z.object({
   FRONTEND_URL: z.string(),
   REDIS_URL: z.string(),
 
-  GITHUB_APP_ID: z.coerce.number(),
-  GITHUB_CLIENT_ID: z.string(),
-  GITHUB_CLIENT_SECRET: z.string(),
-  GITHUB_PRIVATE_KEY: z.string(),
+  GITHUB_AUTH_ENABLED: z.string().optional(),
+  GITHUB_AUTH_CLIENT_ID: z.string().optional(),
+  GITHUB_AUTH_CLIENT_SECRET: z.string().optional(),
+  GITHUB_AUTH_ENCRYPTION_KEY: z.string().optional(),
+
+  GITHUB_ANALYSIS_NAME: z.string().optional(),
+  GITHUB_ANALYSIS_APP_ID: z.coerce.number().optional(),
+  GITHUB_ANALYSIS_PRIVATE_KEY: z.string().optional(),
+  GITHUB_ANALYSIS_WEBHOOK_SECRET: z.string().optional(),
+
   GITHUB_SYSTEM_TOKEN: z.string().min(1),
 
   GOOGLE_CLIENT_ID: z.string(),
@@ -60,6 +66,3 @@ export const envSchema = z.object({
   PROCESS_CACHE: z.string().optional(),
 });
 
-// export function validateEnv(config: Record<string, unknown>) {
-//   return envSchema.parse(config);
-// }

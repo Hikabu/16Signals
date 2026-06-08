@@ -14,8 +14,8 @@ export class GithubSyncConnectStrategy extends PassportStrategy(
     //   config.get('app.url') + config.get('auth.githubCallback'),
     // );
     super({
-      clientID: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      clientID: process.env.GITHUB_AUTH_CLIENT_ID,
+      clientSecret: process.env.GITHUB_AUTH_CLIENT_SECRET,
       callbackURL:
         config.get('app.url') + config.get('auth.githubSyncConnectCallback'),
       scope: ['read:user'],

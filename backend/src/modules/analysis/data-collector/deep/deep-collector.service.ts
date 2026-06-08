@@ -2,18 +2,21 @@
  * DeepCollectorService — Deep Mode collection: private repos, clone workers, tool runners.
  *
  * Architecture:
- *   1. Start from Light corpus (fresh or cached)
- *   2. Fetch private repos via GitHub App installation token
- *   3. Clone each private repo to tmpfs using CloneWorkerManager
- *   4. Run analysis tools: scc (complexity), tokei (test/code ratio),
+ *   1. Ensure Light corpus exists (cache hit or inline Light collection)
+ *   2. Enrich Group A identity signals (private orgs via installation token,
+ *      exhaustive commit emails via git log on cloned repos)
+ *   3. Fetch private repos via GitHub App installation token
+ *   4. Clone each private repo to tmpfs using CloneWorkerManager
+ *   5. Run analysis tools: scc (complexity), tokei (test/code ratio),
  *      gitinspector (per-author stats), gitleaks (secrets), semgrep (SAST)
- *   5. Merge Deep-only fields into the corpus (groups C, E, G enriched)
- *   6. Cleanup: remove cloned repos (try/finally guarantee)
+ *   6. Merge Deep-only fields into the corpus (groups A, C, E, G enriched)
+ *   7. Cleanup: remove cloned repos (try/finally guarantee)
  *
  * Completion SLA: 15 minutes for full Deep Mode.
  * Token refresh: Installation tokens refreshed at 50-minute mark (for large repos).
  *
- * Tracing: Every step emits structured console.log with timing.
+ * Note: During Group A isolation testing, steps 3–5 (private repo clone/analyze)
+ * are commented out. Only Group A identity enrichment runs.
  *
  * Reference: DEEPSEEK_V4_REFACTOR_PLAN.md Stage 8
  * Aligned with: USER_FLOWS_AND_GOALS_VERIFICATION.md Section 1 Flow 3
@@ -26,7 +29,7 @@ import { CorpusBuilderService, GroupCollectionResult } from '../corpus-builder.s
 import { SignalCorpus, CorpusGroup, CommitSignals, EngineeringPracticeSignals } from '../../corpus/corpus.types';
 import { CloneWorkerManager, CloneWorkerResult } from './clone-worker-manager';
 import { CircuitBreakerService } from '../circuit-breaker.service';
-import { exit } from 'process';
+import { DataCollectorService } from '../data-collector.service';
 
 export interface DeepCollectorOutput {
   corpus: SignalCorpus;
@@ -45,15 +48,14 @@ export class DeepCollectorService {
     private readonly corpusBuilder: CorpusBuilderService,
     private readonly cloneWorker: CloneWorkerManager,
     private readonly circuitBreaker: CircuitBreakerService,
+    private readonly dataCollector: DataCollectorService,
   ) {}
 
   /**
    * Perform Deep Mode collection.
-   * 1. Get or create Light corpus
-   * 2. Get installation token for private repo access
-   * 3. Fetch private repos
-   * 4. Clone and analyze each repo
-   * 5. Merge Deep delta into corpus
+   * 1. Ensure Light corpus exists (cache hit or inline collection)
+   * 2. Enrich Group A identity signals via installation token
+   * 3. [FUTURE] Fetch private repos, clone, analyze, merge C/E/G delta
    */
   async collectDeepMode(
     octokit: Octokit,
@@ -70,87 +72,78 @@ export class DeepCollectorService {
 
     this.circuitBreaker.reset();
 
-    // ── 1. Get Light corpus (from cache or fresh) ──
-    const { lightCorpus, groupsCollected } = await this.acquireLightCorpus(octokit, username, jobId);
+    // ── 1. Ensure Light corpus exists (cache hit or inline collection) ──
+    const { lightCorpus, groupsCollected } = await this.acquireLightCorpus(
+      octokit,
+      username,
+      jobId,
+    );
     console.log(
       `[DeepCollector] phase=light_corpus_ready jobId=${jobId} ` +
       `corpusId=${lightCorpus.corpus_id} groups=${lightCorpus.groups_present.join(',')}`,
     );
 
-    // ── 2. Fetch private repos using the App installation Octokit ──
-    const privateRepos = await this.fetchPrivateRepos(octokit, appOctokit, username, jobId);
-    console.log(
-      `[DeepCollector] phase=private_repos jobId=${jobId} ` +
-      `count=${privateRepos.length} usernames=${privateRepos.map(r => r.full_name).join(',')}`,
+    // ── 2. Enrich Group A identity signals ──
+    const enrichedIdentity = await this.enrichIdentityDeep(
+      appOctokit,
+      username,
+      lightCorpus,
+      jobId,
     );
 
-    if (privateRepos.length === 0) {
-      console.log(`[DeepCollector] phase=no_private_repos jobId=${jobId} username=${username}`);
-      return {
-        corpus: lightCorpus,
-        groupsEnriched: [],
-        reposCloned: 0,
-        reposSucceeded: 0,
-        reposFailed: 0,
-        totalDurationMs: Date.now() - startTime,
-        secretLeaksFound: 0,
-      };
-    }
+    const deepIdentityDelta: Partial<SignalCorpus> = {
+      identity: enrichedIdentity,
+    };
 
-    // ── 3. Extract raw installation token for git clone auth ──
-    let installToken: string | undefined;
-    try {
-      const authResult = await (appOctokit as any).auth?.({ type: 'installation' });
-      installToken = authResult?.token;
-      if (installToken) {
-        console.log(
-          `[DeepCollector] phase=token_resolved jobId=${jobId} tokenHint=${installToken.slice(0, 8)}...`,
-        );
-      }
-    } catch (e) {
-      console.log(
-        `[DeepCollector] phase=token_error jobId=${jobId} error=${(e as Error).message}`,
-      );
-    }
+    // Merge the Group A identity delta into the corpus
+    const mergedCorpus = await this.corpusCache.mergeDelta(lightCorpus, deepIdentityDelta);
 
-    // ── 4. Clone and analyze each private repo in parallel ──
-    const cloneResults = await this.cloneAllRepos(privateRepos, jobId, installToken);
+    // ── 3. [COMMENTED OUT — Group A isolation testing] Fetch private repos ──
+    // const privateRepos = await this.fetchPrivateRepos(octokit, appOctokit, username, jobId);
+    //
+    // if (privateRepos.length === 0) {
+    //   // No private repos — return with Group A enrichment only
+    //   ...
+    // }
+    //
+    // // ── 4. Clone and analyze each private repo ──
+    // const cloneResults = await this.cloneAllRepos(privateRepos, jobId, installToken);
+    // const succeeded = cloneResults.filter((r) => r.success);
+    //
+    // // ── 5. Extract Deep-only signals from tool outputs (groups C, E, G) ──
+    // const { delta: toolDelta, totalSecretLeaks } = this.extractDeepDelta(succeeded, mergedCorpus);
+    // const finalCorpus = await this.corpusCache.mergeDelta(mergedCorpus, toolDelta);
 
-    const succeeded = cloneResults.filter((r) => r.success);
-    const failed = cloneResults.filter((r) => !r.success);
-
-    console.log(
-      `[DeepCollector] phase=clone_results jobId=${jobId} ` +
-      `total=${cloneResults.length} succeeded=${succeeded.length} failed=${failed.length}`,
-    );
-
-    // ── 5. Extract Deep-only signals from tool outputs ──
-    const { delta: deepDelta, totalSecretLeaks } = this.extractDeepDelta(succeeded, lightCorpus);
-
-    // ── 6. Merge Deep delta into corpus and cache ──
-    const mergedCorpus = await this.corpusCache.mergeDelta(lightCorpus, deepDelta);
+    const totalDurationMs = Date.now() - startTime;
+    const groupsEnriched: CorpusGroup[] = ['A']; // Group A is always enriched in Deep mode
 
     console.log(
       `[DeepCollector] phase=collect_complete jobId=${jobId} ` +
-      `totalDurationMs=${Date.now() - startTime} ` +
+      `totalDurationMs=${totalDurationMs} ` +
       `groupsPresent=${mergedCorpus.groups_present.join(',')} ` +
-      `reposCloned=${cloneResults.length} reposSucceeded=${succeeded.length} ` +
-      `secretLeaks=${totalSecretLeaks}`,
+      `groupsEnriched=${groupsEnriched.join(',')} ` +
+      `identity={orgs=${mergedCorpus.identity.github_org_memberships.length} ` +
+      `emailDomains=${mergedCorpus.identity.commit_email_domains.length}}`,
     );
 
     return {
       corpus: mergedCorpus,
-      groupsEnriched: ['C', 'E', 'G'] as CorpusGroup[],
-      reposCloned: cloneResults.length,
-      reposSucceeded: succeeded.length,
-      reposFailed: failed.length,
-      totalDurationMs: Date.now() - startTime,
-      secretLeaksFound: totalSecretLeaks,
+      groupsEnriched,
+      reposCloned: 0,
+      reposSucceeded: 0,
+      reposFailed: 0,
+      totalDurationMs,
+      secretLeaksFound: 0,
     };
   }
 
   /**
-   * Acquire Light corpus: check cache, collect if missing.
+   * Acquire Light corpus: check cache, collect inline if missing.
+   *
+   * Previously threw an error when no cache existed, making Deep mode
+   * dependent on a prior Light mode run. Now performs inline Light
+   * collection using the provided Octokit (which in Deep mode is the
+   * installation token, providing higher rate limits and access).
    */
   private async acquireLightCorpus(
     octokit: Octokit,
@@ -167,172 +160,131 @@ export class DeepCollectorService {
       return { lightCorpus: cached, groupsCollected: cached.groups_present };
     }
 
-    // Collect fresh Light corpus
-    const { DataCollectorService } = await import('../data-collector.service');
-    // Cannot inject DataCollectorService here (circular dep risk), so we use a
-    // lightweight inline collection pattern — in production this would be refactored
-    throw new Error(
-      'Light corpus must exist before Deep Mode. ' +
-      'Run POST /api/v2/analysis/light first, or ensure a cached corpus exists.',
+    // Cache miss — run Light collection inline.
+    // Uses the provided Octokit (installation token in Deep mode) so the
+    // collection benefits from the installation's rate limit and scope.
+    console.log(
+      `[DeepCollector] phase=cache_miss_collecting jobId=${jobId} username=${username} ` +
+      `running inline Light collection`,
     );
+
+    const { corpus } = await this.dataCollector.collectLightMode(
+      octokit,
+      username,
+      jobId,
+    );
+
+    // Cache the fresh corpus for future use
+    await this.corpusCache.set(corpus);
+
+    console.log(
+      `[DeepCollector] phase=light_collected jobId=${jobId} ` +
+      `corpusId=${corpus.corpus_id} groups=${corpus.groups_present.join(',')}`,
+    );
+
+    return { lightCorpus: corpus, groupsCollected: corpus.groups_present };
   }
 
   /**
-   * Fetch private repos accessible via the GitHub App installation.
-   * Uses the App installation Octokit (appOctokit) which is authenticated
-   * as the GitHub App installation and can see private repos within the
-   * installation's scope.
+   * Enrich Group A identity signals using the installation token.
+   *
+   * Light mode collects public orgs via GET /users/{username}/orgs (no auth).
+   * Deep mode additionally collects:
+   *   1. Private org memberships via GET /user/orgs (installation-scoped)
+   *   2. [FUTURE] Exhaustive commit emails via git log on cloned repos
+   *
+   * The installation token has read:org equivalent scope for the user's
+   * organizations within the App installation.
    */
-  private async fetchPrivateRepos(
-    octokit: Octokit,
+  private async enrichIdentityDeep(
     appOctokit: Octokit,
     username: string,
+    lightCorpus: SignalCorpus,
     jobId: string,
-  ): Promise<Array<{ name: string; full_name: string; clone_url: string }>> {
+  ): Promise<any> {
+    const identity = { ...lightCorpus.identity };
+    const enriched: string[] = [];
+
+    // ── Private org memberships ─────────────────────────────────────
+    // Light mode already collected public orgs. Deep mode adds private
+    // orgs that are only visible to the installation token.
     try {
-      const response = await appOctokit.rest.repos.listForAuthenticatedUser({
-        type: 'owner',
-        per_page: 100,
-        sort: 'pushed',
-      });
+      const privateOrgsResponse =
+        await appOctokit.rest.orgs.listForAuthenticatedUser({
+          per_page: 100,
+        });
 
-      const privateRepos = (response.data as any[]).filter(
-        (r: any) => r.private && (r.owner?.login === username),
+      const privateOrgNames = privateOrgsResponse.data.map(
+        (org: any) => org.login,
       );
 
-      console.log(
-        `[DeepCollector] phase=private_repos_fetched jobId=${jobId} ` +
-        `total=${privateRepos.length}`,
-      );
-
-      return privateRepos.map((r: any) => ({
-        name: r.name,
-        full_name: r.full_name,
-        clone_url: r.clone_url,
-      }));
-    } catch (error) {
-      console.log(
-        `[DeepCollector] phase=private_repos_error jobId=${jobId} ` +
-        `error=${(error as Error).message}`,
-      );
-      return [];
-    }
-  }
-
-  /**
-   * Clone all private repos in parallel batches.
-   * Passes the installation token to each clone worker for authenticated git clone.
-   */
-  private async cloneAllRepos(
-    repos: Array<{ name: string; full_name: string; clone_url: string }>,
-    jobId: string,
-    installToken?: string,
-  ): Promise<CloneWorkerResult[]> {
-    const allResults: CloneWorkerResult[] = [];
-    const token = installToken || '';
-
-    // Process in batches of maxWorkers
-    for (let i = 0; i < repos.length; i += 4) {
-      const batch = repos.slice(i, i + 4);
-      console.log(
-        `[DeepCollector] phase=clone_batch jobId=${jobId} ` +
-        `batch=${Math.floor(i / 4) + 1}/${Math.ceil(repos.length / 4)} ` +
-        `repos=${batch.map(r => r.name).join(',')} hasToken=${!!token}`,
-      );
-
-      const batchResults = await Promise.all(
-        batch.map((repo) =>
-          this.cloneWorker.cloneAndAnalyze(repo.clone_url, repo.name, token),
-        ),
-      );
-
-      allResults.push(...batchResults);
-    }
-
-    return allResults;
-  }
-
-  /**
-   * Extract Deep-only signals from clone worker results.
-   * Maps tool outputs into corpus fields for groups C, E, G.
-   * Returns both the delta and the total secret leak count for the API response.
-   */
-  private extractDeepDelta(
-    results: CloneWorkerResult[],
-    existingCorpus: SignalCorpus,
-  ): { delta: Partial<SignalCorpus>; totalSecretLeaks: number } {
-    const perRepoAuthorStats: Record<string, any> = {};
-    const complexityTrend: Record<string, number> = {};
-    const testToCodeRatio: Record<string, number> = {};
-    let totalSecretLeaks = 0;
-    const secretLeakDetails: Array<any> = [];
-    let totalSastFindings = 0;
-    let reposWithSast = 0;
-
-    for (const result of results) {
-      const output = result.output;
-
-      // Per-repo author stats from gitinspector
-      if (output.gitinspector) {
-        perRepoAuthorStats[result.repoName] = output.gitinspector;
-      }
-
-      // Complexity trend from scc
-      if (output.scc) {
-        complexityTrend[result.repoName] = output.scc.code_lines || 0;
-      }
-
-      // Test-to-code ratio from tokei
-      if (output.tokei) {
-        const total = output.tokei.total || {};
-        const code = total.code || 1;
-        const tests = total.tests || 0;
-        testToCodeRatio[result.repoName] = tests / code;
-      }
-
-      // Secret leaks from gitleaks
-      if (output.gitleaks?.findings) {
-        for (const finding of output.gitleaks.findings) {
-          totalSecretLeaks++;
-          secretLeakDetails.push({
-            repo: result.repoName,
-            file_path: finding.file || '',
-            secret_type: finding.ruleID || finding.type || 'unknown',
-            commit_sha: finding.commit || '',
-            is_revoked: false, // Requires follow-up API call
-          });
+      // Merge with existing public orgs, deduplicating
+      const existingOrgs = new Set(identity.github_org_memberships);
+      let privateOrgsAdded = 0;
+      for (const orgName of privateOrgNames) {
+        if (!existingOrgs.has(orgName)) {
+          existingOrgs.add(orgName);
+          privateOrgsAdded++;
         }
       }
 
-      // SAST findings from semgrep
-      if (output.semgrep?.results) {
-        reposWithSast++;
-        totalSastFindings += output.semgrep.results.length;
+      identity.github_org_memberships = [...existingOrgs];
+
+      if (privateOrgsAdded > 0) {
+        enriched.push(`privateOrgs(+${privateOrgsAdded})`);
       }
+    } catch (error) {
+      console.log(
+        `  [DeepCollector] phase=private_orgs_error jobId=${jobId} ` +
+        `error=${(error as Error).message}`,
+      );
+      // Keep public orgs only — private org enrichment is best-effort
     }
 
-    // Build commit signals delta
-    const commitDelta: Partial<CommitSignals> = {
-      per_repo_author_stats: perRepoAuthorStats,
-      complexity_trend_by_year: complexityTrend,
-      test_to_code_ratio_by_repo: testToCodeRatio,
-    };
+    // ── [FUTURE] Exhaustive commit emails via git log ───────────────
+    // When private repo cloning is re-enabled, extract all author.email
+    // values from git log --format='%ae' across cloned repos and merge
+    // into identity.commit_email_domains with deduplication.
 
-    // Build engineering practices delta
-    const engDelta: Partial<EngineeringPracticeSignals> = {
-      secret_leak_detected: totalSecretLeaks > 0,
-      secret_leak_details: secretLeakDetails,
-      sast_finding_density: reposWithSast > 0
-        ? Math.round((totalSastFindings / reposWithSast) * 100) / 100
-        : null,
-    };
+    if (enriched.length > 0) {
+      console.log(
+        `  [DeepCollector] phase=identity_enriched jobId=${jobId} ` +
+        `fields=${enriched.join(',')}`,
+      );
+    }
 
-    return {
-      delta: {
-        commit_signals: { ...existingCorpus.commit_signals, ...commitDelta },
-        engineering_practice_signals: { ...existingCorpus.engineering_practice_signals, ...engDelta },
-      },
-      totalSecretLeaks,
-    };
+    return identity;
   }
+
+  // ══════════════════════════════════════════════════════════════════
+  // Private repo methods — COMMENTED OUT for Group A isolation testing
+  // These will be re-enabled when the full Deep mode pipeline is tested.
+  // ══════════════════════════════════════════════════════════════════
+
+  // /**
+  //  * Fetch private repos accessible via the GitHub App installation.
+  //  */
+  // private async fetchPrivateRepos(
+  //   octokit: Octokit,
+  //   appOctokit: Octokit,
+  //   username: string,
+  //   jobId: string,
+  // ): Promise<Array<{ name: string; full_name: string; clone_url: string }>> { ... }
+  //
+  // /**
+  //  * Clone all private repos in parallel batches.
+  //  */
+  // private async cloneAllRepos(
+  //   repos: Array<{ name: string; full_name: string; clone_url: string }>,
+  //   jobId: string,
+  //   installToken?: string,
+  // ): Promise<CloneWorkerResult[]> { ... }
+  //
+  // /**
+  //  * Extract Deep-only signals from clone worker results (groups C, E, G).
+  //  */
+  // private extractDeepDelta(
+  //   results: CloneWorkerResult[],
+  //   existingCorpus: SignalCorpus,
+  // ): { delta: Partial<SignalCorpus>; totalSecretLeaks: number } { ... }
 }

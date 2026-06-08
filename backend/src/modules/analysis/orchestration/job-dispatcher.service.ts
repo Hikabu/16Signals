@@ -248,4 +248,132 @@ export class JobDispatcherService {
 
     return corpus;
   }
+
+  /**
+   * Dispatch analysis with a pre-built corpus (Deep Mode path).
+   *
+   * Bypasses corpus acquisition entirely — the corpus is already fully
+   * collected and enriched by DeepCollectorService. Routes directly to
+   * wave orchestration, LLM processing, and brief assembly.
+   */
+  async dispatchWithCorpus(
+    corpus: SignalCorpus,
+    config: AnalysisConfig,
+    jobId: string,
+  ): Promise<DispatcherResult> {
+    const startTime = Date.now();
+    console.log(
+      `\n2.[JobDispatcher] phase=dispatch_with_corpus jobId=${jobId} ` +
+      `mode=${corpus.collection_mode} username=${corpus.github_username} ` +
+      `groups=${corpus.groups_present.join(',')} ` +
+      `identity={orgs=${corpus.identity.github_org_memberships.length} ` +
+      `emailDomains=${corpus.identity.commit_email_domains.length}}`,
+    );
+
+    try {
+      const result = await this.runAnalysisPipeline(corpus, config, jobId, startTime);
+
+      console.log(
+        `[JobDispatcher] phase=dispatch_with_corpus_complete jobId=${jobId} ` +
+        `totalDurationMs=${result.totalDurationMs} flags=${result.flags.length}`,
+      );
+
+      return result;
+    } catch (error) {
+      const totalDurationMs = Date.now() - startTime;
+      console.log(
+        `[JobDispatcher] phase=dispatch_with_corpus_failed jobId=${jobId} ` +
+        `durationMs=${totalDurationMs} error=${(error as Error).message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Shared analysis pipeline: wave orchestration → LLM → brief assembly.
+   * Factored out to serve both dispatchLightMode and dispatchWithCorpus.
+   */
+  private async runAnalysisPipeline(
+    corpus: SignalCorpus,
+    config: AnalysisConfig,
+    jobId: string,
+    startTime: number,
+  ): Promise<DispatcherResult> {
+    // ── Wave Orchestration ──
+    console.log(
+      `\n4[JobDispatcher] phase=wave_orchestration jobId=${jobId} ` +
+      `corpusId=${corpus.corpus_id} groups=${corpus.groups_present.join(',')}`,
+    );
+    const moduleResults = await this.waveOrchestrator.orchestrate(
+      corpus,
+      config,
+      jobId,
+      async (wave, state) => {
+        console.log(
+          `[JobDispatcher] phase=progress jobId=${jobId} wave=${wave} state=${state}`,
+        );
+      },
+    );
+
+    console.log(
+      `[JobDispatcher] phase=orchestration_done jobId=${jobId} ` +
+      `moduleCount=${moduleResults.length} ` +
+      `strong=${moduleResults.filter(r => r.confidence === 'strong').length} ` +
+      `moderate=${moduleResults.filter(r => r.confidence === 'moderate').length} ` +
+      `low=${moduleResults.filter(r => r.confidence === 'low').length} ` +
+      `obsGap=${moduleResults.filter(r => r.confidence === 'observability_gap').length}`,
+    );
+
+    // ── LLM Processing ──
+    console.log(`[JobDispatcher] phase=llm_batch jobId=${jobId}`);
+    const wave3Output = await this.llmService.wave3Batch(corpus, moduleResults);
+    console.log(
+      `[JobDispatcher] phase=llm_wave3_done jobId=${jobId} ` +
+      `aiClassification=${wave3Output.ai_leverage.classification}`,
+    );
+
+    const narrative = await this.llmService.generateNarrative(
+      moduleResults,
+      config,
+      corpus,
+    );
+    console.log(
+      `[JobDispatcher] phase=narrative_done jobId=${jobId} ` +
+      `sectionALength=${narrative.profile_summary.length}`,
+    );
+
+    const interviewQuestions = await this.llmService.generateInterviewQuestions(
+      moduleResults,
+      corpus,
+    );
+    console.log(
+      `[JobDispatcher] phase=interview_questions_done jobId=${jobId} ` +
+      `count=${interviewQuestions.length}`,
+    );
+
+    // ── Brief Assembly ──
+    console.log(`[JobDispatcher] phase=brief_assembly jobId=${jobId}`);
+    const brief = await this.briefAssembler.assemble(
+      moduleResults,
+      narrative,
+      interviewQuestions,
+      corpus,
+      config,
+      jobId,
+    );
+
+    const totalDurationMs = Date.now() - startTime;
+
+    return {
+      jobId,
+      status: 'complete',
+      briefMarkdown: brief.briefMarkdown,
+      briefJson: brief.briefJson as unknown as Record<string, string>,
+      moduleResults,
+      flags: brief.redFlags,
+      moduleCount: moduleResults.length,
+      flagCount: brief.redFlags.length,
+      totalDurationMs,
+    };
+  }
 }
