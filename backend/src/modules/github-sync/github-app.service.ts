@@ -32,31 +32,6 @@ export class GitHubAppService {
   /**
    * Verify the webhook signature from GitHub.
    */
-//   verifySignature(payload: string, signatureHeader: string): boolean {
-//     const secret = this.config.get<string>('GITHUB_ANALYSIS_WEBHOOK_SECRET');
-//     this.logger.log(`Signature: ${signatureHeader}`);
-// this.logger.log(`Secret exists: ${!!secret}`);
-//     if (!secret) {
-//       this.logger.warn('GITHUB_ANALYSIS_WEBHOOK_SECRET not configured — skipping signature verification');
-//       return true;
-//     }
-//     if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
-//       return false;
-//     }
-//     const signature = signatureHeader.substring(7);
-//     const hmac = crypto.createHmac('sha256', secret);
-//     hmac.update(payload, 'utf-8');
-//     const digest = hmac.digest('hex');
-//     this.logger.log(`Received: ${signatureHeader}`);
-// this.logger.log(`Computed: sha256=${digest}`);
-// this.logger.log(`Body length: ${payload.length}`);
-//     try {
-//       return crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(digest, 'hex'));
-//     } catch {
-//       return false;
-//     }
-//   }
-
 verifySignature(
   payload: Buffer,
   signatureHeader: string,
@@ -115,6 +90,7 @@ verifySignature(
     const githubUsername = account.login;
 
     switch (action) {
+      case 'unsuspend':
       case 'created': {
         // Use upsert to create GithubProfile if it doesn't exist yet.
         // This covers the case where the candidate installs the App BEFORE
@@ -137,6 +113,7 @@ verifySignature(
         return { handled: true, event: 'installation.created', message: `Installation ${installationId} linked to '${githubUsername}'` };
       }
 
+      case 'suspend':
       case 'deleted': {
         await this.prisma.githubProfile.updateMany({
           where: { githubUsername, installationId },

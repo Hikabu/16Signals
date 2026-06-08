@@ -23,25 +23,17 @@ export class GitHubAppWebhookController {
   @HttpCode(HttpStatus.OK)
   @ApiExcludeEndpoint()
   async handleWebhook(
-    // @Req() req: Request,
       @Req() req: Request & { rawBody?: Buffer },
     @Headers('X-GitHub-Event') event: string,
     @Headers('X-Hub-Signature-256') signature: string,
   ) {
-  
     const payload = req.body;
     this.logger.log(
       `Webhook received: event=${event} action=${payload?.action ?? 'none'} ` +
       `installationId=${payload?.installation?.id ?? 'none'}`,
     );
 
-
-  
     const rawBody = req.rawBody;
-
-    this.logger.log(`rawBody type=${typeof req.rawBody}`);
-this.logger.log(`isBuffer=${Buffer.isBuffer(req.rawBody)}`);
-this.logger.log(`rawBody length=${req.rawBody?.length}`);
 
   if (!rawBody) {
     throw new Error('Raw body missing');
@@ -60,8 +52,6 @@ this.logger.log(`rawBody length=${req.rawBody?.length}`);
   // ── Install redirect (backend redirect like Google OAuth) ────
 
   @Get('install')
-  // @UseGuards(AuthGuard('jwt'))
-  // @ApiBearerAuth()
   @ApiOperation({
     summary: 'Redirect to GitHub App installation page',
     description: 'Redirects the authenticated candidate to the GitHub App installation page.',
