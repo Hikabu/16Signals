@@ -1,5 +1,5 @@
 /**
- * Analysis v2 DTOs — Request/Response types for the new GitIntel API.
+ * Analysis v2 DTOs — Request/Response types for the GitIntel analysis API.
  *
  * These DTOs use proper class structures with @ApiProperty for Swagger AND
  * class-validator decorators for runtime validation (required by global
@@ -16,7 +16,6 @@ import {
   MinLength,
   IsEnum,
   IsOptional,
-  IsNumber,
   ValidateNested,
 } from 'class-validator';
 import { CvClaim } from '../modules/module.interface';
@@ -141,23 +140,91 @@ export class AnalysisCreateResponseDto {
 
 /**
  * Full analysis result returned when status === 'completed'.
- * Aligned with USER_FLOWS_AND_GOALS_VERIFICATION.md Section 1, Flow 1.
+ * Maps to the canonical EvidenceBriefOutput stored in AnalysisJob.result.
  * Response-only DTO — no runtime validation needed on the way out.
  */
 export class AnalysisResultDto {
   @ApiProperty({
-    description: 'Full Evidence Brief in Markdown format',
+    description: 'Unique job identifier',
+    example: 'light_a1b2c3_7f4e2d1a',
+  })
+  jobId: string;
+
+  @ApiProperty({
+    description: 'Final job status',
+    example: 'complete',
+  })
+  status: string;
+
+  @ApiProperty({
+    description: 'Full Evidence Brief in Markdown format (includes raw debug appendix)',
     example: '# Evidence Brief: @torvalds\n\n## A. Profile in 90 Seconds\n...',
   })
   briefMarkdown: string;
 
   @ApiProperty({
-    description: 'Parsed brief sections in structured JSON (sectionA–G keys)',
+    description: 'Structured sections A–G for programmatic consumption',
   })
-  briefJson: Record<string, string>;
+  sections: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+    E: string;
+    F: string | null;
+    G: string;
+  };
 
   @ApiProperty({
-    description: 'All 14 module results with confidence, evidence, flags, and probes',
+    description: 'Per-primitive (P1–P7) assessment summaries',
+  })
+  primitives: Array<{
+    primitive_id: string;
+    module_id: string;
+    confidence: string;
+    score_label: string;
+    evidence_count: number;
+    interview_probe: string | null;
+  }>;
+
+  @ApiProperty({
+    description: 'Quick lookup map of primitive_id → numeric score (0–90)',
+    example: { p1: 90, p2: 65, p3: 35 },
+  })
+  primitiveScores: Record<string, number>;
+
+  @ApiProperty({
+    description: 'All flags raised across all modules, sorted HARD first',
+  })
+  flags: Array<{
+    flag_id: string;
+    flag_type: string;
+    severity: string;
+    module_id: string;
+    description: string;
+    escalate_to_hiring_manager: boolean;
+    clear_without_interview: boolean;
+    interview_probe: string | null;
+  }>;
+
+  @ApiProperty({
+    description: 'Total number of flags raised',
+    example: 2,
+  })
+  flagCount: number;
+
+  @ApiProperty({
+    description: 'Generated interview questions (3–5)',
+  })
+  interviewQuestions: Array<{
+    type: string;
+    question: string;
+    source_primitive: string;
+    evaluation_criteria: string;
+  }>;
+
+  @ApiProperty({
+    description: 'All module results with full evidence chains — for debug',
   })
   moduleResults: Array<{
     module_id: string;
@@ -176,42 +243,49 @@ export class AnalysisResultDto {
       severity: string;
       module_id: string;
       description: string;
+      escalate_to_hiring_manager: boolean;
+      clear_without_interview: boolean;
+      interview_probe: string | null;
     }>;
     interview_probe: string | null;
     raw_signals_used: string[];
   }>;
 
   @ApiProperty({
-    description: 'All flags raised across all modules',
-  })
-  flags: Array<{
-    flag_id: string;
-    flag_type: string;
-    severity: string;
-    module_id: string;
-    description: string;
-    escalate_to_hiring_manager: boolean;
-    clear_without_interview: boolean;
-    interview_probe: string | null;
-  }>;
-
-  @ApiProperty({
-    description: 'Number of analysis modules executed (should always be 14)',
+    description: 'Number of modules executed',
     example: 14,
   })
   moduleCount: number;
 
   @ApiProperty({
-    description: 'Total number of flags raised across all modules',
-    example: 0,
+    description: 'Job metadata',
   })
-  flagCount: number;
+  metadata: {
+    username: string;
+    mode: string;
+    generatedAt: string;
+    schemaVersion: string;
+    seniority?: string;
+    roleArchetype?: string;
+    cvClaimsCount?: number;
+  };
 
   @ApiProperty({
     description: 'Total analysis duration in milliseconds',
     example: 45200,
   })
   totalDurationMs: number;
+
+  @ApiPropertyOptional({
+    description: 'Deep Mode clone statistics (only present for Deep Mode analyses)',
+  })
+  cloneStats?: {
+    reposCloned: number;
+    reposSucceeded: number;
+    reposFailed: number;
+    totalCloneTimeMs: number;
+    secretLeaksFound: number;
+  };
 }
 
 /**

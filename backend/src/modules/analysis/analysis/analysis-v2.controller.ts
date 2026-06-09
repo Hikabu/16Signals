@@ -56,6 +56,7 @@ import { DeepCollectorService } from '../data-collector/deep/deep-collector.serv
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AnalysisConfig } from '../modules/module.interface';
 import { buildFullResult, resolveGithubProfileId } from './analysis-v2.helpers';
+import { EvidenceBriefOutput } from '../llm/llm-response.types';
 
 
 @ApiTags('Analysis v2')
@@ -164,14 +165,7 @@ export class AnalysisV2Controller {
       if (process.env.USE_SYNC_PIPELINE === 'true') {
         const octokit = await this.octokitFactory.forJob(null);
         const result = await this.jobDispatcher.dispatchLightMode(octokit, jobId, dto.githubUsername, config);
-        await this.prisma.analysisJob.update({
-          where: { id: jobId },
-          data: {
-            status: 'completed',
-            progress: 100,
-            result: { ...buildFullResult(result.briefMarkdown, result.briefJson, result.moduleResults, result.flags, result.totalDurationMs), claimsExtracted: extraction.claims.length } as any,
-          },
-        });
+        await this.persistSyncResult(jobId, result);
       } else {
         await this.analysisQueue.add('cv-verify', {
           jobId,
@@ -211,8 +205,6 @@ export class AnalysisV2Controller {
     try {
       const profileId = await resolveGithubProfileId(this.prisma, dto.githubUsername);
 
-      // Look up the candidate's installationId from their GithubProfile.
-      // This is populated when the candidate installs the GitHub App (webhook).
       const githubProfile = await this.prisma.githubProfile.findUnique({
         where: { id: profileId },
         select: { installationId: true, githubUsername: true },
@@ -244,7 +236,6 @@ export class AnalysisV2Controller {
       });
 
       if (process.env.USE_SYNC_PIPELINE === 'true' && process.env.PROCESS_CACHE !== "bypass") {
-        // Resolve credentials via the pluggable provider system.
         const { primary, installation, rawToken } = await this.credentialsService.resolve({
           mode: 'deep',
           githubUsername: dto.githubUsername,
@@ -273,16 +264,12 @@ export class AnalysisV2Controller {
 
         const config = { seniority: dto.config.seniority, role_archetype: dto.config.role_archetype, jd_text: dto.config.jd_text };
         const dispatchResult = await this.jobDispatcher.dispatchLightMode(primary, jobId, dto.githubUsername, config);
-        await this.prisma.analysisJob.update({
-          where: { id: jobId },
-          data: {
-            status: 'completed',
-            progress: 100,
-            result: {
-              ...buildFullResult(dispatchResult.briefMarkdown, dispatchResult.briefJson, dispatchResult.moduleResults, dispatchResult.flags, dispatchResult.totalDurationMs),
-              cloneStats: { reposCloned: deepResult.reposCloned, reposSucceeded: deepResult.reposSucceeded, reposFailed: deepResult.reposFailed, totalCloneTimeMs: deepResult.totalDurationMs, secretLeaksFound: deepResult.secretLeaksFound ?? 0 },
-            } as any,
-          },
+        await this.persistSyncResult(jobId, dispatchResult, {
+          reposCloned: deepResult.reposCloned,
+          reposSucceeded: deepResult.reposSucceeded,
+          reposFailed: deepResult.reposFailed,
+          totalCloneTimeMs: deepResult.totalDurationMs,
+          secretLeaksFound: deepResult.secretLeaksFound ?? 0,
         });
         console.log(`[AnalysisV2Controller] phase=deep_complete jobId=${jobId}`);
       } else {
@@ -328,24 +315,35 @@ export class AnalysisV2Controller {
 
     if ((job.status === 'completed' || job.status === 'complete') && job.result) {
       const r = job.result as Record<string, unknown>;
+
+      // Return the full result — markdown is preserved as-is (no <br> corruption)
       response.result = {
-        briefMarkdown: ((r.briefMarkdown as string) || '').replaceAll('\n', '<br>'),
-        briefJson: (r.briefJson as Record<string, string>) || {},
-        moduleResults: (r.moduleResults as any) || [],
+        jobId: (r.jobId as string) || job.id,
+        status: (r.status as string) || 'complete',
+        briefMarkdown: (r.briefMarkdown as string) || '',
+        sections: (r.sections as any) || { A: '', B: '', C: '', D: '', E: '', F: null, G: '' },
+        primitives: (r.primitives as any) || [],
+        primitiveScores: (r.primitiveScores as any) || {},
         flags: (r.flags as any) || [],
-        moduleCount: (r.moduleCount as number) || 0,
-        flagCount: (r.flagCount as number) || 0,
+        flagCount: (r.flagCount as number) ?? ((r.flags as any[])?.length ?? 0),
+        interviewQuestions: (r.interviewQuestions as any) || [],
+        moduleResults: (r.moduleResults as any) || [],
+        moduleCount: (r.moduleCount as number) ?? ((r.moduleResults as any[])?.length ?? 0),
+        metadata: (r.metadata as any) || {},
         totalDurationMs: (r.totalDurationMs as number) || 0,
+        cloneStats: (r.cloneStats as any) || undefined,
       };
-      console.log(`[AnalysisV2Controller] phase=result_ready jobId=${jobId} durationMs=${response.result.totalDurationMs} flags=${response.result.flags.length} modules=${response.result.moduleResults.length}`);
+
+      console.log(
+        `[AnalysisV2Controller] phase=result_ready jobId=${jobId} ` +
+        `durationMs=${response.result.totalDurationMs} ` +
+        `flags=${response.result.flags.length} ` +
+        `modules=${response.result.moduleResults.length} ` +
+        `primitives=${response.result.primitives.length}`,
+      );
     }
 
     if (job.status === 'failed' && job.error) response.error = job.error;
-    console.log("brief: ", response?.result?.briefJson);
-    console.log("modules: ", response?.result?.moduleResults);
-    console.log("flags: ", response?.result?.flags);
-    console.log("result: ", response?.result);
-
 
     return response;
   }
@@ -355,6 +353,25 @@ export class AnalysisV2Controller {
   @ApiResponse({ status: 200, description: 'Service is healthy', schema: { type: 'object', properties: { status: { type: 'string', example: 'healthy' }, timestamp: { type: 'string', example: '2026-06-01T04:00:00.000Z' }, serviceVersion: { type: 'string', example: '2.0.0' } } } })
   getStatus(): { status: string; timestamp: string; serviceVersion: string } {
     return { status: 'healthy', timestamp: new Date().toISOString(), serviceVersion: '2.0.0' };
+  }
+
+  /**
+   * Persist a sync pipeline result to AnalysisJob.
+   */
+  private async persistSyncResult(
+    jobId: string,
+    result: EvidenceBriefOutput,
+    cloneStats?: { reposCloned: number; reposSucceeded: number; reposFailed: number; totalCloneTimeMs: number; secretLeaksFound: number },
+  ): Promise<void> {
+    const fullResult = buildFullResult(result, cloneStats);
+    await this.prisma.analysisJob.update({
+      where: { id: jobId },
+      data: {
+        status: 'completed',
+        progress: 100,
+        result: fullResult as any,
+      },
+    });
   }
 
   private normalizeStatus(status: string): AnalysisStatusResponseDto['status'] {

@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   Request,
@@ -16,6 +17,7 @@ import { ZodResponse } from 'nestjs-zod';
 import {
   ScorecardUiDto,
   ScorecardRawResponseDto,
+  ScorecardPreviewRequestDto,
 } from './contract/scorecard.dto';
 import {
   ApiTags,
@@ -23,23 +25,16 @@ import {
   ApiHeader,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
   ApiBody,
   ApiOkResponse,
   ApiNotFoundResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { VerifiedAuth } from '../../shared/decorators/verified.decorator';
-import { PrismaService } from 'src/prisma/prisma.service';
-/**
- * Request DTOs
- */
-class PreviewScorecardRequestDto {
-  githubUsername: string;
-}
+import { PrismaService } from '../../prisma/prisma.service';
+import { ScorecardViewType, RequestedMode } from './scorecard.types';
 
-/**
- * Standard Error DTO
- */
 class ScorecardErrorResponseDto {
   statusCode: number;
   message: string;
@@ -54,298 +49,160 @@ export class ScorecardController {
     private readonly prisma: PrismaService,
   ) {}
 
-  /**
-   * ----------------------------------------
-   * INTERNAL MOCK PREVIEW (UI MODEL)
-   * ----------------------------------------
-   */
+  // ═══════════════════════════════════════════════════════════════════
+  // INTERNAL MOCK PREVIEW (UI MODEL)
+  // ═══════════════════════════════════════════════════════════════════
+
   @Post('mock/preview')
   @ApiOperation({
-    summary: 'Preview scorecard (UI model)',
+    summary: '[INTERNAL] Preview scorecard (UI model)',
     description:
-      'Generates a mock scorecard for a given GitHub username and returns a frontend-ready UI model. Requires internal API key.',
+      'Generates a view-based scorecard for a given GitHub username. ' +
+      'Supports ?view=snapshot|recruiter|deep|public|raw and ?mode=light|deep.',
   })
-  
-  @ApiBody({
-    type: PreviewScorecardRequestDto,
-    examples: {
-      example1: {
-        summary: 'Basic request',
-        value: {
-          githubUsername: 'octocat',
-        },
-      },
-    },
-  })
-  @ApiOkResponse({
-    description: 'Successfully generated UI scorecard',
-    type: ScorecardUiDto,
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Missing or invalid internal API key',
-    type: ScorecardErrorResponseDto,
-  })
-  @ApiHeader({
-    name: 'X-Internal-Key',
-    description: 'Internal API key (required)',
-    required: true,
-  })
+  @ApiBody({ type: ScorecardPreviewRequestDto })
+  @ApiQuery({ name: 'view', required: false, enum: ['snapshot', 'recruiter', 'deep', 'public', 'raw'] })
+  @ApiQuery({ name: 'mode', required: false, enum: ['light', 'deep'] })
+  @ApiOkResponse({ description: 'Successfully generated UI scorecard', type: ScorecardUiDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid internal API key', type: ScorecardErrorResponseDto })
+  @ApiHeader({ name: 'X-Internal-Key', description: 'Internal API key (required)', required: true })
   @UseGuards(InternalKeyGuard)
   @HttpCode(HttpStatus.OK)
   @ZodResponse({ status: 200, type: ScorecardUiDto })
   async preview(
-    @Body() request: PreviewScorecardRequestDto,
-  ): Promise<ScorecardUiDto> {
-    const result = await this.scorecardService.previewForUsername(
+    @Body() request: ScorecardPreviewRequestDto,
+    @Query('view') view?: ScorecardViewType,
+    @Query('mode') mode?: RequestedMode,
+  ): Promise<any> {
+    const result = await this.scorecardService.getScorecardForGithubUser(
       request.githubUsername,
+      { mode, view },
     );
-
-    const scoreResult = await this.scorecardService.mapToUiModel(result);
-    return scoreResult;
+    if (!result) {
+      throw new NotFoundException(
+        `No scorecard found for GitHub user "${request.githubUsername}".`,
+      );
+    }
+    return result;
   }
 
-  /**
-   * ----------------------------------------
-   * INTERNAL MOCK PREVIEW (RAW MODEL)
-   * ----------------------------------------
-   */
+  // ═══════════════════════════════════════════════════════════════════
+  // INTERNAL MOCK PREVIEW (RAW MODEL)
+  // ═══════════════════════════════════════════════════════════════════
+
   @Post('mock/preview/raw')
-  @ApiOperation({
-    summary: 'Preview scorecard (raw model)',
-    description:
-      'Returns full raw scoring data for debugging and internal analysis. Not intended for frontend usage.',
-  })
-  @ApiHeader({
-    name: 'X-Internal-Key',
-    description: 'Internal API key (required)',
-    required: true,
-  })
-  @ApiBody({
-    type: PreviewScorecardRequestDto,
-  })
-  @ApiOkResponse({
-    description: 'Raw scorecard data',
-    type: ScorecardRawResponseDto,
-  })
+  @ApiOperation({ summary: '[INTERNAL] Preview scorecard (raw model)' })
+  @ApiHeader({ name: 'X-Internal-Key', description: 'Internal API key (required)', required: true })
+  @ApiBody({ type: ScorecardPreviewRequestDto })
+  @ApiOkResponse({ description: 'Raw scorecard data', type: ScorecardRawResponseDto })
   @UseGuards(InternalKeyGuard)
   @HttpCode(HttpStatus.OK)
   @ZodResponse({ status: 200, type: ScorecardRawResponseDto })
-  async previewRaw(@Body() request: PreviewScorecardRequestDto): Promise<any> {
-    return this.scorecardService.previewForUsername(request.githubUsername);
-  }
-
-  /**
-   * ----------------------------------------
-   * AUTHENTICATED USER SCORECARD (UI)
-   * ----------------------------------------
-   */
-  @Get('me')
-  @VerifiedAuth()
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Get my scorecard (UI)',
-    description:
-      'Returns the authenticated user’s scorecard formatted for frontend display.',
-  })
-  @ApiOkResponse({
-    description: 'User scorecard',
-    type: ScorecardUiDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'No scorecard found. User must trigger GitHub sync first.',
-    type: ScorecardErrorResponseDto,
-  })
-  async getMyScorecard(@Request() req) {
-    const scorecard = await this.scorecardService.getScorecardForUser(
-      req.user.id
-    );
-
-    console.log("scorecard? ", scorecard!!);
-    if (!scorecard) {
-      throw new NotFoundException(
-        'No scorecard found. Trigger a sync first via POST /me/github/sync',
-      );
-    }
-
-    const result = await this.scorecardService.mapToUiModel(scorecard, {userId: req.user.id});
-    return result;
-  }
-/**
- * ----------------------------------------
- * PUBLIC SCORECARD BY APP USERNAME
- * ----------------------------------------
- *
- * Example:
- * GET /scorecards/user/arturo
- *
- * Flow:
- * app username -> linked github username -> cached scorecard
- */
-@Get('user/:username')
-@ApiOperation({
-  summary: 'Get public scorecard by app username',
-  description:
-    'Fetch a public scorecard using a registered platform username.',
-})
-@ApiParam({
-  name: 'username',
-  type: String,
-  example: 'arturo',
-  description: 'Registered platform username',
-})
-@ApiOkResponse({
-  description: 'Public scorecard',
-  type: ScorecardUiDto,
-})
-@ApiNotFoundResponse({
-  description: 'User or scorecard not found',
-  type: ScorecardErrorResponseDto,
-})
-async getPublicUserScorecard(
-  @Param('username') username: string,
-) {
-     const scorecard = await this.scorecardService.getScorecardForUser(
-      username
-    );
-
-    console.log("scorecard? ", scorecard!!);
-    if (!scorecard) {
-      throw new NotFoundException(
-        'No scorecard found. Trigger a sync first via POST /me/github/sync',
-      );
-    }
-
-    const result = await this.scorecardService.mapToUiModel(scorecard, {username});
-    return result;
-}
-
-/**
- * ----------------------------------------
- * PUBLIC SCORECARD BY GITHUB USERNAME
- * ----------------------------------------
- *
- * Example:
- * GET /scorecards/github/octocat
- *
- * Flow:
- * github username -> cached scorecard
- */
-@Get('github/:githubUsername')
-@ApiOperation({
-  summary: 'Get public scorecard by GitHub username',
-  description:
-    'Fetch a public scorecard directly from a GitHub username.',
-})
-@ApiParam({
-  name: 'githubUsername',
-  type: String,
-  example: 'octocat',
-  description: 'GitHub username',
-})
-@ApiOkResponse({
-  description: 'Public scorecard',
-  type: ScorecardUiDto,
-})
-@ApiNotFoundResponse({
-  description: 'No cached scorecard found',
-  type: ScorecardErrorResponseDto,
-})
-async getPublicScorecardByGithub(
-  @Param('githubUsername') githubUsername: string,
-) {
-  const scorecard =
-    await this.scorecardService.getScorecardFromCache(
-      githubUsername,
-    );
-
-  if (!scorecard) {
-    throw new NotFoundException(
-      `No cached scorecard found for GitHub user "${githubUsername}".`,
-    );
-  }
-
-  /**
-   * Optional:
-   * try finding linked platform user
-   */
-  const linkedUser = await this.prisma.user.findFirst({
-    where: {
-      candidate: {
-        devProfile: {
-          githubProfile: {
-            githubUsername,
-          },
-        },
-      },
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  return this.scorecardService.mapToUiModel(
-    scorecard,
-    {userId: linkedUser?.id},
-  );
-}
-  /**
-   * ----------------------------------------
-   * AUTHENTICATED USER SCORECARD (RAW)
-   * ----------------------------------------
-   */
-  @Get('me/raw')
-  @VerifiedAuth()
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Get my scorecard (raw)',
-    description:
-      'Returns raw internal scorecard data for the authenticated user.',
-  })
-  @ApiOkResponse({
-    description: 'Raw scorecard',
-    type: ScorecardRawResponseDto,
-  })
-  async getMyScorecardRaw(@Request() req) {
-    const scorecard = await this.scorecardService.getScorecardForUser(
-      req.user.id,
-    );
-
-    if (!scorecard) {
-      throw new NotFoundException(
-        'No scorecard found. Trigger a sync first via POST /me/github/sync',
-      );
-    }
-
+  async previewRaw(@Body() request: ScorecardPreviewRequestDto): Promise<any> {
+    const scorecard = await this.scorecardService.getRawScorecard(request.githubUsername);
+    if (!scorecard) throw new NotFoundException(`No cached scorecard for ${request.githubUsername}`);
     return scorecard;
   }
 
-  /**
-   * ----------------------------------------
-   * PUBLIC SCORECARD (RAW)
-   * ----------------------------------------
-   */
-  @Get(':username/raw')
-  @ApiOperation({
-    summary: 'Get public scorecard (raw)',
-    description:
-      'Returns raw cached scorecard for debugging or internal usage.',
-  })
-  @ApiParam({
-    name: 'username',
-    example: 'octocat',
-  })
-  @ApiOkResponse({
-    description: 'Raw scorecard',
-    type: ScorecardRawResponseDto,
-  })
-  async getPublicScorecardRaw(@Param('username') username: string) {
-    const scorecard =
-      await this.scorecardService.getScorecardFromCache(username);
+  // ═══════════════════════════════════════════════════════════════════
+  // AUTHENTICATED USER SCORECARD (UI)
+  // ═══════════════════════════════════════════════════════════════════
 
-    if (!scorecard) {
-      throw new NotFoundException(`No cached scorecard for ${username}`);
-    }
+  @Get('me')
+  @VerifiedAuth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my scorecard (view-based)' })
+  @ApiQuery({ name: 'view', required: false, enum: ['snapshot', 'recruiter', 'deep', 'public', 'raw'] })
+  @ApiQuery({ name: 'mode', required: false, enum: ['light', 'deep'] })
+  @ApiOkResponse({ description: 'User scorecard', type: ScorecardUiDto })
+  @ApiNotFoundResponse({ description: 'No scorecard found', type: ScorecardErrorResponseDto })
+  async getMyScorecard(
+    @Request() req,
+    @Query('view') view?: ScorecardViewType,
+    @Query('mode') mode?: RequestedMode,
+  ) {
+    const result = await this.scorecardService.getScorecardForUser(req.user.id, { mode, view });
+    if (!result) throw new NotFoundException('No scorecard found. An analysis must be completed first.');
+    return result;
+  }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // PUBLIC SCORECARD BY APP USERNAME
+  // ═══════════════════════════════════════════════════════════════════
+
+  @Get('user/:username')
+  @ApiOperation({ summary: 'Get public scorecard by app username' })
+  @ApiParam({ name: 'username', type: String, example: 'arturo' })
+  @ApiQuery({ name: 'view', required: false, enum: ['snapshot', 'recruiter', 'deep', 'public', 'raw'] })
+  @ApiQuery({ name: 'mode', required: false, enum: ['light', 'deep'] })
+  @ApiOkResponse({ description: 'Public scorecard', type: ScorecardUiDto })
+  @ApiNotFoundResponse({ description: 'User or scorecard not found', type: ScorecardErrorResponseDto })
+  async getPublicUserScorecard(
+    @Param('username') username: string,
+    @Query('view') view?: ScorecardViewType,
+    @Query('mode') mode?: RequestedMode,
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { username }, select: { id: true } });
+    if (!user) throw new NotFoundException(`User "${username}" not found.`);
+    const result = await this.scorecardService.getScorecardForUser(user.id, { mode, view });
+    if (!result) throw new NotFoundException(`No scorecard found for user "${username}".`);
+    return result;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // RAW ENDPOINTS — MUST be registered BEFORE generic github/:githubUsername
+  // to avoid Express matching ':githubUsername' = 'raw'
+  // ═══════════════════════════════════════════════════════════════════
+
+  @Get('github/:githubUsername/raw')
+  @ApiOperation({ summary: 'Get raw scorecard by GitHub username (debug)' })
+  @ApiParam({ name: 'githubUsername', example: 'octocat' })
+  @ApiOkResponse({ description: 'Raw scorecard', type: ScorecardRawResponseDto })
+  async getPublicScorecardRaw(@Param('githubUsername') githubUsername: string) {
+    const scorecard = await this.scorecardService.getRawScorecard(githubUsername);
+    if (!scorecard) throw new NotFoundException(`No cached scorecard for ${githubUsername}`);
+    return scorecard;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PUBLIC SCORECARD BY GITHUB USERNAME
+  // ═══════════════════════════════════════════════════════════════════
+
+  @Get('github/:githubUsername')
+  @ApiOperation({ summary: 'Get scorecard by GitHub username' })
+  @ApiParam({ name: 'githubUsername', type: String, example: 'octocat', description: 'GitHub username' })
+  @ApiQuery({ name: 'view', required: false, enum: ['snapshot', 'recruiter', 'deep', 'public', 'raw'] })
+  @ApiQuery({ name: 'mode', required: false, enum: ['light', 'deep'] })
+  @ApiOkResponse({ description: 'Scorecard', type: ScorecardUiDto })
+  @ApiNotFoundResponse({ description: 'No cached scorecard found', type: ScorecardErrorResponseDto })
+  async getPublicScorecardByGithub(
+    @Param('githubUsername') githubUsername: string,
+    @Query('view') view?: ScorecardViewType,
+    @Query('mode') mode?: RequestedMode,
+  ) {
+    const result = await this.scorecardService.getScorecardForGithubUser(githubUsername, { mode, view });
+    if (!result) throw new NotFoundException(`No scorecard found for GitHub user "${githubUsername}".`);
+    return result;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // AUTHENTICATED USER SCORECARD (RAW)
+  // ═══════════════════════════════════════════════════════════════════
+
+  @Get('me/raw')
+  @VerifiedAuth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my scorecard (raw debug)' })
+  @ApiOkResponse({ description: 'Raw scorecard', type: ScorecardRawResponseDto })
+  async getMyScorecardRaw(@Request() req) {
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { userId: req.user.id },
+      select: { devProfile: { select: { githubProfile: { select: { githubUsername: true } } } } },
+    });
+    const githubUsername = candidate?.devProfile?.githubProfile?.githubUsername;
+    if (!githubUsername) throw new NotFoundException('No GitHub profile linked.');
+    const scorecard = await this.scorecardService.getRawScorecard(githubUsername);
+    if (!scorecard) throw new NotFoundException('No scorecard found.');
     return scorecard;
   }
 }

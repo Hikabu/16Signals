@@ -1,6 +1,5 @@
 import { PrismaService } from '../../../prisma/prisma.service';
-
-import { ModuleResult } from '../modules/module-result.types';
+import { EvidenceBriefOutput } from '../llm/llm-response.types';
 
 export async function resolveGithubProfileId(
   prisma: PrismaService,
@@ -23,38 +22,59 @@ export async function resolveGithubProfileId(
   return newProfile.id;
 }
 
+/**
+ * Build the full analysis result stored in AnalysisJob.result.
+ *
+ * Takes the canonical EvidenceBriefOutput and preserves ALL fields so the
+ * polling endpoint (GET /api/v2/analysis/:jobId) returns complete data.
+ *
+ * Deep Mode: if cloneStats are provided, they are merged into the result.
+ */
 export function buildFullResult(
-  briefMarkdown: string,
-  briefJson: Record<string, string>,
-  moduleResults: ModuleResult[],
-  flags: Array<{
-    flag_id: string;
-    flag_type: 'SOFT' | 'HARD';
-    severity: 'INFO' | 'WARNING' | 'CRITICAL';
-    module_id: string;
-    description: string;
-    escalate_to_hiring_manager: boolean;
-    clear_without_interview: boolean;
-    interview_probe: string | null;
-  }>,
-  totalDurationMs: number,
-) {
-  return {
-    briefMarkdown,
-    briefJson,
-    moduleResults: moduleResults.map((r) => ({
-      module_id: r.module_id,
-      primitive_id: r.primitive_id,
-      confidence: r.confidence,
-      score_label: r.score_label,
-      evidence: r.evidence,
-      flags: r.flags,
-      interview_probe: r.interview_probe,
-      raw_signals_used: r.raw_signals_used,
-    })),
-    flags,
-    moduleCount: moduleResults.length,
-    flagCount: flags.length,
-    totalDurationMs,
-  } as any;
+  brief: EvidenceBriefOutput,
+  cloneStats?: {
+    reposCloned: number;
+    reposSucceeded: number;
+    reposFailed: number;
+    totalCloneTimeMs: number;
+    secretLeaksFound: number;
+  },
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {
+    // ── Identity ──
+    jobId: brief.jobId,
+    status: brief.status,
+
+    // ── Rendering ──
+    briefMarkdown: brief.briefMarkdown,
+
+    // ── Structured Sections ──
+    sections: brief.sections,
+
+    // ── Primitives ──
+    primitives: brief.primitives,
+    primitiveScores: brief.primitiveScores,
+
+    // ── Flags ──
+    flags: brief.flags,
+    flagCount: brief.flagCount,
+
+    // ── Interview ──
+    interviewQuestions: brief.interviewQuestions,
+
+    // ── Raw Module Data ──
+    moduleResults: brief.moduleResults,
+    moduleCount: brief.moduleResults.length,
+
+    // ── Metadata ──
+    metadata: brief.metadata,
+    totalDurationMs: brief.totalDurationMs,
+  };
+
+  // Merge Deep Mode clone stats if provided
+  if (cloneStats) {
+    result.cloneStats = cloneStats;
+  }
+
+  return result;
 }

@@ -1,12 +1,23 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 import {
-  ScorecardUiSchema,
   ScorecardPreviewRequestSchema,
+  RawUiSchema,
 } from './scorecard.contract';
 
-export class ScorecardUiDto extends createZodDto(ScorecardUiSchema) {}
+/**
+ * UI scorecard DTO — view-specific output (union type, use z.any() for nestjs-zod compat).
+ */
+export class ScorecardUiDto extends createZodDto(z.any()) {}
+
+/**
+ * Preview request DTO.
+ */
 export class ScorecardPreviewRequestDto extends createZodDto(
   ScorecardPreviewRequestSchema,
 ) {}
-export class ScorecardRawResponseDto extends createZodDto(z.any()) {} // Placeholder for raw data
+
+/**
+ * Raw scorecard response DTO — full debug data.
+ */
+export class ScorecardRawResponseDto extends createZodDto(RawUiSchema) {}

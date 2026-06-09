@@ -69,29 +69,148 @@ export interface InterviewQuestion {
   evaluation_criteria: string;
 }
 
-// ─── Evidence Brief Output (assembled) ──────────────────────────────
+// ─── Flag Output (standardized across the system) ────────────────────
 
-/** The structured output of the Brief Assembler */
+export interface FlagOutput {
+  flag_id: string;
+  flag_type: 'SOFT' | 'HARD';
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  module_id: string;
+  description: string;
+  escalate_to_hiring_manager: boolean;
+  clear_without_interview: boolean;
+  interview_probe: string | null;
+}
+
+// ─── Primitive Result (canonical per-primitive output) ───────────────
+
+export interface PrimitiveResult {
+  primitive_id: string;        // e.g. 'p1', 'p2', ... 'p7'
+  module_id: string;           // e.g. 'p1_execution_reliability'
+  confidence: 'strong' | 'moderate' | 'low' | 'observability_gap' | 'insufficient_data';
+  score_label: string;
+  evidence_count: number;
+  interview_probe: string | null;
+}
+
+// ─── Evidence Brief Output (canonical, the single source of truth) ───
+
+export interface EvidenceBriefSections {
+  A: string;   // Profile in 90 Seconds
+  B: string;   // Tech Reality vs CV Claims
+  C: string;   // Work Pattern Intelligence
+  D: string;   // Red Flags & Verification Gaps
+  E: string;   // Interview Intelligence
+  F: string | null;  // Role & Stack Match (conditional on JD)
+  G: string;   // What This Evaluation Cannot Tell You
+}
+
+export interface BriefMetadata {
+  username: string;
+  mode: string;
+  generatedAt: string;
+  schemaVersion: string;
+  seniority?: string;
+  roleArchetype?: string;
+  cvClaimsCount?: number;
+}
+
+/**
+ * The canonical Evidence Brief output produced by BriefAssemblerService.
+ * This is the single source of truth — all consumers (controller, scorecard,
+ * cache) derive their views from this shape.
+ */
 export interface EvidenceBriefOutput {
-  /** Rendered Markdown brief */
+  /** Unique job identifier */
+  jobId: string;
+  /** Final status */
+  status: 'complete' | 'partial' | 'failed';
+
+  /** Rendered full Markdown brief (all sections A–G + raw appendix) */
   briefMarkdown: string;
-  /** Structured JSON brief */
-  briefJson: Record<string, unknown>;
-  /** Primitive scores keyed by primitive_id */
+
+  /** Structured sections for programmatic consumption */
+  sections: EvidenceBriefSections;
+
+  /** Per-primitive (P1–P7) assessment summaries */
+  primitives: PrimitiveResult[];
+
+  /** Quick lookup map: { p1: 90, p2: 65, ... } */
   primitiveScores: Record<string, number>;
-  /** All flags from all modules */
-  redFlags: Array<{
-    flag_id: string;
-    flag_type: 'SOFT' | 'HARD';
-    severity: 'INFO' | 'WARNING' | 'CRITICAL';
-    module_id: string;
-    description: string;
-    escalate_to_hiring_manager: boolean;
-    clear_without_interview: boolean;
-    interview_probe: string | null;
-  }>;
-  /** Generated interview questions */
+
+  /** All flags raised across all modules, sorted HARD first */
+  flags: FlagOutput[];
+  flagCount: number;
+
+  /** Generated interview questions (3–5 per analysis) */
   interviewQuestions: InterviewQuestion[];
+
+  /** Full raw module results — for admin/debug inspection */
+  moduleResults: Array<{
+    module_id: string;
+    primitive_id: string | null;
+    confidence: string;
+    score_label: string;
+    evidence: Array<{
+      signal: string;
+      corpus_field: string;
+      value: unknown;
+      interpretation: string;
+    }>;
+    flags: Array<{
+      flag_id: string;
+      flag_type: string;
+      severity: string;
+      module_id: string;
+      description: string;
+      escalate_to_hiring_manager: boolean;
+      clear_without_interview: boolean;
+      interview_probe: string | null;
+    }>;
+    interview_probe: string | null;
+    raw_signals_used: string[];
+  }>;
+
+  /** Metadata */
+  metadata: BriefMetadata;
+
+  /** Total pipeline duration in milliseconds */
+  totalDurationMs: number;
+}
+
+// ─── Scorecard Cached Display Types ──────────────────────────────────
+
+/** Snapshot data — safe for public display, always available */
+export interface ScorecardSnapshot {
+  username: string;
+  avatarUrl?: string;
+  techStack: { languages: string[]; tools: string[] };
+  archetypeSummary: string;
+  aiLeverageClassification?: string;
+  evRung: number;
+}
+
+/** Per-mode cached view data stored on GithubProfile.scorecard */
+export interface ViewData {
+  jobId: string;
+  analyzedAt: string;
+  primitives: PrimitiveResult[];
+  primitiveScores: Record<string, number>;
+  flags: FlagOutput[];
+  flagCount: number;
+  sections: EvidenceBriefSections;
+  interviewQuestions: InterviewQuestion[];
+  metadata: BriefMetadata & { totalDurationMs: number };
+}
+
+/** The structure stored in GithubProfile.scorecard JSONB */
+export interface CachedScorecard {
+  lastAnalysisJobId: string;
+  lastAnalysisMode: 'light' | 'deep';
+  lastAnalyzedAt: string;
+  snapshot: ScorecardSnapshot;
+  light: ViewData | null;
+  deep: ViewData | null;
 }
 
 // ─── Fallback / Default Values ───────────────────────────────────────
@@ -120,6 +239,6 @@ export function defaultNarrativeOutput(): NarrativeOutput {
     cv_cross_reference:
       'CV cross-reference unavailable. The module-level evidence items below provide signal-level assessment.',
     work_pattern_intelligence:
-      'Work pattern analysis unavailable. Review primitive scores and flags for detailed assessment.',
+      'Work pattern intelligence unavailable. Review primitive scores and flags for detailed assessment.',
   };
 }

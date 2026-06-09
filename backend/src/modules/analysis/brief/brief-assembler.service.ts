@@ -3,10 +3,12 @@
  * LLM narratives, interview questions, and (optionally) CV claims.
  *
  * Architecture: Consumes all pipeline outputs and produces a 7-section Evidence Brief
- * in Markdown and JSON formats. Each section is independently assembled.
+ * in Markdown and structured JSON formats. Each section is independently assembled.
  *
  * Section F is conditional: only included when jd_text is provided in config.
  * Composite scores are PROHIBITED (enforced by confidence-language.ts).
+ *
+ * Output conforms to the canonical EvidenceBriefOutput type (single source of truth).
  *
  * Reference: DEEPSEEK_V4_REFACTOR_PLAN.md Stage 6
  */
@@ -15,7 +17,14 @@ import { Injectable } from '@nestjs/common';
 import { ModuleResult, Flag } from '../modules/module-result.types';
 import { AnalysisConfig } from '../modules/module.interface';
 import { SignalCorpus } from '../corpus/corpus.types';
-import { NarrativeOutput, InterviewQuestion, EvidenceBriefOutput } from '../llm/llm-response.types';
+import {
+  NarrativeOutput,
+  InterviewQuestion,
+  EvidenceBriefOutput,
+  EvidenceBriefSections,
+  PrimitiveResult,
+  BriefMetadata,
+} from '../llm/llm-response.types';
 import { SeniorityWeightingService, WeightedModuleResult } from './seniority-weighting';
 import { BriefRenderer, BriefSections } from './brief-renderer';
 import { CvClaimExtractorService } from './cv-claim-extractor.service';
@@ -31,6 +40,8 @@ export class BriefAssemblerService {
 
   /**
    * Assemble the complete Evidence Brief.
+   * Returns the canonical EvidenceBriefOutput — the single source of truth
+   * used by all downstream consumers.
    */
   async assemble(
     moduleResults: ModuleResult[],
@@ -39,6 +50,7 @@ export class BriefAssemblerService {
     corpus: SignalCorpus,
     config: AnalysisConfig,
     jobId: string,
+    startTime: number,
   ): Promise<EvidenceBriefOutput> {
     console.log(
       `[BriefAssembler] phase=assembly_start jobId=${jobId} ` +
@@ -79,12 +91,11 @@ export class BriefAssemblerService {
     console.log(`[BriefAssembler] phase=section_complete jobId=${jobId} section=C`);
 
     // ── Section D: Red Flags & Verification Gaps ──
-    const sectionD = this.renderer.renderSectionD({
-      flags: this.extractAllFlags(moduleResults),
-    });
+    const allFlags = this.extractAllFlags(moduleResults);
+    const sectionD = this.renderer.renderSectionD({ flags: allFlags });
     console.log(
       `[BriefAssembler] phase=section_complete jobId=${jobId} section=D ` +
-      `flags=${this.extractAllFlags(moduleResults).length}`,
+      `flags=${allFlags.length}`,
     );
 
     // ── Section E: Interview Intelligence ──
@@ -105,8 +116,19 @@ export class BriefAssemblerService {
     const sectionG = this.renderer.renderSectionG();
     console.log(`[BriefAssembler] phase=section_complete jobId=${jobId} section=G`);
 
-    // ── Render Markdown ──
-    const sections: BriefSections = {
+    // ── Build sections object ──
+    const sections: EvidenceBriefSections = {
+      A: sectionA,
+      B: sectionB,
+      C: sectionC,
+      D: sectionD,
+      E: sectionE,
+      F: sectionF,
+      G: sectionG,
+    };
+
+    // ── Render Markdown (with raw appendix) ──
+    const renderSections: BriefSections = {
       sectionA,
       sectionB,
       sectionC,
@@ -122,45 +144,83 @@ export class BriefAssemblerService {
       },
     };
 
-    const briefMarkdown = this.renderer.renderMarkdown(sections);
+    const briefMarkdown = this.renderer.renderMarkdown(renderSections);
+    const rawAppendix = this.renderer.renderRawAppendix(moduleResults, allFlags);
+    const fullMarkdown = briefMarkdown + '\n\n' + rawAppendix;
 
-    // ── Build structured JSON ──
+    // ── Build primitive summaries ──
     const primitiveScores = this.extractPrimitiveScores(moduleResults);
-    const redFlags = this.extractAllFlags(moduleResults);
+    const primitives = this.buildPrimitiveResults(moduleResults);
 
-    const briefJson = {
-      sections: {
-        A: sectionA,
-        B: sectionB,
-        C: sectionC,
-        D: sectionD,
-        E: sectionE,
-        F: sectionF,
-        G: sectionG,
-      },
+    // ── Build metadata ──
+    const metadata: BriefMetadata = {
+      username: corpus.github_username,
+      mode: corpus.collection_mode,
+      generatedAt: new Date().toISOString(),
+      schemaVersion: 'gitintel_v1.0',
+      seniority: config.seniority,
+      roleArchetype: config.role_archetype,
+      cvClaimsCount: config.cv_claims?.length ?? 0,
+    };
+
+    const totalDurationMs = Date.now() - startTime;
+
+    // ── Build canonical output ──
+    const output: EvidenceBriefOutput = {
+      jobId,
+      status: 'complete',
+      briefMarkdown: fullMarkdown,
+      sections,
+      primitives,
       primitiveScores,
-      redFlags,
+      flags: allFlags,
+      flagCount: allFlags.length,
       interviewQuestions,
-      metadata: {
-        username: corpus.github_username,
-        mode: corpus.collection_mode,
-        generatedAt: new Date().toISOString(),
-        schemaVersion: 'gitintel_v1.0',
-      },
+      moduleResults: moduleResults.map((r) => ({
+        module_id: r.module_id,
+        primitive_id: r.primitive_id,
+        confidence: r.confidence,
+        score_label: r.score_label,
+        evidence: r.evidence,
+        flags: r.flags.map((f) => ({
+          flag_id: f.flag_id,
+          flag_type: f.flag_type,
+          severity: f.severity,
+          module_id: f.module_id,
+          description: f.description,
+          escalate_to_hiring_manager: f.escalate_to_hiring_manager,
+          clear_without_interview: f.clear_without_interview,
+          interview_probe: f.interview_probe,
+        })),
+        interview_probe: r.interview_probe,
+        raw_signals_used: r.raw_signals_used,
+      })),
+      metadata,
+      totalDurationMs,
     };
 
     console.log(
       `[BriefAssembler] phase=assembly_complete jobId=${jobId} ` +
-      `markdownLength=${briefMarkdown.length} sections=7`,
+      `markdownLength=${fullMarkdown.length} sections=7 ` +
+      `primitives=${primitives.length} flags=${allFlags.length}`,
     );
 
-    return {
-      briefMarkdown,
-      briefJson,
-      primitiveScores,
-      redFlags,
-      interviewQuestions,
-    };
+    return output;
+  }
+
+  /**
+   * Build structured PrimitiveResult array from module results.
+   */
+  private buildPrimitiveResults(moduleResults: ModuleResult[]): PrimitiveResult[] {
+    const primitives = moduleResults.filter((r) => r.primitive_id?.startsWith('p'));
+    return primitives.map((p) => ({
+      primitive_id: p.primitive_id!,
+      module_id: p.module_id,
+      confidence: p.confidence,
+      score_label: p.score_label,
+      evidence_count: p.evidence.length,
+      interview_probe: p.interview_probe,
+    }));
   }
 
   /**

@@ -50,28 +50,7 @@ import { LLMIntegrationService } from '../llm/llm-integration.service';
 import { CvClaimExtractorService } from '../brief/cv-claim-extractor.service';
 import { AnalysisConfig } from '../modules/module.interface';
 import { SignalCorpus } from '../corpus/corpus.types';
-import { ModuleResult } from '../modules/module-result.types';
-
-export interface DispatcherResult {
-  jobId: string;
-  status: 'complete' | 'partial' | 'failed';
-  briefMarkdown: string;
-  briefJson: Record<string, string>;
-  moduleResults: ModuleResult[];
-  flags: Array<{
-    flag_id: string;
-    flag_type: 'SOFT' | 'HARD';
-    severity: 'INFO' | 'WARNING' | 'CRITICAL';
-    module_id: string;
-    description: string;
-    escalate_to_hiring_manager: boolean;
-    clear_without_interview: boolean;
-    interview_probe: string | null;
-  }>;
-  moduleCount: number;
-  flagCount: number;
-  totalDurationMs: number;
-}
+import { EvidenceBriefOutput } from '../llm/llm-response.types';
 
 @Injectable()
 export class JobDispatcherService {
@@ -92,13 +71,15 @@ export class JobDispatcherService {
    * 4. Run wave orchestration
    * 5. Generate LLM narrative + interview questions
    * 6. Assemble evidence brief
+   *
+   * Returns the canonical EvidenceBriefOutput.
    */
   async dispatchLightMode(
     octokit: Octokit,
     jobId: string,
     username: string,
     config: AnalysisConfig,
-  ): Promise<DispatcherResult> {
+  ): Promise<EvidenceBriefOutput> {
     const startTime = Date.now();
     console.log(
       `\n2.[JobDispatcher] phase=dispatch jobId=${jobId} mode=light ` +
@@ -111,89 +92,8 @@ export class JobDispatcherService {
       console.log(`\n3.[JobDispatcher] phase=corpus_acquisition jobId=${jobId} username=${username}`);
       const corpus = await this.acquireCorpus(octokit, username, jobId);
 
-      // ── Phase 2: Wave Orchestration ──
-      console.log(
-        `\n4[JobDispatcher] phase=wave_orchestration jobId=${jobId} ` +
-        `corpusId=${corpus.corpus_id} groups=${corpus.groups_present.join(',')}`,
-      );
-      const moduleResults = await this.waveOrchestrator.orchestrate(
-        corpus,
-        config,
-        jobId,
-        async (wave, state) => {
-          console.log(
-            `[JobDispatcher] phase=progress jobId=${jobId} wave=${wave} state=${state}`,
-          );
-        },
-      );
-
-      console.log(
-        `[JobDispatcher] phase=orchestration_done jobId=${jobId} ` +
-        `moduleCount=${moduleResults.length} ` +
-        `strong=${moduleResults.filter(r => r.confidence === 'strong').length} ` +
-        `moderate=${moduleResults.filter(r => r.confidence === 'moderate').length} ` +
-        `low=${moduleResults.filter(r => r.confidence === 'low').length} ` +
-        `obsGap=${moduleResults.filter(r => r.confidence === 'observability_gap').length}`,
-      );
-
-      // ── Phase 3: LLM Processing ──
-      console.log(`[JobDispatcher] phase=llm_batch jobId=${jobId}`);
-      const wave3Output = await this.llmService.wave3Batch(corpus, moduleResults);
-      console.log(
-        `[JobDispatcher] phase=llm_wave3_done jobId=${jobId} ` +
-        `aiClassification=${wave3Output.ai_leverage.classification}`,
-      );
-
-      const narrative = await this.llmService.generateNarrative(
-        moduleResults,
-        config,
-        corpus,
-      );
-      console.log(
-        `[JobDispatcher] phase=narrative_done jobId=${jobId} ` +
-        `sectionALength=${narrative.profile_summary.length}`,
-      );
-
-      const interviewQuestions = await this.llmService.generateInterviewQuestions(
-        moduleResults,
-        corpus,
-      );
-      console.log(
-        `[JobDispatcher] phase=interview_questions_done jobId=${jobId} ` +
-        `count=${interviewQuestions.length}`,
-      );
-
-      // ── Phase 4: Brief Assembly ──
-      console.log(`[JobDispatcher] phase=brief_assembly jobId=${jobId}`);
-      const brief = await this.briefAssembler.assemble(
-        moduleResults,
-        narrative,
-        interviewQuestions,
-        corpus,
-        config,
-        jobId,
-      );
-
-      const totalDurationMs = Date.now() - startTime;
-      console.log(
-        `[JobDispatcher] phase=complete jobId=${jobId} ` +
-        `totalDurationMs=${totalDurationMs} ` +
-        `briefMarkdownLength=${brief.briefMarkdown.length} ` +
-        `flags=${brief.redFlags.length} ` +
-        `modules=${moduleResults.length}`,
-      );
-
-      return {
-        jobId,
-        status: 'complete',
-        briefMarkdown: brief.briefMarkdown,
-        briefJson: brief.briefJson as unknown as Record<string, string>,
-        moduleResults,
-        flags: brief.redFlags,
-        moduleCount: moduleResults.length,
-        flagCount: brief.redFlags.length,
-        totalDurationMs,
-      };
+      // ── Phase 2–4: Run shared pipeline ──
+      return await this.runAnalysisPipeline(corpus, config, jobId, startTime);
     } catch (error) {
       const totalDurationMs = Date.now() - startTime;
       console.log(
@@ -255,12 +155,14 @@ export class JobDispatcherService {
    * Bypasses corpus acquisition entirely — the corpus is already fully
    * collected and enriched by DeepCollectorService. Routes directly to
    * wave orchestration, LLM processing, and brief assembly.
+   *
+   * Returns the canonical EvidenceBriefOutput.
    */
   async dispatchWithCorpus(
     corpus: SignalCorpus,
     config: AnalysisConfig,
     jobId: string,
-  ): Promise<DispatcherResult> {
+  ): Promise<EvidenceBriefOutput> {
     const startTime = Date.now();
     console.log(
       `\n2.[JobDispatcher] phase=dispatch_with_corpus jobId=${jobId} ` +
@@ -292,13 +194,15 @@ export class JobDispatcherService {
   /**
    * Shared analysis pipeline: wave orchestration → LLM → brief assembly.
    * Factored out to serve both dispatchLightMode and dispatchWithCorpus.
+   *
+   * Returns the canonical EvidenceBriefOutput directly.
    */
   private async runAnalysisPipeline(
     corpus: SignalCorpus,
     config: AnalysisConfig,
     jobId: string,
     startTime: number,
-  ): Promise<DispatcherResult> {
+  ): Promise<EvidenceBriefOutput> {
     // ── Wave Orchestration ──
     console.log(
       `\n4[JobDispatcher] phase=wave_orchestration jobId=${jobId} ` +
@@ -360,20 +264,15 @@ export class JobDispatcherService {
       corpus,
       config,
       jobId,
+      startTime,
     );
 
-    const totalDurationMs = Date.now() - startTime;
+    console.log(
+      `[JobDispatcher] phase=analysis_pipeline_complete jobId=${jobId} ` +
+      `totalDurationMs=${brief.totalDurationMs} flags=${brief.flags.length} ` +
+      `primitives=${brief.primitives.length}`,
+    );
 
-    return {
-      jobId,
-      status: 'complete',
-      briefMarkdown: brief.briefMarkdown,
-      briefJson: brief.briefJson as unknown as Record<string, string>,
-      moduleResults,
-      flags: brief.redFlags,
-      moduleCount: moduleResults.length,
-      flagCount: brief.redFlags.length,
-      totalDurationMs,
-    };
+    return brief;
   }
 }
