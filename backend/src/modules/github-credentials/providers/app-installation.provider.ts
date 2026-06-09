@@ -128,33 +128,45 @@ export class AppInstallationProvider implements IGitHubCredentialProvider {
    * For .env storage, base64 encoding is recommended to avoid newline escaping
    * issues:  cat key.pem | base64 -w0  →  paste into GITHUB_ANALYSIS_PRIVATE_KEY=
    */
-  private decodePrivateKey(encoded: string): string {
-    // Already a raw PEM key (stored with literal \n or actual newlines)
-    if (encoded.includes('-----BEGIN')) {
-      return encoded;
-    }
+  // private decodePrivateKey(encoded: string): string {
+  //   // Already a raw PEM key (stored with literal \n or actual newlines)
+  //   if (encoded.includes('-----BEGIN')) {
+  //     return encoded;
+  //   }
 
-    // Base64-encoded PEM
-    try {
-      const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
-      if (decoded.includes('-----BEGIN')) {
-        return decoded;
-      }
-      throw new Error('Decoded content is not a valid PEM key');
-    } catch (error) {
-      if ((error as Error).message.includes('Decoded content')) throw error;
+  //   // Base64-encoded PEM
+  //   try {
+  //     const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+  //     if (decoded.includes('-----BEGIN')) {
+  //       return decoded;
+  //     }
+  //     throw new Error('Decoded content is not a valid PEM key');
+  //   } catch (error) {
+  //     if ((error as Error).message.includes('Decoded content')) throw error;
 
-      this.logger.error(
-        'GITHUB_ANALYSIS_PRIVATE_KEY is not a valid base64-encoded PEM key. ' +
-          'Generate a real key from GitHub App settings and encode it with: cat key.pem | base64 -w0',
-      );
-      throw new Error(
-        'GITHUB_ANALYSIS_PRIVATE_KEY is not a valid base64-encoded PEM key. ' +
-          'Generate a key from GitHub App settings, then: cat key.pem | base64 -w0',
-      );
-    }
+  //     this.logger.error(
+  //       'GITHUB_ANALYSIS_PRIVATE_KEY is not a valid base64-encoded PEM key. ' +
+  //         'Generate a real key from GitHub App settings and encode it with: cat key.pem | base64 -w0',
+  //     );
+  //     throw new Error(
+  //       'GITHUB_ANALYSIS_PRIVATE_KEY is not a valid base64-encoded PEM key. ' +
+  //         'Generate a key from GitHub App settings, then: cat key.pem | base64 -w0',
+  //     );
+  //   }
+  // }
+private decodePrivateKey(encoded: string): string {
+  if (encoded.includes('-----BEGIN')) {
+    return encoded.replace(/\\n/g, '\n');
   }
 
+  const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+
+  if (!decoded.includes('-----BEGIN')) {
+    throw new Error('Decoded content is not a valid PEM key');
+  }
+
+  return decoded.replace(/\\n/g, '\n');
+}
   /**
    * Retrieve a required config value, throwing if missing.
    */

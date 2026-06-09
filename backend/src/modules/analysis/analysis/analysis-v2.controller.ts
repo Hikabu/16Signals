@@ -341,6 +341,12 @@ export class AnalysisV2Controller {
     }
 
     if (job.status === 'failed' && job.error) response.error = job.error;
+    console.log("brief: ", response?.result?.briefJson);
+    console.log("modules: ", response?.result?.moduleResults);
+    console.log("flags: ", response?.result?.flags);
+    console.log("result: ", response?.result);
+
+
     return response;
   }
 
