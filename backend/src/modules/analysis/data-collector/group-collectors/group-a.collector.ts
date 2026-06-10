@@ -30,7 +30,7 @@ export class GroupACollector {
     circuitBreaker: CircuitBreakerService,
   ): Promise<IdentitySignals> {
     console.log(
-      `	[$1_GroupCollector] phase=collect_start username=${username}`,
+      `	[A_GroupCollector] phase=collect_start username=${username}`,
     );
 
     // ── Fetch the user profile ──────────────────────────────────────────
@@ -152,7 +152,7 @@ export class GroupACollector {
       // orgsResponse.data.length === 100.
     } catch (error) {
       console.log(
-        `  [$1_GroupCollector] phase=orgs_error username=${username} ` +
+        `  [A_GroupCollector] phase=orgs_error username=${username} ` +
         `error=${(error as Error).message}`,
       );
       // Keep orgMemberships as [] on failure — org membership is a
@@ -164,7 +164,7 @@ export class GroupACollector {
     const hireableFlag: boolean | null = profile.hireable ?? null;
 
     console.log(
-      `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
+      `	[A_GroupCollector] phase=collect_complete username=${username} ` +
       `ageDays=${accountAgeDays} company=${profile.company ?? '(none)'} ` +
       `hireable=${profile.hireable} orgs=${orgMemberships.length} ` +
       `emailDomains=${commitEmailDomains.length} urls=${linkedUrls.length}`,

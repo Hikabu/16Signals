@@ -125,6 +125,50 @@ export class CorpusCacheService {
   }
 
   /**
+   * Store decision traces for a job (7-day TTL).
+   * Key format: traces:{jobId}
+   */
+  async setTraces(jobId: string, traces: Record<string, unknown>): Promise<void> {
+    const cacheKey = `traces:${jobId}`;
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(traces),
+      'EX',
+      this.TTL_SECONDS,
+    );
+    console.log(
+      `[CorpusCache] phase=traces_stored jobId=${jobId} modules=${Object.keys(traces).length}`,
+    );
+  }
+
+  /**
+   * Retrieve decision traces for a job.
+   * Returns null on cache miss.
+   */
+  async getTraces(jobId: string): Promise<Record<string, unknown> | null> {
+    const cacheKey = `traces:${jobId}`;
+    const raw = await this.redis.get(cacheKey);
+    if (raw) {
+      console.log(
+        `[CorpusCache] phase=traces_hit jobId=${jobId}`,
+      );
+      try {
+        return JSON.parse(raw);
+      } catch {
+        console.log(
+          `[CorpusCache] phase=traces_parse_error jobId=${jobId}`,
+        );
+        await this.redis.del(cacheKey);
+        return null;
+      }
+    }
+    console.log(
+      `[CorpusCache] phase=traces_miss jobId=${jobId}`,
+    );
+    return null;
+  }
+
+  /**
    * Delete a cached corpus (for cache invalidation).
    */
   async invalidate(username: string, mode: string): Promise<void> {

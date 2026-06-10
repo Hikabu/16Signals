@@ -21,6 +21,7 @@ import { OrchestrationModule } from '../orchestration/wave-orchestrator.module';
 import { LLMModule } from '../llm/llm.module';
 import { BriefModule } from '../brief/brief.module';
 import { ModulesModule } from '../modules/module.module';
+import { TraceModule } from '../trace/trace.module';
 import { GithubAdapterModule } from '../../scoring/github-adapter/github-adapter.module';
 import { GitHubCredentialsModule } from '../../github-credentials/github-credentials.module';
 
@@ -34,6 +35,10 @@ import { GitHubCredentialsModule } from '../../github-credentials/github-credent
     BriefModule,
     GithubAdapterModule,
     GitHubCredentialsModule,
+    TraceModule.forRoot({
+      verbosity: (process.env.TRACE_VERBOSITY as any) ?? 'summary',
+      isGlobal: true,
+    }),
   ],
   controllers: [AnalysisV2Controller],
 })

@@ -42,9 +42,9 @@ import {
   TraceRecorder,
   ModuleDecisionTrace,
   TraceVerbosity,
-  ModuleResult,
   BlockedBranch,
 } from './trace-recorder.interface';
+import { ModuleResult } from '../modules/module-result.types';
 
 class TraceContextHolder {
   private static als = new AsyncLocalStorage<TraceRecorder>();

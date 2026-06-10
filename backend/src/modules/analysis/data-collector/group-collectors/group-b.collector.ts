@@ -26,7 +26,7 @@ export class GroupBCollector {
     circuitBreaker: CircuitBreakerService,
   ): Promise<RepositorySignal[]> {
     console.log(
-      `	[$1_GroupCollector] phase=collect_start username=${username}`,
+      `	[B_GroupCollector] phase=collect_start username=${username}`,
     );
 
     const response = await octokit.rest.repos.listForUser({
@@ -111,7 +111,7 @@ export class GroupBCollector {
     );
 
     console.log(
-      `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
+      `	[B_GroupCollector] phase=collect_complete username=${username} ` +
       `repos=${enrichedRepos.length} readmesChecked=${enrichedRepos.filter((r) => r.has_readme).length}`,
     );
 

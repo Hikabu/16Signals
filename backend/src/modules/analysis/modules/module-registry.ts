@@ -249,10 +249,15 @@ export class ModuleRegistry {
       };
     }
 
-    // Execute
+    // Execute with tracing
     const startMs = Date.now();
     try {
+      TraceContext.startTrace(moduleId);
       const result = mod.run(corpus, config);
+      const trace = TraceContext.endTrace(result);
+      if (trace) {
+        this.decisionTraces.set(moduleId, trace);
+      }
       const durationMs = Date.now() - startMs;
 
       console.log(
@@ -298,5 +303,20 @@ export class ModuleRegistry {
         raw_signals_used: [],
       };
     }
+  }
+
+  /**
+   * Get all decision traces captured during this orchestration run.
+   * Traces are populated by executeModule() via TraceContext.
+   */
+  getDecisionTraces(): Map<string, ModuleDecisionTrace> {
+    return this.decisionTraces;
+  }
+
+  /**
+   * Clear all decision traces (called after persisting to cache).
+   */
+  clearTraces(): void {
+    this.decisionTraces.clear();
   }
 }

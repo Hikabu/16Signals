@@ -48,6 +48,7 @@ import { WaveOrchestratorService } from './wave-orchestrator.service';
 import { BriefAssemblerService } from '../brief/brief-assembler.service';
 import { LLMIntegrationService } from '../llm/llm-integration.service';
 import { CvClaimExtractorService } from '../brief/cv-claim-extractor.service';
+import { ModuleRegistry } from '../modules/module-registry';
 import { AnalysisConfig } from '../modules/module.interface';
 import { SignalCorpus } from '../corpus/corpus.types';
 import { EvidenceBriefOutput } from '../llm/llm-response.types';
@@ -61,6 +62,7 @@ export class JobDispatcherService {
     private readonly briefAssembler: BriefAssemblerService,
     private readonly llmService: LLMIntegrationService,
     private readonly cvExtractor: CvClaimExtractorService,
+    private readonly moduleRegistry: ModuleRegistry,
   ) {}
 
   /**
@@ -205,7 +207,7 @@ export class JobDispatcherService {
   ): Promise<EvidenceBriefOutput> {
     // ── Wave Orchestration ──
     console.log(
-      `\n4[JobDispatcher] phase=wave_orchestration jobId=${jobId} ` +
+      `\n4 [JobDispatcher] phase=wave_orchestration jobId=${jobId} ` +
       `corpusId=${corpus.corpus_id} groups=${corpus.groups_present.join(',')}`,
     );
     const moduleResults = await this.waveOrchestrator.orchestrate(
@@ -227,6 +229,20 @@ export class JobDispatcherService {
       `low=${moduleResults.filter(r => r.confidence === 'low').length} ` +
       `obsGap=${moduleResults.filter(r => r.confidence === 'observability_gap').length}`,
     );
+
+    // ── Persist decision traces ──
+    const traces = this.moduleRegistry.getDecisionTraces();
+    if (traces.size > 0) {
+      const tracesObj: Record<string, unknown> = {};
+      for (const [moduleId, trace] of traces) {
+        tracesObj[moduleId] = trace;
+      }
+      await this.corpusCache.setTraces(jobId, tracesObj);
+      this.moduleRegistry.clearTraces();
+      console.log(
+        `[JobDispatcher] phase=traces_persisted jobId=${jobId} modules=${Object.keys(tracesObj).length}`,
+      );
+    }
 
     // ── LLM Processing ──
     console.log(`[JobDispatcher] phase=llm_batch jobId=${jobId}`);

@@ -54,7 +54,7 @@ export class AnalysisConfigDto {
 export class CreateLightAnalysisDto {
   @ApiProperty({
     description: 'GitHub username to analyze',
-    example: 'torvalds',
+    example: 'arturo-clavero',
   })
   @IsString()
   @MinLength(1)
@@ -74,7 +74,7 @@ export class CreateLightAnalysisDto {
 export class CreateCvVerifyDto {
   @ApiProperty({
     description: 'GitHub username to analyze',
-    example: 'torvalds',
+    example: 'arturo-clavero',
   })
   @IsString()
   @MinLength(1)
@@ -103,7 +103,7 @@ export class CreateCvVerifyDto {
 export class CreateDeepAnalysisDto {
   @ApiProperty({
     description: 'GitHub username to analyze',
-    example: 'torvalds',
+    example: 'arturo-clavero',
   })
   @IsString()
   @MinLength(1)
@@ -158,7 +158,7 @@ export class AnalysisResultDto {
 
   @ApiProperty({
     description: 'Full Evidence Brief in Markdown format (includes raw debug appendix)',
-    example: '# Evidence Brief: @torvalds\n\n## A. Profile in 90 Seconds\n...',
+    example: '# Evidence Brief: @arturo-clavero\n\n## A. Profile in 90 Seconds\n...',
   })
   briefMarkdown: string;
 

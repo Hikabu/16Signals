@@ -16,6 +16,7 @@ import { Injectable } from '@nestjs/common';
 import { AnalysisModule, AnalysisConfig } from '../module.interface';
 import { ModuleResult, Evidence, Flag } from '../module-result.types';
 import { SignalCorpus, CommitSignals, EngineeringPracticeSignals } from '../../corpus/corpus.types';
+import { TraceContext } from '../../trace/trace-context-holder';
 
 @Injectable()
 export class P1ExecutionReliabilityModule implements AnalysisModule {
@@ -48,6 +49,11 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
     const cadenceMet = activeMonths >= 9 && !hasGaps;
     if (cadenceMet) primarySignalsMet++;
 
+    TraceContext.captureThreshold(
+      'cadenceMet', activeMonths, 9, '>=', cadenceMet,
+      [['commit_signals.commit_frequency_by_month', cs.commit_frequency_by_month]],
+    );
+
     evidence.push({
       signal: 'Commit cadence consistency',
       corpus_field: 'commit_signals.commit_frequency_by_month',
@@ -70,6 +76,11 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
       cs.median_commit_size_lines <= 400 &&
       cs.sub_5_line_commit_ratio < 0.30;
     if (sizeMet) primarySignalsMet++;
+
+    TraceContext.captureThreshold(
+      'sizeDiscipline', cs.median_commit_size_lines, [20, 400], 'between', sizeMet,
+      [['commit_signals.median_commit_size_lines', cs.median_commit_size_lines]],
+    );
 
     evidence.push({
       signal: 'Commit size discipline',
@@ -96,6 +107,11 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
     const allAbove80 = quarters.every(([, rate]) => rate >= 0.8);
     const ciMet = quartersCount >= 2 && allAbove80;
     if (ciMet) primarySignalsMet++;
+
+    TraceContext.captureThreshold(
+      'ciPassRate', quartersCount, 2, '>=', ciMet,
+      [['engineering_practice_signals.ci_pass_rate_trajectory', ep.ci_pass_rate_trajectory]],
+    );
 
     evidence.push({
       signal: 'CI pass rate trajectory',
@@ -143,6 +159,19 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
 
     // ── Confidence determination ──
     const confidence = this.determineConfidence(adjustedPrimaryMet, cs, config);
+
+    // Trace the confidence branch decision
+    const traceBlocked: Array<{ branch: string; blockedBy: string }> = [];
+    if (confidence === 'moderate' || confidence === 'low') {
+      traceBlocked.push({ branch: 'strong', blockedBy: `primarySignalsMet=${adjustedPrimaryMet} < 3` });
+    }
+    if (confidence === 'low') {
+      traceBlocked.push({ branch: 'moderate', blockedBy: `primarySignalsMet=${adjustedPrimaryMet} < 2` });
+    }
+    TraceContext.captureBranch('confidence_determination', confidence,
+      { primarySignalsMet: adjustedPrimaryMet, activeMonths, isJunior, totalCommits: cs.total_commits_lifetime },
+      traceBlocked,
+    );
 
     // ── Interview probe ──
     const interviewProbe =

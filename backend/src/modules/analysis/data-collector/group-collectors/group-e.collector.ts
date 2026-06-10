@@ -36,7 +36,7 @@ export class GroupECollector {
     circuitBreaker: CircuitBreakerService,
   ): Promise<EngineeringPracticeSignals> {
     console.log(
-      `	[$1_GroupCollector] phase=collect_start username=${username}`,
+      `	[E_GroupCollector] phase=collect_start username=${username}`,
     );
 
     const targetRepos = repos
@@ -162,7 +162,7 @@ export class GroupECollector {
     );
 
     console.log(
-      `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
+      `	[E_GroupCollector] phase=collect_complete username=${username} ` +
       `tests=${reposWithTestDir} ci=${reposWithCi} docker=${reposWithDocker} ` +
       `iac=${reposWithIac} lint=${reposWithLinting}`,
     );

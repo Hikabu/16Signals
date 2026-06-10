@@ -26,7 +26,7 @@ export class GroupFCollector {
     stackoverflowUserId?: number,
   ): Promise<ImpactSignals> {
     console.log(
-      `	[$1_GroupCollector] phase=collect_start username=${username}`,
+      `	[F_GroupCollector] phase=collect_start username=${username}`,
     );
 
     // External PR contributions — search for PRs by user in repos they don't own
@@ -42,7 +42,7 @@ export class GroupFCollector {
       externalContributionCount = (extPrResponse.data as any).total_count ?? 0;
     } catch {
       console.log(
-        `	[$1_GroupCollector] phase=external_prs_skipped username=${username}`,
+        `	[F_GroupCollector] phase=external_prs_skipped username=${username}`,
       );
     }
 
@@ -78,7 +78,7 @@ export class GroupFCollector {
       ).length;
     } catch {
       console.log(
-        `	[$1_GroupCollector] phase=graphql_skipped username=${username}`,
+        `	[F_GroupCollector] phase=graphql_skipped username=${username}`,
       );
     }
 
@@ -151,12 +151,12 @@ export class GroupFCollector {
       }
     } catch {
       console.log(
-        `	[$1_GroupCollector] phase=stackoverflow_skipped username=${username}`,
+        `	[F_GroupCollector] phase=stackoverflow_skipped username=${username}`,
       );
     }
 
     console.log(
-      `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
+      `	[F_GroupCollector] phase=collect_complete username=${username} ` +
       `externalPRs=${externalContributionCount} activeWeeks=${activeWeeksLast12m} ` +
       `npmPackages=${npmPackages.length} ` +
       `soRep=${stackoverflowRep} soTags=${stackoverflowTopTags.length}`,

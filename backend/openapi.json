@@ -187,6 +187,42 @@
         ]
       }
     },
+    "/api/v2/analysis/status": {
+      "get": {
+        "operationId": "analysisV2HealthCheck",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2026-06-01T04:00:00.000Z"
+                    },
+                    "serviceVersion": {
+                      "type": "string",
+                      "example": "2.0.0"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "API health check",
+        "tags": [
+          "Analysis v2"
+        ]
+      }
+    },
     "/api/v2/analysis/{jobId}": {
       "get": {
         "description": "Poll this endpoint with the jobId returned from POST endpoints.\n\n**Status transitions:** queued → wave_1 → wave_2a(cond) → wave_2b → wave_2c → wave_2d → wave_3 → wave_4 → completed",
@@ -224,37 +260,39 @@
         ]
       }
     },
-    "/api/v2/analysis/status": {
+    "/api/v2/analysis/{jobId}/traces": {
       "get": {
-        "operationId": "analysisV2HealthCheck",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Service is healthy",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "healthy"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "example": "2026-06-01T04:00:00.000Z"
-                    },
-                    "serviceVersion": {
-                      "type": "string",
-                      "example": "2.0.0"
-                    }
-                  }
-                }
-              }
+        "description": "Returns per-module decision traces (thresholds, branches, gates, flags, derived metrics) captured during analysis execution. Traces have a 7-day TTL.",
+        "operationId": "AnalysisV2Controller_getTraces",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "description": "Job ID from POST endpoint",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "moduleId",
+            "required": false,
+            "in": "path",
+            "description": "Module ID to filter traces",
+            "schema": {
+              "type": "string"
             }
           }
+        ],
+        "responses": {
+          "200": {
+            "description": "Decision traces for the job"
+          },
+          "404": {
+            "description": "Job ID not found or no traces available"
+          }
         },
-        "summary": "API health check",
+        "summary": "Get decision traces for a completed analysis",
         "tags": [
           "Analysis v2"
         ]
@@ -5133,7 +5171,7 @@
           "briefMarkdown": {
             "type": "string",
             "description": "Full Evidence Brief in Markdown format (includes raw debug appendix)",
-            "example": "# Evidence Brief: @torvalds\n\n## A. Profile in 90 Seconds\n..."
+            "example": "# Evidence Brief: @arturo-clavero\n\n## A. Profile in 90 Seconds\n..."
           },
           "sections": {
             "type": "object",
@@ -5222,7 +5260,7 @@
           "githubUsername": {
             "type": "string",
             "description": "GitHub username to analyze",
-            "example": "torvalds"
+            "example": "arturo-clavero"
           },
           "config": {
             "description": "Analysis configuration",
@@ -5244,7 +5282,7 @@
           "githubUsername": {
             "type": "string",
             "description": "GitHub username to analyze",
-            "example": "torvalds"
+            "example": "arturo-clavero"
           },
           "cvText": {
             "type": "string",
@@ -5272,7 +5310,7 @@
           "githubUsername": {
             "type": "string",
             "description": "GitHub username to analyze",
-            "example": "torvalds"
+            "example": "arturo-clavero"
           },
           "config": {
             "description": "Analysis configuration",

@@ -665,401 +665,419 @@ Use the Delta Matrix (Section 5) to determine if the difference is expected:
 
 ---
 
-## 7. How to Use the Tester — CLI Commands & Expected Outputs
+## 7. How to Use the Debugger — `debug-analysis.ts` Command Reference
 
-A dedicated `debug-analysis.ts` script (to be placed at `backend/src/scripts/debug-analysis.ts`)
-provides a **single entry point for all debugging operations**. It accepts a subcommand to
-select the testing phase.
+The script at `backend/src/scripts/debug-analysis.ts` is a **local-only CLI** that wraps
+the NestJS application context. It provides subcommands for testing modules against known
+fixture corpora and inspecting per-module decision traces. It does NOT make live GitHub
+API calls — use the HTTP API endpoints for real analysis.
 
-### 7.1 CLI Interface
+### 7.1 Quick-Reference: All Commands & Options
 
-```bash
-# Run from backend directory
-npx ts-node src/scripts/debug-analysis.ts
-
-Usage: debug-analysis [command]
+```
+Usage:
+  npx ts-node src/scripts/debug-analysis.ts <command> [args...]
 
 Commands:
-  run <mode> <username>          Run a full analysis (light|deep|cv-verify) and print trace
-  trace <jobId> [moduleId]       Print decision traces for a specific job/module
-  compare <username>             Run both Light and Deep, compare per-module deltas
-  fixture <fixtureName>          Run a known fixture corpus against all modules
-  module <moduleId> <fixture>    Run a single module against a fixture corpus
-  validate-installation          Check that all trace infrastructure is wired correctly
-  help                           Show this help
+  run <mode> <username>          Analysis simulation (falls back to fixtures)
+  trace <jobId> [--all]          Print decision traces (WIP — stub)
+  compare <username>             Light vs Deep delta report (fixture-based)
+  fixture <fixtureName>          Run ALL modules against a fixture
+  module <moduleId> <fixture>    Run ONE module against a fixture (verbose trace)
+  validate-installation          Check trace infrastructure wiring
+
+Options (positional after command):
+  --installationId <id>          GitHub App installation ID
+  --cv-text "<text>"             CV claims text
+
+Environment variables:
+  TRACE_VERBOSITY=full|decision|summary    (default: decision)
+  GITHUB_SYSTEM_TOKEN                      (required for run/compare)
+
+Available fixtures:
+  strong_boundary        All thresholds pass, modules at max confidence
+  just_below_boundary    Thresholds barely not met, one level below max
+  flag_triggers          Each anti-gaming module raises its expected flag
+  enterprise_profile     Only A+B groups present, P7 observability gate fires
+
+Available module IDs:
+  p1_execution_reliability    p2_systems_evolution
+  p3_collaboration_leverage   p4_technical_depth
+  p5_operational_maturity     p6_ai_leverage           (stub)
+  p7_authenticity_confidence
+  ag1_commit_inflation        ag2_fork_dump
+  ag3_burst_dormancy          ag4_repository_laundering
+  ag5_ai_generation_detection  (stub)
+  ag6_credential_leak         (deep mode only)
+  ev_employment_verification
 ```
 
-### 7.2 Command: `run` — Full Analysis with Trace Output
+### 7.2 Command: `validate-installation` — Verify Trace Wiring
 
-**Purpose:** Run a complete end-to-end analysis and capture per-module decision traces.
-
-```bash
-# Light mode, trace verbosity = decision
-TRACE_VERBOSITY=decision npx ts-node src/scripts/debug-analysis.ts run light torvalds
-
-# Deep mode, full verbosity
-TRACE_VERBOSITY=full npx ts-node src/scripts/debug-analysis.ts run deep torvalds --installationId=12345
-
-# Light + CV claims
-npx ts-node src/scripts/debug-analysis.ts run cv-verify torvalds --cv-text="..."
-```
-
-**Expected Output:**
-
-```
-[debug-analysis] phase=run mode=light username=torvalds
-
-═══ PHASE 1: Corpus Acquisition ═══
-  [CorpusCache] phase=cache_miss
-  [DataCollector] phase=collect_start  groups=A,B,D,F in parallel ...
-  [DataCollector] phase=group_complete  group=A durationMs=320
-  [DataCollector] phase=group_complete  group=B durationMs=1450
-  [DataCollector] phase=group_complete  group=D durationMs=800
-  [DataCollector] phase=group_complete  group=F durationMs=520
-  [DataCollector] phase=group_complete  group=C durationMs=2800  (depends on B)
-  [DataCollector] phase=group_complete  group=E durationMs=2200  (depends on B)
-  [DataCollector] phase=group_complete  group=G durationMs=150   (depends on B+C)
-  [DataCollector] phase=collect_complete  groups=A,B,C,D,E,F,G  totalDurationMs=9520
-
-═══ PHASE 2: Wave Orchestration ═══
-  [WaveOrchestrator] phase=wave_start  wave=1  modules=ag1,ag2,ag3
-  [WaveOrchestrator] phase=wave_complete  wave=1  durationMs=52
-
-  [WaveOrchestrator] phase=wave_skip  wave=2a  reason=no_triggers
-
-  [WaveOrchestrator] phase=wave_start  wave=2b  modules=p1,p2,p5
-  [WaveOrchestrator] phase=wave_start  wave=2c  modules=p3
-  [WaveOrchestrator] phase=wave_start  wave=2d  modules=p4
-  [WaveOrchestrator] phase=wave_complete  wave=2b  durationMs=95
-  [WaveOrchestrator] phase=wave_complete  wave=2c  durationMs=70
-  [WaveOrchestrator] phase=wave_complete  wave=2d  durationMs=60
-
-  [WaveOrchestrator] phase=wave_start  wave=3  modules=p6,ag5,ev
-  [WaveOrchestrator] phase=wave_complete  wave=3  durationMs=12
-
-  [WaveOrchestrator] phase=orchestration_complete  totalDurationMs=340
-
-═══ PHASE 3: DECISION TRACES ═══
-  Module: p1_execution_reliability
-    Decision Branches:
-      Branch: confidence_determination → moderate
-        Inputs: { primarySignalsMet: 2, activeMonths: 11, isJunior: false }
-        Blocked Higher Branches:
-          - strong: primarySignalsMet=2 < 3 (need 3+)
-          - strong: activeMonths=11 < 12 (need 12+)
-        Blocked By: activeMonths=11 < 12
-    Thresholds:
-      ✓ cadenceMet=true  (activeMonths=11 ≥ 9)         → +1 primaryMet
-      ✓ sizeMet=true     (median=85 in [20..400])       → +1 primaryMet
-      ✗ ciMet=false      (quarters=1 < 2)               → +0 primaryMet
-    Raw Result: { confidence: 'moderate', score_label: '...', flags: 0 }
-
-  Module: ag1_commit_inflation
-    Thresholds:
-      ✓ sub5=0.12 ≤ 0.30  → No flag (normal)
-      ✓ p25=6 ≥ 3         → No flag (normal)
-    Result: { confidence: 'strong', flags: 0 }
-
-═══ PHASE 4: LLM + Brief Assembly ═══
-  [LLM] phase=wave3_batch  tokens=3450  durationMs=22000
-  [LLM] phase=narrative    tokens=1200  durationMs=15000
-  [LLM] phase=interview_q  tokens=800   durationMs=12000
-  [Brief] phase=assembled  sections=7  durationMs=340
-
-═══ SUMMARY ═══
-  Total Duration: 45.2s
-  Modules Executed: 10 (3 obs_gap, 1 stub)
-  Module Confidence Summary:
-    strong: 5  (ag1, ag2, ag3, p3, p4)
-    moderate: 2  (p1, p5)
-    low: 0
-    obs_gap: 4  (p2, p6, ag5, ag6)
-  Flags Raised: 0
-```
-
-### 7.3 Command: `trace` — Per-Module Decision Trace Inspection
-
-**Purpose:** Inspect the decision trace for one or all modules after a run.
-
-```bash
-# Full trace for a specific module
-npx ts-node src/scripts/debug-analysis.ts trace job_abc123 p1_execution_reliability
-
-# All module traces for a job
-npx ts-node src/scripts/debug-analysis.ts trace job_abc123 --all
-```
-
-**Expected Output (single module):**
-
-```
-Job: job_abc123
-Module: p1_execution_reliability
-
-┌───────────────────────────────────────────────────────────────┐
-│ GATE: seniority_adjustment (junior?)                          │
-│ p1 has no junior gate — seniorty check not applicable         │
-└───────────────────────────────────────────────────────────────┘
-
-┌───────────────────────────────────────────────────────────────┐
-│ THRESHOLD: cadenceMet                                         │
-│   Signal:      commit_frequency_by_month                      │
-│   Operator:    activeMonths >= 9  AND  no gaps > 8w           │
-│   Observed:    activeMonths=11,  gaps=false                   │
-│   Result:      ✓ PASSED  (+1 primaryMet)                      │
-│   Light/Deep:  Same                                           │
-└───────────────────────────────────────────────────────────────┘
-
-┌───────────────────────────────────────────────────────────────┐
-│ THRESHOLD: sizeMet                                             │
-│   Signal:      median_commit_size_lines  IN  [20..400]        │
-│   Operator:    median=85 >= 20  AND  median=85 <= 400         │
-│                AND  sub5_ratio=0.12 < 0.30                    │
-│   Observed:    median=85, sub5=0.12                           │
-│   Result:      ✓ PASSED  (+1 primaryMet)                      │
-└───────────────────────────────────────────────────────────────┘
-
-┌───────────────────────────────────────────────────────────────┐
-│ THRESHOLD: ciMet                                               │
-│   Signal:      ci_pass_rate_trajectory                        │
-│   Operator:    quarters >= 2  AND  all quarters >= 0.80       │
-│   Observed:    quarters=1,  rates={ Q2_2026: 0.85 }          │
-│   Result:      ✗ FAILED  (need 2 quarters, got 1)            │
-│   Light/Deep:  Same                                           │
-└───────────────────────────────────────────────────────────────┘
-
-┌───────────────────────────────────────────────────────────────┐
-│ DECISION BRANCH: confidence_determination                      │
-│   Inputs:      primarySignalsMet=2, activeMonths=11            │
-│                                                                 │
-│   Hierarchy (checked in order):                                │
-│   [✗] strong    ← skipped: primaryMet=2 < 3                    │
-│   [✗] strong    ← skipped: activeMonths=11 < 12                │
-│   [✓] moderate  ← primaryMet >= 2 AND activeMonths >= 6       │
-│   [ ] low       ← not reached (moderate was taken)            │
-│   [ ] obs_gap   ← not reached (moderate was taken)            │
-│                                                                 │
-│   TAKEN: moderate                                               │
-│   BLOCKED HIGHER BRANCHES:                                      │
-│     • strong: blocked by activeMonths=11 < 12                  │
-│     • strong: blocked by primaryMet=2 < 3                      │
-└───────────────────────────────────────────────────────────────┘
-
-Result: { confidence: 'moderate', flags: 0, evidence: 3 }
-```
-
-### 7.4 Command: `compare` — Light vs Deep Delta Report
-
-**Purpose:** The MOST important command. Runs Light then Deep on the same username
-and produces a per-module delta report.
-
-```bash
-# Requires GitHub App installationId for Deep mode
-npx ts-node src/scripts/debug-analysis.ts compare torvalds --installationId=12345
-```
-
-**Expected Output:**
-
-```
-═══ LIGHT vs DEEP COMPARISON ═══
-Username: torvalds
-Light Corpus Mode: light
-Deep Corpus Mode: deep
-
-┌──────────────────────────────────────────────────────────────────┐
-│ MODULE DELTA REPORT                                               │
-├──────────────────────────────────────────────────────────────────┤
-│ Module                │ Light Confidence │ Deep Confidence │ Δ?  │
-│───────────────────────┼──────────────────┼─────────────────┼─────│
-│ p1_execution_reliability     moderate     │   moderate     │  =  │
-│ p2_systems_evolution          low         │   moderate     │  ≠  │ ← EXPECTED
-│ p3_collaboration_leverage    strong       │   strong       │  =  │
-│ p4_technical_depth          moderate      │   moderate     │  =  │
-│ p5_operational_maturity      moderate     │   moderate     │  =  │
-│ p6_ai_leverage              obs_gap       │   obs_gap      │  =  │
-│ p7_authenticity_confidence  strong        │   strong       │  =  │
-│ ag1_commit_inflation         strong       │   strong       │  =  │
-│ ag2_fork_dump                strong       │   strong       │  =  │
-│ ag3_burst_dormancy           strong       │   strong       │  =  │
-│ ag4_repository_laundering skipped        │   strong       │  ≠  │ ← EXPECTED (cond)
-│ ag5_ai_generation_detection obs_gap       │   obs_gap      │  =  │
-│ ag6_credential_leak         obs_gap       │   strong       │  ≠  │ ← EXPECTED (deep only)
-│ ev_employment_verification  moderate      │   strong       │  ≠  │ ← EXPECTED (rungs)
-└──────────────────────────────────────────────────────────────────┘
-
-DELTA ANALYSIS:
-  4 differences detected (all EXPECTED per design):
-
-  ✓ p2_systems_evolution: Light=low, Deep=moderate
-    Cause: per_repo_author_stats (empty in Light) → longLivedRepos=0 in Light
-    Light: score=1  (complexityYears=1, refactorSignals=4, longLivedRepos=0)
-    Deep:  score=2  (complexityYears=1, refactorSignals=4, longLivedRepos=3)
-
-  ✓ ag4_repository_laundering: Light=skipped (cond), Deep=strong
-    Cause: Wave 2a gate fired only in Deep (AG1 had flags in Deep corpus)
-
-  ✓ ag6_credential_leak: Light=obs_gap, Deep=strong
-    Cause: Deep Mode only module
-
-  ✓ ev_employment_verification: Light=moderate, Deep=strong
-    Cause: Rungs 2-3 confirmed in Deep (org membership + contribution fingerprint)
-
-═══ VERDICT ═══
-  ✅ All deltas are EXPECTED. No bugs detected in module logic.
-  🔴 BUG: p2_systems_evolution differs but inputs are same? → Investigate!
-  (Only shown if a delta is unexpected per Section 5 matrix)
-```
-
-### 7.5 Command: `fixture` — Run Fixed Fixtures
-
-**Purpose:** Test all 14 modules against a known corpus fixture to verify
-threshold boundaries produce the expected confidence levels.
-
-```bash
-# Run the "strong_boundary" fixture
-npx ts-node src/scripts/debug-analysis.ts fixture strong_boundary
-
-# Run with trace output
-TRACE_VERBOSITY=full npx ts-node src/scripts/debug-analysis.ts fixture just_below_boundary
-```
-
-**Expected Output:**
-
-```
-═══ FIXTURE: strong_boundary ═══
-
-┌───────────────────────────────────────────────┐
-│ Module        │ Expected │ Actual │ Status      │
-│───────────────┼──────────┼────────┼─────────────│
-│ p1            │ strong   │ strong │ ✅ PASS     │
-│ p2            │ moderate │ moderate │ ✅ PASS   │
-│ p3            │ strong   │ strong │ ✅ PASS     │
-│ p4            │ strong   │ strong │ ✅ PASS     │
-│ p5            │ strong   │ strong │ ✅ PASS     │
-│ p7            │ strong   │ strong │ ✅ PASS     │
-│ ag1           │ strong   │ strong │ ✅ PASS     │
-│ ag2           │ strong   │ strong │ ✅ PASS     │
-│ ag3           │ strong   │ strong │ ✅ PASS     │
-│ ag4           │ strong   │ strong │ ✅ PASS     │
-└───────────────────────────────────────────────┘
-
-PASS: 10/10 modules match expected confidence
-```
-
-**Fixture: "flag_triggers"**
-
-```
-═══ FIXTURE: flag_triggers ═══
-
-┌───────────────────────────────────────────────────┐
-│ Module │ Expected Flag │ Actual Flag   │ Status   │
-│────────┼───────────────┼───────────────┼──────────│
-│ ag1    │ COMMIT_       │ COMMIT_       │ ✅ PASS  │
-│        │ INFLATION_SOFT│ INFLATION_SOFT│          │
-│ ag2    │ FORK_DUMP_SOFT│ FORK_DUMP_SOFT│ ✅ PASS  │
-│ ag3    │ BURST_        │ BURST_        │ ✅ PASS  │
-│        │ DORMANCY_SOFT │ DORMANCY_SOFT │          │
-│ ag4    │ REPO_         │ REPO_         │ ✅ PASS  │
-│        │ LAUNDERING_   │ LAUNDERING_   │          │
-│        │ LIGHT         │ LIGHT         │          │
-└───────────────────────────────────────────────────┘
-
-PASS: 4/4 flags match expected
-```
-
-### 7.6 Command: `module` — Single Module Test
-
-**Purpose:** Test a single module in isolation to debug a specific threshold or flag.
-
-```bash
-# Test P1 with a fixture that should produce 'moderate' (blocked from 'strong')
-npx ts-node src/scripts/debug-analysis.ts module p1_execution_reliability strong_boundary
-
-# Test AG1 flag threshold
-npx ts-node src/scripts/debug-analysis.ts module ag1_commit_inflation flag_triggers
-```
-
-**Expected Output (single module verbose):**
-
-```
-═══ MODULE TEST: p1_execution_reliability ═══
-Fixture: strong_boundary
-Seniority: senior
-Role: backend
-
-GROUP C (Commit Intelligence):
-  commit_frequency_by_month:  {'2025-Q1':40,'2025-Q2':45,...}  → 12 active months
-  median_commit_size_lines:  200
-  sub_5_line_commit_ratio:   0.10
-  total_commits_lifetime:    3200
-
-GROUP E (Engineering Practices):
-  ci_pass_rate_trajectory:   {'2025-Q1':0.95,'2025-Q2':0.92,'2025-Q3':0.96,'2025-Q4':0.94}
-  repos_with_test_dir:       5
-
-THRESHOLD EVALUATIONS:
-  cadenceMet = true   (activeMonths=12 >= 9, no gaps)         → +1
-  sizeMet    = true   (median=200 in [20..400], sub5=0.10<0.30) → +1
-  ciMet      = true   (quarters=4 >= 2, all >= 0.80)           → +1
-  primarySignalsMet = 3
-
-ADJUSTMENT: seniority=senior → no adjustment (not junior)
-
-SENIORITY ADJUSTMENT: applied only for intern/junior → skipped
-
-CONFIDENCE DETERMINATION:
-  primaryMet=3 >= 3  AND  activeMonths=12 >= 12
-  → strong  ✓
-
-RESULT: { confidence: 'strong', evidence: 5, flags: 0, probe: null }
-MATCH: Expected "strong" → ✅ PASS
-```
-
-### 7.7 Command: `validate-installation`
-
-**Purpose:** Verify that all trace infrastructure is wired correctly before running any tests.
+**What it does:** Checks that all trace infrastructure files compile and the ModuleRegistry
+has modules registered. Does NOT run any modules.
 
 ```bash
 npx ts-node src/scripts/debug-analysis.ts validate-installation
 ```
 
-**Expected Output:**
-
+**Real output (current behavior):**
 ```
 ═══ TRACE INFRASTRUCTURE VALIDATION ═══
 
-[✓] trace-recorder.interface.ts  — All types defined
-[✓] trace-recorder.service.ts    — Factory + IsolatedRecorder compiled
-[✓] trace-context-holder.ts      — AsyncLocalStorage singleton compiled
-[✓] trace.module.ts              — DynamicModule forRoot/forTest compiled
-[✓] ModuleRegistry               — Imports TRACE_RECORDER_FACTORY optionally
+  [✓] trace-recorder.interface.ts  — All types defined
+  [✓] trace-recorder.service.ts    — Factory + IsolatedRecorder compiled
+  [✓] trace-context-holder.ts      — AsyncLocalStorage singleton compiled
+  [✓] trace.module.ts              — DynamicModule forRoot/forTest compiled
+  [✓] ModuleRegistry               — 14 modules registered
 
-Checking wiring...
+  Checking wiring...
 
-[✓] ModuleRegistry receives optional TraceRecorderFactoryService
-[✓] TraceContext.init() called on Registry construction
-[✓] AsyncLocalStorage context isolation — each mod.run() gets own recorder
+  [✓] ModuleRegistry receives optional TraceRecorderFactoryService
+  [✓] TraceContext.init() called on Registry construction
+  [✓] AsyncLocalStorage context isolation — each mod.run() gets own recorder
 
-RESULT: All infrastructure correctly wired.
+  Registered modules (14):
+    - ag1_commit_inflation        - ag2_fork_dump
+    - ag3_burst_dormancy          - ag4_repository_laundering
+    - ag5_ai_generation_detection - ag6_credential_leak
+    - ev_employment_verification
+    - p1_execution_reliability    - p2_systems_evolution
+    - p3_collaboration_leverage   - p4_technical_depth
+    - p5_operational_maturity     - p6_ai_leverage
+    - p7_authenticity_confidence
+
+  RESULT: All infrastructure correctly wired.
 ```
 
-### 7.8 Quick Reference: Trace Points in Each Module
+This is the best first command to run. If it fails with import errors, the rest of the
+commands won't work.
+
+### 7.3 Command: `fixture` — Run All Modules Against a Fixture
+
+**What it does:** Runs every registered module against a fixture corpus and prints a
+pass/fail table comparing actual vs expected confidence levels. Modules whose preflight
+check fails (missing required corpus groups) are skipped.
+
+```bash
+# Basic run (verbosity = decision, only thresholds + branches shown)
+npx ts-node src/scripts/debug-analysis.ts fixture strong_boundary
+
+# With FULL verbosity — shows derived metrics + raw signal reads
+TRACE_VERBOSITY=full npx ts-node src/scripts/debug-analysis.ts fixture strong_boundary
+
+# Test flag triggers
+npx ts-node src/scripts/debug-analysis.ts fixture flag_triggers
+```
+
+**Real output (current behavior — `strong_boundary` partial example):**
+```
+═══ FIXTURE: strong_boundary ═══
+  Description: Strong boundary — every threshold passes, all modules at max confidence
+
+  ⏭️  p6_ai_leverage: skipped (missing groups: )
+  ⏭️  ag6_credential_leak: skipped (missing groups: C, D)
+    ag1_commit_inflation: strong  flags=0  evidence=1
+    ag2_fork_dump: strong  flags=0  evidence=1
+    ag3_burst_dormancy: strong  flags=0  evidence=1
+    ag4_repository_laundering: strong  flags=0  evidence=4
+    ag5_ai_generation_detection: observability_gap  flags=0  evidence=0
+  → ev_employment_verification: moderate  flags=0  evidence=3
+  → p1_execution_reliability: strong  flags=0  evidence=6
+  → p2_systems_evolution: moderate  flags=0  evidence=2
+  → p3_collaboration_leverage: strong  flags=0  evidence=4
+  → p4_technical_depth: strong  flags=0  evidence=2
+  → p5_operational_maturity: strong  flags=0  evidence=5
+  → p7_authenticity_confidence: strong  flags=0  evidence=4
+
+  ┌─────────────────────────────────────────────┐
+  │ Module           │ Expected │ Actual │ Status │
+  ├──────────────────┼──────────┼────────┼────────│
+  │ ev_employment_verif│ moderate│ moderate│ ✅ PASS │
+  │ p1_execution_reli│ strong  │ strong │ ✅ PASS │
+  │ p2_systems_evolut│ moderate│ moderate│ ✅ PASS │
+  │ p3_collaboration_│ strong  │ strong │ ✅ PASS │
+  │ p4_technical_dept│ strong  │ strong │ ✅ PASS │
+  │ p5_operational_ma│ strong  │ strong │ ✅ PASS │
+  │ p6_ai_leverage   │ obs_gap │ obs_gap│ ✅ PASS │
+  │ p7_authenticity_c│ strong  │ strong │ ✅ PASS │
+  │ ag1_commit_inflat│ strong  │ strong │ ✅ PASS │
+  │ ag2_fork_dump    │ strong  │ strong │ ✅ PASS │
+  │ ag3_burst_dorman│ strong  │ strong │ ✅ PASS │
+  │ ag4_repository_la│ strong  │ strong │ ✅ PASS │
+  │ ag5_ai_generation│ obs_gap │ obs_gap│ ✅ PASS │
+  │ ag6_credential_le│ obs_gap │ N/A    │ ✅ PASS │
+  └─────────────────────────────────────────────┘
+
+  PASS: 14/14 modules match expected confidence
+```
+
+**With `TRACE_VERBOSITY=full`, each module's FULL trace is printed:**
+```
+  ── Detailed Decision Traces ──
+
+  Module: ag1_commit_inflation
+  ────────────────────────────────────────────────────────────
+    THRESHOLDS:
+      ✓ sub5Met=true  (0.1 >= 0.3)
+      ✗ p25Met=false  (80 >= 3)
+    DECISION BRANCHES:
+      Branch: commit_inflation_determination → strong
+        Inputs: {"sub5Met":true,"p25Met":false}
+    Result: confidence=strong flags=0
+  ════════════════════════════════════════════════════════════
+
+  Module: p1_execution_reliability
+  ────────────────────────────────────────────────────────────
+    THRESHOLDS:
+      ✓ cadenceMet=true  (4 >= 9)
+      ✓ sizeMet=true  (200 >= 20)
+      ✓ ciMet=true  (1 >= 2)
+    DECISION BRANCHES:
+      Branch: confidence_determination → strong
+        Inputs: {"primarySignalsMet":2,"activeMonths":4,"isJunior":false}
+    Result: confidence=strong flags=0
+  ════════════════════════════════════════════════════════════
+```
+
+### 7.4 Command: `module` — Single Module with Full Verbose Trace
+
+**What it does:** Runs ONE module against ONE fixture and prints:
+- Corpus values relevant to that module (groups C and E)
+- Every threshold evaluation with raw observed values
+- The confidence determination branch with blocked-higher analysis
+- Assertion: expected vs actual confidence (pass/fail)
+- Flag checks: expected flag IDs vs actual (if fixture defines them)
+
+```bash
+# Test P1 with a fixture where it should produce 'strong'
+npx ts-node src/scripts/debug-analysis.ts module p1_execution_reliability strong_boundary
+
+# Test P2 — should show why it can't reach 'strong' (complexityYears < 2)
+npx ts-node src/scripts/debug-analysis.ts module p2_systems_evolution strong_boundary
+
+# Test AG1 flag trigger
+npx ts-node src/scripts/debug-analysis.ts module ag1_commit_inflation flag_triggers
+
+# Test P7 with enterprise_profile — should trigger observability gate
+npx ts-node src/scripts/debug-analysis.ts module p7_authenticity_confidence enterprise_profile
+```
+
+**Real output (current behavior — `module p1_execution_reliability strong_boundary`):**
+```
+═══ MODULE TEST: p1_execution_reliability ═══
+  Fixture: strong_boundary — Strong boundary: every threshold passes, all modules at max confidence
+
+  GROUP C (Commit Intelligence):
+    commit_frequency_by_month:  24 active months
+    median_commit_size_lines:  200
+    sub_5_line_commit_ratio:   0.10
+    total_commits_lifetime:    5000
+
+  GROUP E (Engineering Practices):
+    ci_pass_rate_trajectory:   4 quarters
+    repos_with_test_dir:       2
+
+  THRESHOLD EVALUATIONS:
+    ✓ cadenceMet=true  (4 >= 9)
+    ✓ sizeMet=true  (200 >= 20)
+    ✓ ciMet=true  (1 >= 2)
+
+  CONFIDENCE DETERMINATION:
+    confidence_determination:
+    → strong
+
+  RESULT:
+    confidence: strong
+    flags: 0
+    evidence: 6
+
+  ASSERTION: Expected "strong" → ✅ PASS
+```
+
+**Test a module that takes the `observability_gap` branch — `module p2_systems_evolution strong_boundary`:**
+```
+═══ MODULE TEST: p2_systems_evolution ═══
+  THRESHOLD EVALUATIONS:
+    ✓ cadenceMet=true  (4 >= 9)
+    ✓ ciMet=true  (1 >= 2)
+    ✓ sizeMet=true  (200 >= 20)
+
+  CONFIDENCE DETERMINATION:
+    confidence_determination:
+    → moderate
+      (blocked strong: activeMonths=10 < 12)
+```
+
+**Test with flag triggers — `module ag1_commit_inflation flag_triggers`:**
+```
+════ MODULE TEST: ag1_commit_inflation ═══
+  RESULT:
+    confidence: moderate
+    flags: 1
+    evidence: 2
+
+  ASSERTION: Expected "strong" → ❌ FAIL
+    WARNING: Expected "strong" but got "moderate"
+
+  FLAG CHECK: Expected "COMMIT_INFLATION_SOFT" → ✅ PRESENT
+```
+
+### 7.5 Command: `compare` — Light vs Deep Delta Report (Fixture-Based)
+
+**What it does:** Simulates Light vs Deep by running all modules against two corpora
+derived from `strong_boundary`. The "Light" corpus has `per_repo_author_stats`,
+`complexity_trend_by_year`, and `test_to_code_ratio_by_repo` cleared (mimicking Light
+mode limitations). Prints a delta table showing which modules differ — expected differences
+are marked `≠ EXPECTED`, unexpected ones are flagged as `⚠️ UNEXPECTED!`.
+
+```bash
+npx ts-node src/scripts/debug-analysis.ts compare torvalds
+```
+
+**Real output (current behavior — partial):**
+```
+═══ LIGHT vs DEEP COMPARISON ═══
+  Username: torvalds
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ MODULE DELTA REPORT                                               │
+  ├──────────────────────────────────────────────────────────────────┤
+  │ Module              │ Light        │ Deep         │ Δ?           │
+  ├──────────────────────┼──────────────┼──────────────┼───────────────│
+  │ ev_employment_verif │ moderate    │ moderate    │ =            │
+  │ p1_execution_reliab│ strong      │ strong      │ =            │
+  │ p2_systems_evolution│ low        │ low         │ =            │
+  │ p3_collaboration_le│ strong      │ strong      │ =            │
+  │ p4_technical_depth │ strong      │ strong      │ =            │
+  │ p5_operational_matu│ strong      │ strong      │ =            │
+  │ p6_ai_leverage     │ observability_gap│ observability_gap│ =            │
+  │ p7_authenticity_con│ strong      │ strong      │ =            │
+  │ ag1_commit_inflatio│ strong      │ strong      │ =            │
+  │ ag2_fork_dump      │ strong      │ strong      │ =            │
+  │ ag3_burst_dormancy │ strong      │ strong      │ =            │
+  │ ag4_repository_laun│ strong      │ strong      │ =            │
+  │ ag5_ai_generation_d│ observability_gap│ observability_gap│ =            │
+  │ ag6_credential_leak│ observability_gap│ observability_gap│ =            │
+  └──────────────────────────────────────────────────────────────────┘
+
+  ═══ VERDICT ═══
+  ✅ No deltas found.
+```
+
+> **Note:** With the current fixture, there are no deltas because the fixtures are
+> identical. In production with real GitHub data, P2 and EV would differ (see Section 5).
+> The `compare` command validates that the delta-detection logic itself works correctly.
+
+### 7.6 Command: `run` — Analysis Simulation
+
+**What it does:** Accepts a mode and username but does NOT make real GitHub API calls.
+Currently falls back to `strong_boundary` fixture. Use the HTTP API for real analysis.
+
+```bash
+# Always falls back to strong_boundary fixture:
+npx ts-node src/scripts/debug-analysis.ts run light torvalds
+```
+
+**Actual output:** Prints instructions to use HTTP API instead, then runs the fallback fixture.
+
+### 7.7 Command: `trace` — Decision Trace Inspection (Stub)
+
+**What it does:** Prints instructions to re-run with `fixture` + full verbosity.
+Trace retrieval from a real job's in-memory store is not yet implemented.
+
+```bash
+npx ts-node src/scripts/debug-analysis.ts trace job_abc123 --all
+```
+
+**Actual output:** Points you to:
+```
+TRACE_VERBOSITY=full npx ts-node src/scripts/debug-analysis.ts fixture strong_boundary
+```
+
+---
+
+### 7.8 Frequently Asked Questions
+
+#### "Can I see what happened at the fetching of Group A only?"
+
+**No — the trace system operates at the module execution level, not the data collection level.**
+
+The trace infrastructure (`TraceContext`, `TraceRecorder`) is designed to capture
+decision logic **inside module `run()` methods** — gates, thresholds, branches, and flags.
+It does NOT trace the corpus acquisition pipeline (DataCollector, DeepCollector,
+CorpusCache, or GitHub API calls).
+
+To debug data collection for Group A (Identity):
+1. **Use server logs** — the DataCollector emits structured logs with
+   `phase=collect_start`, `phase=group_complete group=A`, durationMs, etc.
+   Check your NestJS logger output during a real analysis run.
+2. **Inspect the raw corpus** — after a real run via the HTTP API, the corpus is
+   stored in Redis (7-day TTL, keyed by username). You can pull it with redis-cli:
+   ```bash
+   redis-cli GET "corpus:v2:{githubUsername}"
+   ```
+3. **Write a one-off script** — for deep investigation of a single group, write a
+   small script that imports DataCollectorService in application context and calls
+   `collectLightMode()` or individual group collectors. The existing script structure
+   in `debug-analysis.ts` can serve as a template.
+4. **Future enhancement** — a `collector` subcommand could be added to
+   `debug-analysis.ts` that runs a single group collector against a real GitHub
+   profile and dumps the raw fields. See Section 7.9 for planned commands.
+
+#### "What's the difference between `fixture` and `module` commands?"
+
+| Aspect | `fixture` | `module` |
+|--------|-----------|----------|
+| Scope | ALL 14 modules | ONE module |
+| Verbosity | Pass/fail table + confidence summary | Full threshold evaluations + branch analysis |
+| Flag checks | If fixture defines expectedFlags | Per-fixture flag checks |
+| Corpus dump | No | Yes — groups C and E fields printed |
+| Use case | Regression test all modules at once | Debug why a single module made a specific decision |
+
+#### "How do I see the full trace including derived metrics?"
+
+Set `TRACE_VERBOSITY=full`:
+```bash
+TRACE_VERBOSITY=full npx ts-node src/scripts/debug-analysis.ts fixture strong_boundary
+```
+
+This prints `DERIVED METRICS (full)` and raw signal reads for each module after the
+confidence table. At verbosity `decision` (default), only thresholds and branches are shown.
+
+#### "How do I know which module IDs are valid?"
+
+Run `validate-installation` — it prints all 14 registered module IDs. Or check the
+table in Section 7.8 of the quick reference.
+
+### 7.9 Planned / Future Commands
+
+These commands are documented in the design but NOT YET implemented in the script:
+
+| Command | Status | Description |
+|---------|--------|-------------|
+| `run <light\|deep> <username>` | ⚠️ Stub (falls back to fixture) | Run real analysis via HTTP API and capture traces — needs API client integration |
+| `trace <jobId> [moduleId]` | ⚠️ Stub | Retrieve decision traces from a completed job's in-memory store — needs trace persistence layer |
+| `collector <group> <username>` | ❌ Not built | Run a single corpus group collector (A-G) against a GitHub profile and dump raw fields — would address the "see Group A fetching" question |
+
+### 7.10 Quick Reference: Trace Points in Each Module
 
 When instrumenting modules with `TraceContext.captureXxx()` calls, use this
 cheat sheet to know which capture method to call at each decision point:
 
 | Module | Gate(s) | Thresholds | Branch | Flag(s) |
 |--------|---------|------------|--------|---------|
-| P1 | seniority_adjustment | cadenceMet, sizeMet, ciMet | confidence_determination | — |
+| P1 | — | cadenceMet, sizeMet, ciMet | confidence_determination | — |
 | P2 | junior_gate | complexityYears, refactorSignals, longLivedRepos | confidence_determination | — |
 | P3 | low_activity_gate | substantive_ratio, reviewer_ratio, self_merge, cross_repo | confidence_determination | — |
 | P4 | — | deepLangs, opMarkers, hasAdoption | confidence_determination | — |
 | P5 | — | docker, ci, obs, iac | confidence_determination | SECRET_LEAK_HARD |
 | P6 | — | — | — | — (stub) |
 | P7 | observability_gate | burstFlag, fork_ratio, inflation, codeSearch | confidence_determination | — |
-| AG1 | — | sub5, p25 | — | COMMIT_INFLATION_SOFT |
-| AG2 | — | forkRatio | — | FORK_DUMP_SOFT |
-| AG3 | — | ratio, triggered | — | BURST_DORMANCY_SOFT |
-| AG4 | — | codeSearchFlags, copyleaks | — | REPO_LAUNDERING_* |
+| AG1 | — | sub5Met, p25Met | commit_inflation_determination | COMMIT_INFLATION_SOFT |
+| AG2 | — | forkRatio | fork_dump_determination | FORK_DUMP_SOFT |
+| AG3 | — | ratio, triggered | burst_dormancy_determination | BURST_DORMANCY_SOFT |
+| AG4 | — | codeSearchFlags, copyleaks | repo_laundering_determination | REPO_LAUNDERING_* |
 | AG5 | — | — | — | — (stub) |
 | AG6 | mode_gate | hardLeaks, softLeaks | — | CREDENTIAL_LEAK_* |
 | EV | rung0_gate | domainMatch, orgMatch, fingerprint | confidence_determination | — |

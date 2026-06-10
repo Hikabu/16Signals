@@ -83,8 +83,11 @@ export class DataCollectorService {
     const groupB = phase1Results.find((r) => r.group === 'B');
     const groupD = phase1Results.find((r) => r.group === 'D');
     const groupF = phase1Results.find((r) => r.group === 'F');
-    console.log("3.3.1[DataCollector] phase 1 results: ", phase1Results);
-
+    console.log("3.3.1[DataCollector] phase 1 results: ");
+console.dir(phase1Results, {
+  depth: null,
+  colors: true,
+});
     const repos = groupB?.data ?? [];
     const errors: string[] = [];
     const collectedGroups: CorpusGroup[] = [];
@@ -116,6 +119,12 @@ export class DataCollectorService {
       { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
     ]);
 
+        console.log("3.3.2[DataCollector] phase 2 results: ");
+console.dir(phase2Results, {
+  depth: null,
+  colors: true,
+});
+
     for (const result of phase2Results) {
       if (!result.error && result.data !== null) {
         collectedGroups.push(result.group);
@@ -130,6 +139,11 @@ export class DataCollectorService {
     console.log("\n3.3.3[DataCollector] phase 3: Group G (computational, depends on B + C)");
     if (!this.circuitBreaker.shouldAbort() && commitSignals) {
       const antiGamingData = this.groupG.collectLight(commitSignals, repos);
+          console.log("3.3.3[DataCollector] phase 3 results: (group G | anti-gaming signals) ");
+console.dir(antiGamingData, {
+  depth: null,
+  colors: true,
+});
       phase2Results.push({
         group: 'G',
         data: antiGamingData,
@@ -144,8 +158,8 @@ export class DataCollectorService {
     // Build corpus
     const corpus = this.corpusBuilder.build(username, 'light', allResults);
     console.log(
-      `3.3.4.[DataCollector] phase=corpus_built jobId=${jobId} ` +
-      `groups=${corpus.groups_present.join(',')} ` +
+      `\n3.3.4.[DataCollector] phase=corpus_built jobId=${jobId} \n` +
+      `groups=${corpus.groups_present.join(',')}` +
       `identity={ageDays=${corpus.identity.account_age_days} ` +
       `orgs=${corpus.identity.github_org_memberships.length} ` +
       `emailDomains=${corpus.identity.commit_email_domains.length} ` +

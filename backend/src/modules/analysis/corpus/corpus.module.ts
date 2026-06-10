@@ -5,9 +5,11 @@
  */
 
 import { Module } from '@nestjs/common';
+import { RedisModule } from '../../../redis/redis.module';
 import { CorpusCacheService } from './corpus-cache.service';
 
 @Module({
+  imports: [RedisModule],
   providers: [CorpusCacheService],
   exports: [CorpusCacheService],
 })

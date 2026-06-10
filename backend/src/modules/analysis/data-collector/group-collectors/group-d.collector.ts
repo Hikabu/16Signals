@@ -25,7 +25,7 @@ export class GroupDCollector {
     circuitBreaker: CircuitBreakerService,
   ): Promise<CollaborationSignals> {
     console.log(
-      `	[$1_GroupCollector] phase=collect_start username=${username}`,
+      `	[D_GroupCollector] phase=collect_start username=${username}`,
     );
 
     const prAuthors = new Set<string>();
@@ -97,7 +97,7 @@ export class GroupDCollector {
     } catch (err: any) {
       // Search API can be rate-limited; degrade gracefully
       console.log(
-        `	[$1_GroupCollector] phase=search_error username=${username} error=${err.message}`,
+        `	[D_GroupCollector] phase=search_error username=${username} error=${err.message}`,
       );
     }
 
@@ -193,7 +193,7 @@ export class GroupDCollector {
     const selfMergeRate = totalMerges > 0 ? selfMerges / totalMerges : 0;
 
     console.log(
-      `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
+      `	[D_GroupCollector] phase=collect_complete username=${username} ` +
       `prAuthors=${prAuthors.size} reviewers=${prReviewers.size} ` +
       `prs=${totalPrDescriptions} selfMergeRate=${selfMergeRate.toFixed(2)}`,
     );
