@@ -74,9 +74,9 @@ export class DataCollectorService {
     console.log("3.3.1[DataCollector] phase 1: Independent groups (A, B, D, F)");
     const phase1Results = await this.safeCollectParallel([
       { group: 'A' as CorpusGroup, collector: () => this.groupA.collect(octokit, username, this.circuitBreaker) },
-      // { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
-      // { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
-      // { group: 'F' as CorpusGroup, collector: () => this.groupF.collect(octokit, username, [], this.circuitBreaker) },
+      { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
+      { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
+      { group: 'F' as CorpusGroup, collector: () => this.groupF.collect(octokit, username, [], this.circuitBreaker) },
     ]);
 
     const groupA = phase1Results.find((r) => r.group === 'A');
@@ -112,8 +112,8 @@ export class DataCollectorService {
     // ── Phase 2: Groups dependent on B (C, E) ──
     console.log("\n3.3.2[DataCollector] phase 2: Groups dependent on B (C, E)");
     const phase2Results = await this.safeCollectParallel([
-      // { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
-      // { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
+      { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
+      { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
     ]);
 
     for (const result of phase2Results) {
@@ -127,15 +127,15 @@ export class DataCollectorService {
     const commitSignals = phase2Results.find((r) => r.group === 'C')?.data;
 
     // ── Phase 3: Group G (computational, depends on B + C) ──
-      console.log("\n3.3.3[DataCollector] phase 3: Group G (computational, depends on B + C)");
-    if (!this.circuitBreaker.shouldAbort()) {
-      // const antiGamingData = this.groupG.collectLight(commitSignals, repos);
-      // phase2Results.push({
-      //   group: 'G',
-      //   data: antiGamingData,
-      //   error: null,
-      // });
-      // collectedGroups.push('G');
+    console.log("\n3.3.3[DataCollector] phase 3: Group G (computational, depends on B + C)");
+    if (!this.circuitBreaker.shouldAbort() && commitSignals) {
+      const antiGamingData = this.groupG.collectLight(commitSignals, repos);
+      phase2Results.push({
+        group: 'G',
+        data: antiGamingData,
+        error: null,
+      });
+      collectedGroups.push('G');
     }
 
     // Combine all results

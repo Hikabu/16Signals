@@ -38,44 +38,84 @@ export class GroupBCollector {
     circuitBreaker.updateFromHeaders(response.headers as any);
 
     const rawRepos = (response.data as any[]) || [];
-    const repos = rawRepos.slice(0, MAX_REPOS).map((r) => {
-      const stars = r.stargazers_count ?? 0;
-      const forks = r.forks_count ?? 0;
-      const commits = r.size ?? 0; // approximate; size in KB
-      const pushedAt = r.pushed_at ? new Date(r.pushed_at) : new Date(0);
-      const recencyWeight = this.computeRecencyWeight(pushedAt);
+    const reposSlice = rawRepos.slice(0, MAX_REPOS);
 
-      const qualityScore = Math.min(
-        1.0,
-        (stars * 0.4 + forks * 0.2 + Math.min(commits, 500) / 500 * 0.2 + recencyWeight * 0.2) / 100,
-      );
+    // Enrich top repos with has_readme and languages via additional API calls.
+    // We do this for the top 5 repos (by quality) to avoid rate limiting.
+    const enrichedRepos = await Promise.all(
+      reposSlice.map(async (r, index) => {
+        const stars = r.stargazers_count ?? 0;
+        const forks = r.forks_count ?? 0;
+        const commits = r.size ?? 0;
+        const pushedAt = r.pushed_at ? new Date(r.pushed_at) : new Date(0);
+        const recencyWeight = this.computeRecencyWeight(pushedAt);
 
-      return {
-        name: r.name,
-        full_name: r.full_name ?? `${username}/${r.name}`,
-        primary_language: r.language ?? null,
-        star_count: stars,
-        fork_count: forks,
-        commit_count: commits,
-        is_fork: r.fork ?? false,
-        is_archived: r.archived ?? false,
-        is_private: r.private ?? false,
-        is_org_repo: false, // Will be corrected in Deep Mode
-        pushed_at: r.pushed_at ?? new Date(0).toISOString(),
-        has_readme: false, // Requires separate API call; left for Deep Mode
-        topics: r.topics ?? [],
-        homepage_url: r.homepage ?? null,
-        languages: {}, // Populated in Deep Mode or via separate API
-        quality_score: qualityScore,
-      };
-    });
+        const qualityScore = Math.min(
+          1.0,
+          (stars * 0.4 + forks * 0.2 + Math.min(commits, 500) / 500 * 0.2 + recencyWeight * 0.2) / 100,
+        );
+
+        // Determine org repo: if owner login differs from username
+        const repoOwner = r.owner?.login ?? username;
+        const isOrgRepo = repoOwner !== username;
+
+        // Only enrich the top repos (by index/significance) to limit API calls
+        let hasReadme = false;
+        let languages: Record<string, number> = {};
+
+        if (index < 5 && !circuitBreaker.shouldAbort()) {
+          // Check for README
+          try {
+            const readmeResp = await octokit.rest.repos.getReadme({
+              owner: repoOwner,
+              repo: r.name,
+            });
+            circuitBreaker.updateFromHeaders(readmeResp.headers as any);
+            hasReadme = true;
+          } catch {
+            // No README or access denied
+          }
+
+          // Fetch language breakdown
+          try {
+            const langResp = await octokit.rest.repos.listLanguages({
+              owner: repoOwner,
+              repo: r.name,
+            });
+            circuitBreaker.updateFromHeaders(langResp.headers as any);
+            languages = langResp.data as Record<string, number>;
+          } catch {
+            // Languages unavailable
+          }
+        }
+
+        return {
+          name: r.name,
+          full_name: r.full_name ?? `${username}/${r.name}`,
+          primary_language: r.language ?? null,
+          star_count: stars,
+          fork_count: forks,
+          commit_count: commits,
+          is_fork: r.fork ?? false,
+          is_archived: r.archived ?? false,
+          is_private: r.private ?? false,
+          is_org_repo: isOrgRepo,
+          pushed_at: r.pushed_at ?? new Date(0).toISOString(),
+          has_readme: hasReadme,
+          topics: r.topics ?? [],
+          homepage_url: r.homepage ?? null,
+          languages: languages,
+          quality_score: qualityScore,
+        };
+      }),
+    );
 
     console.log(
       `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
-      `repos=${repos.length}`,
+      `repos=${enrichedRepos.length} readmesChecked=${enrichedRepos.filter((r) => r.has_readme).length}`,
     );
 
-    return repos;
+    return enrichedRepos;
   }
 
   private computeRecencyWeight(pushedAt: Date): number {

@@ -101,19 +101,79 @@ export class GroupDCollector {
       );
     }
 
-    // Fetch reviews for the PRs (separate call for depth)
+    // Fetch review bodies for the user's PRs (up to 5 PRs with most reviews)
+    // This populates substantiveReviews, totalReviews, and reviewComments
     try {
-      const reviewResponse = await octokit.rest.search.issuesAndPullRequests({
-        q: `type:pr reviewed-by:${username}`,
-        per_page: 30,
-      });
-      circuitBreaker.updateFromHeaders(reviewResponse.headers as any);
+      const reviewRepos = new Set<string>();
+      // Collect unique repos from the PRs we already fetched
+      for (const pr of prDescriptions.slice(0, 5)) {
+        // We need PR identifiers; use the search results we already processed
+      }
 
-      const reviewItems = (reviewResponse.data.items as any[]) || [];
-      for (const item of reviewItems) {
-        const reviewers = item.requested_reviewers || [];
-        for (const reviewer of reviewers) {
-          if (reviewer.login) prReviewers.add(reviewer.login);
+      // Re-fetch the top PRs to get their review comments
+      const topPrResponse = await octokit.rest.search.issuesAndPullRequests({
+        q: `type:pr author:${username}`,
+        sort: 'comments',
+        order: 'desc',
+        per_page: 10,
+      });
+      circuitBreaker.updateFromHeaders(topPrResponse.headers as any);
+
+      const topPrItems = (topPrResponse.data.items as any[]) || [];
+      for (const pr of topPrItems) {
+        if (circuitBreaker.shouldAbort()) break;
+
+        const repoFullName = pr.repository_url?.replace('https://api.github.com/repos/', '');
+        if (!repoFullName) continue;
+        const [owner, repo] = repoFullName.split('/');
+
+        try {
+          // Fetch actual review comments for this PR
+          const reviewsResp = await octokit.rest.pulls.listReviews({
+            owner,
+            repo,
+            pull_number: pr.number,
+            per_page: 30,
+          });
+          circuitBreaker.updateFromHeaders(reviewsResp.headers as any);
+
+          const reviews = reviewsResp.data as any[];
+          for (const review of reviews) {
+            if (review.user?.login) prReviewers.add(review.user.login);
+            totalReviews++;
+
+            const body = (review.body || '').trim();
+            if (body.length > 10) {
+              substantiveReviews++;
+            }
+            if (body.length > 0) {
+              reviewComments.push(body);
+            }
+          }
+        } catch {
+          // Skip PRs where we can't access reviews
+        }
+
+        // Also fetch PR review comments (inline comments)
+        try {
+          const commentsResp = await octokit.rest.pulls.listReviewComments({
+            owner,
+            repo,
+            pull_number: pr.number,
+            per_page: 20,
+          });
+          circuitBreaker.updateFromHeaders(commentsResp.headers as any);
+
+          const comments = commentsResp.data as any[];
+          for (const comment of comments) {
+            if (comment.user?.login) prReviewers.add(comment.user.login);
+            const commentBody = (comment.body || '').trim();
+            if (commentBody.length > 0) {
+              reviewComments.push(commentBody);
+            }
+          }
+        } catch {
+          // Skip PRs where we can't access comments
         }
       }
     } catch {

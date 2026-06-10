@@ -13,11 +13,14 @@
  * Reference: DEEPSEEK_V4_REFACTOR_PLAN.md Stage 2
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { AnalysisModule, AnalysisConfig } from './module.interface';
 import { ModuleResult } from './module-result.types';
 import { SignalCorpus, CorpusGroup } from '../corpus/corpus.types';
 import { P1ExecutionReliabilityModule } from './primitives/p1-execution-reliability.module';
+import { TRACE_RECORDER_FACTORY, TraceRecorderFactory, ModuleDecisionTrace, TraceVerbosity } from '../trace/trace-recorder.interface';
+import { TraceRecorderFactoryService } from '../trace/trace-recorder.service';
+import { TraceContext } from '../trace/trace-context-holder';
 import { P2SystemsEvolutionModule } from './primitives/p2-systems-evolution.module';
 import { P3CollaborationLeverageModule } from './primitives/p3-collaboration-leverage.module';
 import { P4TechnicalDepthModule } from './primitives/p4-technical-depth.module';
@@ -36,6 +39,11 @@ import { EVEmploymentVerificationModule } from './employment/ev-employment-verif
 export class ModuleRegistry {
   private readonly logger = new Logger(ModuleRegistry.name);
   private modules: Map<string, AnalysisModule> = new Map();
+  private decisionTraces: Map<string, ModuleDecisionTrace> = new Map();
+  private readonly traceFactory: TraceRecorderFactory | null;
+  private traceVerbosity: 'summary' | 'decision' | 'full' = 'decision';
+  private tracingEnabled = false;
+  private jobId = '';
 
   /**
    * Wave → Module ID mapping as defined in spec Section 1.6.
@@ -73,7 +81,19 @@ export class ModuleRegistry {
     ag6: AG6CredentialLeakModule,
     // Employment verification
     ev: EVEmploymentVerificationModule,
+    // Trace factory (optional — production default)
+    @Optional() @Inject(TRACE_RECORDER_FACTORY)
+    traceFactory?: TraceRecorderFactoryService,
   ) {
+    // Initialize TraceContext with the optional factory
+    TraceContext.init(traceFactory ?? null);
+    
+    if (traceFactory) {
+      this.tracingEnabled = true;
+      console.log(
+        `[ModuleRegistry] phase=trace_enabled verbosity=${this.traceVerbosity}`,
+      );
+    }
     const allModules: AnalysisModule[] = [
       p1, p2, p3, p4, p5, p6, p7,
       ag1, ag2, ag3, ag4, ag5, ag6,

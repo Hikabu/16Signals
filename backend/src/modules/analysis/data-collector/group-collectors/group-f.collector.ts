@@ -5,6 +5,7 @@
  *          StackOverflow reputation.
  *
  * API calls: GitHub search (external PRs) + package registry lookups
+ *            + StackExchange API (optional)
  * Output: ImpactSignals
  *
  * Reference: corpus.types.ts Group F
@@ -22,6 +23,7 @@ export class GroupFCollector {
     username: string,
     repos: any[],
     circuitBreaker: CircuitBreakerService,
+    stackoverflowUserId?: number,
   ): Promise<ImpactSignals> {
     console.log(
       `	[$1_GroupCollector] phase=collect_start username=${username}`,
@@ -104,10 +106,60 @@ export class GroupFCollector {
       }
     }
 
+    // ── StackOverflow profile lookup ──
+    // Uses the StackExchange API 2.3 (no key required for basic queries, throttled).
+    // If stackoverflowUserId is provided, fetch by ID; otherwise try display name.
+    let stackoverflowRep = 0;
+    let stackoverflowAcceptRate: number | null = null;
+    const stackoverflowTopTags: string[] = [];
+
+    try {
+      const soSearchUrl = stackoverflowUserId
+        ? `https://api.stackexchange.com/2.3/users/${stackoverflowUserId}?order=desc&sort=reputation&site=stackoverflow`
+        : `https://api.stackexchange.com/2.3/users?order=desc&sort=reputation&inname=${encodeURIComponent(username)}&site=stackoverflow`;
+
+      const soResp = await fetch(soSearchUrl, {
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (soResp.ok) {
+        const soData: any = await soResp.json();
+        const users = soData.items || [];
+        if (users.length > 0) {
+          const topUser = users[0];
+          stackoverflowRep = topUser.reputation ?? 0;
+          stackoverflowAcceptRate = topUser.accept_rate ?? null;
+
+          // Fetch top tags for the user
+          if (topUser.user_id) {
+            try {
+              const tagsResp = await fetch(
+                `https://api.stackexchange.com/2.3/users/${topUser.user_id}/tags?order=desc&sort=popular&site=stackoverflow`,
+                { signal: AbortSignal.timeout(5000) },
+              );
+              if (tagsResp.ok) {
+                const tagsData: any = await tagsResp.json();
+                stackoverflowTopTags.push(
+                  ...(tagsData.items || []).slice(0, 10).map((t: any) => t.name),
+                );
+              }
+            } catch {
+              // Tags fetch is best-effort
+            }
+          }
+        }
+      }
+    } catch {
+      console.log(
+        `	[$1_GroupCollector] phase=stackoverflow_skipped username=${username}`,
+      );
+    }
+
     console.log(
       `	[$1_GroupCollector] phase=collect_complete username=${username} ` +
       `externalPRs=${externalContributionCount} activeWeeks=${activeWeeksLast12m} ` +
-      `npmPackages=${npmPackages.length}`,
+      `npmPackages=${npmPackages.length} ` +
+      `soRep=${stackoverflowRep} soTags=${stackoverflowTopTags.length}`,
     );
 
     return {
@@ -116,9 +168,9 @@ export class GroupFCollector {
       npm_packages: npmPackages,
       pypi_packages: pypiPackages,
       cargo_packages: cargoPackages,
-      stackoverflow_reputation: 0, // Requires StackExchange API
-      stackoverflow_accepted_answer_rate: null,
-      stackoverflow_top_tags: [],
+      stackoverflow_reputation: stackoverflowRep,
+      stackoverflow_accepted_answer_rate: stackoverflowAcceptRate,
+      stackoverflow_top_tags: stackoverflowTopTags,
     };
   }
 }
