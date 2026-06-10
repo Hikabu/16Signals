@@ -68,7 +68,7 @@ export interface RepositorySignal {
   primary_language: string | null;
   star_count: number;
   fork_count: number;
-  commit_count: number;
+  size_kb: number;
   is_fork: boolean;
   is_archived: boolean;
   is_private: boolean;

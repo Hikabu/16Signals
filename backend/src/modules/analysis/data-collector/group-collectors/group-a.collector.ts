@@ -56,7 +56,7 @@ export class GroupACollector {
     }
 
     // ── bio ─────────────────────────────────────────────────────────────
-    let bio: string | null = profile.bio ?? null;
+    let bio: string | null = profile.bio?.trim() ?? null;
     // Truncate to prevent abuse payloads from reaching downstream LLM contexts.
     if (bio !== null && bio.length > MAX_BIO_LENGTH) {
       bio = bio.slice(0, MAX_BIO_LENGTH);
@@ -69,9 +69,9 @@ export class GroupACollector {
     const linkedUrls: string[] = [];
 
     // 1. Canonical GitHub profile URL (always present, zero cost)
-    if (profile.html_url && profile.html_url.trim()) {
-      linkedUrls.push(profile.html_url.trim());
-    }
+    // if (profile.html_url && profile.html_url.trim()) {
+    //   linkedUrls.push(profile.html_url.trim());
+    // }
 
     // 2. Blog / website URL (with validation — field is free-text)
     if (profile.blog && profile.blog.trim()) {
@@ -168,6 +168,16 @@ export class GroupACollector {
       `ageDays=${accountAgeDays} company=${profile.company ?? '(none)'} ` +
       `hireable=${profile.hireable} orgs=${orgMemberships.length} ` +
       `emailDomains=${commitEmailDomains.length} urls=${linkedUrls.length}`,
+    );
+
+    console.log("\nresult GRUOP A: ",
+      "\naccount_age_days:", accountAgeDays,
+      "\nbio:", bio,
+      "\ncompany_claim:", companyClaim,
+      "\nlinked_urls:", linkedUrls,
+      "\ncommit_email_domains:", commitEmailDomains,
+      "\ngithub_org_memberships:", orgMemberships,
+      "\nhireable_flag:", hireableFlag,
     );
 
     return {

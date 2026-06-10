@@ -358,46 +358,6 @@ export class AnalysisV2Controller {
     return response;
   }
 
-  /**
-   * GET /api/v2/analysis/:jobId/traces?moduleId=p1_execution_reliability
-   *
-   * Returns decision traces for a completed analysis job.
-   * Traces are stored in Redis (key: traces:{jobId}) during orchestration.
-   * Optional ?moduleId= query filters to a single module's trace.
-   */
-  @Get(':jobId/traces')
-  @ApiOperation({
-    summary: 'Get decision traces for a completed analysis',
-    description:
-      'Returns per-module decision traces (thresholds, branches, gates, flags, derived metrics) ' +
-      'captured during analysis execution. Traces have a 7-day TTL.',
-  })
-  @ApiParam({ name: 'jobId', description: 'Job ID from POST endpoint', required: true, type: String })
-    @ApiParam({ name: 'moduleId', description: 'Module ID to filter traces', required: false, type: String })
-
-  @ApiResponse({ status: 200, description: 'Decision traces for the job' })
-  @ApiResponse({ status: 404, description: 'Job ID not found or no traces available' })
-  async getTraces(
-    @Param('jobId') jobId: string,
-    @Query('moduleId') moduleId?: string,
-  ): Promise<{ jobId: string; traces: Record<string, unknown> | unknown }> {
-    console.log(`[AnalysisV2Controller] phase=traces_request jobId=${jobId} moduleId=${moduleId ?? 'all'}`);
-
-    const traces = await this.corpusCache.getTraces(jobId);
-    if (!traces) {
-      throw new HttpException('No traces found for this job. Traces may have expired (7-day TTL) or the job may not have completed.', HttpStatus.NOT_FOUND);
-    }
-
-    if (moduleId) {
-      const moduleTrace = traces[moduleId];
-      if (!moduleTrace) {
-        throw new HttpException(`Module '${moduleId}' not found in traces. Available modules: ${Object.keys(traces).join(', ')}`, HttpStatus.NOT_FOUND);
-      }
-      return { jobId, traces: moduleTrace };
-    }
-
-    return { jobId, traces };
-  }
 
   /**
    * Persist a sync pipeline result to AnalysisJob.
