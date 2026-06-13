@@ -19,7 +19,6 @@ import {
   CommitSignals,
   CollaborationSignals,
   EngineeringPracticeSignals,
-  ImpactSignals,
   AntiGamingInputs,
 } from '../corpus/corpus.types';
 
@@ -148,16 +147,6 @@ export class CorpusBuilderService {
           actionlint_violations: 0,
         },
       ),
-      impact_signals: this.safeGet<ImpactSignals>(results, 'F', {
-        external_oss_contribution_count: 0,
-        contribution_calendar_active_weeks_12m: 0,
-        npm_packages: [],
-        pypi_packages: [],
-        cargo_packages: [],
-        stackoverflow_reputation: 0,
-        stackoverflow_accepted_answer_rate: null,
-        stackoverflow_top_tags: [],
-      }),
       anti_gaming_inputs: this.safeGet<AntiGamingInputs>(results, 'G', {
         burst_dormancy_ratio: 1.0,
         burst_triggered_at_evaluation: false,

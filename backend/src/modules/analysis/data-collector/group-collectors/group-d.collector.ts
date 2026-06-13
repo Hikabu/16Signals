@@ -21,7 +21,7 @@ import {
   IssueActivityData 
 } from '../../corpus/corpus.types';
 import { CircuitBreakerService } from '../circuit-breaker.service';
-import { exit } from 'process';
+// import { exit } from 'process';
 
 const MAX_PRS = 50;
 
@@ -110,7 +110,6 @@ maintenance.issueParticipationRaw
     );
 
 
-    exit(0);
     return {
       contribution,
       review,

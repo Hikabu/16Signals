@@ -194,7 +194,7 @@ function buildCompleteCorpus(): SignalCorpus {
       actionlint_violations: 0,
     },
     impact_signals: {
-      external_oss_contribution_count: 3,
+      // external_oss_contribution_count: 3,
       contribution_calendar_active_weeks_12m: 48,
       npm_packages: [{ name: 'test-pkg', downloads: 5000, dependents: 2 }],
       pypi_packages: [],

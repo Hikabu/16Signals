@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { INestApplicationContext } from '@nestjs/common';
 import { WorkerModule } from './queues/worker.module';
+import { getQueueToken } from '@nestjs/bullmq';
 
 const logger = new Logger('Worker');
 
@@ -12,9 +13,24 @@ async function bootstrap() {
         ? ['log', 'error', 'warn']
         : ['log', 'error', 'warn', 'debug'],
   });
+
+//ONLY TESTING    
+await debug_closeOpenJobs(app);
   app.enableShutdownHooks();
   registerShutdown(app);
   logger.log('Worker is running');
+}
+
+async function debug_closeOpenJobs(app: INestApplicationContext){
+  console.log("KILLING IT");
+     const queue = app.get(getQueueToken('analysis'));
+
+  await queue.obliterate({
+    force: true,
+  });
+
+  console.log("finished queue!!!!!1");
+
 }
 
 function registerShutdown(app: INestApplicationContext) {

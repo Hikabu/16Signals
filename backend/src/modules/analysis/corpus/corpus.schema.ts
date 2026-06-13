@@ -115,7 +115,7 @@ const packageRegistryEntrySchema = z.object({
 });
 
 const impactSignalsSchema = z.object({
-  external_oss_contribution_count: z.number().min(0),
+  // external_oss_contribution_count: z.number().min(0),
   contribution_calendar_active_weeks_12m: z.number().min(0),
   npm_packages: z.array(packageRegistryEntrySchema),
   pypi_packages: z.array(packageRegistryEntrySchema),

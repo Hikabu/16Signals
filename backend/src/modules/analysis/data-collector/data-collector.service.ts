@@ -27,7 +27,6 @@ import { GroupBCollector } from './group-collectors/group-b.collector';
 import { GroupCCollector } from './group-collectors/group-c.collector';
 import { GroupDCollector } from './group-collectors/group-d.collector';
 import { GroupECollector } from './group-collectors/group-e.collector';
-import { GroupFCollector } from './group-collectors/group-f.collector';
 import { GroupGCollector } from './group-collectors/group-g.collector';
 
 export interface DataCollectorOutput {
@@ -45,7 +44,6 @@ export class DataCollectorService {
     private readonly groupC: GroupCCollector,
     private readonly groupD: GroupDCollector,
     private readonly groupE: GroupECollector,
-    private readonly groupF: GroupFCollector,
     private readonly groupG: GroupGCollector,
     private readonly circuitBreaker: CircuitBreakerService,
     private readonly corpusBuilder: CorpusBuilderService,
@@ -75,9 +73,9 @@ export class DataCollectorService {
     const phase1Results = await this.safeCollectParallel([
       // { group: 'A' as CorpusGroup, collector: () => this.groupA.collect(octokit, username, this.circuitBreaker) },
       // { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
-      { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
-      // { group: 'F' as CorpusGroup, collector: () => this.groupF.collect(octokit, username, [], this.circuitBreaker) },
+      // { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
     ]);
+
 
     const groupA = phase1Results.find((r) => r.group === 'A');
     const groupB = phase1Results.find((r) => r.group === 'B');

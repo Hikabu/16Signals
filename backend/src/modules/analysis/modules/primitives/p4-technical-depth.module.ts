@@ -32,7 +32,6 @@ export class P4TechnicalDepthModule implements AnalysisModule {
     const evidence: Evidence[] = [];
     const repos = corpus.repositories;
     const cd = corpus.collaboration_signals;
-    const imp = corpus.impact_signals;
 
     // Depth by commit volume
     const langCommitMap: Record<string, number> = {};
@@ -65,24 +64,7 @@ export class P4TechnicalDepthModule implements AnalysisModule {
         : `${opMarkers.length} operational markers.`,
     });
 
-    // Package registry adoption
-    const allPackages = [
-      ...imp.npm_packages,
-      ...imp.pypi_packages,
-      ...imp.cargo_packages,
-    ];
-    const hasAdoption = allPackages.some((p) => p.downloads >= 1000 || p.dependents >= 5);
 
-    evidence.push({
-      signal: 'Package registry adoption',
-      corpus_field: 'impact_signals.{npm,pypi,cargo}_packages',
-      value: { total: allPackages.length, hasAdoption },
-      interpretation: hasAdoption
-        ? `Package(s) with real-world adoption — one of the strongest signals in the system.`
-        : `No packages with significant adoption detected.`,
-    });
-
-    console.log(`[Module:${this.module_id}] phase=evidence signal="Package registry adoption" packages=${allPackages.length} adopted=${hasAdoption}`);
 
     // Hard problem evidence (from PR descriptions, LLM-scored later)
     evidence.push({
@@ -94,7 +76,7 @@ export class P4TechnicalDepthModule implements AnalysisModule {
         : 'No PR descriptions available for analysis.',
     });
 
-    const confidence = this.determineConfidence(top2Deep.length, opMarkers.length, hasAdoption);
+    const confidence = this.determineConfidence(top2Deep.length, opMarkers.length, true);
 
     return {
       module_id: this.module_id,

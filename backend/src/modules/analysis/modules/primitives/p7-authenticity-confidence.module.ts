@@ -132,7 +132,7 @@ export class P7AuthenticityConfidenceModule implements AnalysisModule {
     if (!corpus.groups_present.includes('C') || corpus.commit_signals.total_commits_lifetime < 5) count++;
     // if (!corpus.groups_present.includes('D') || corpus.collaboration_signals.pr_reviewer_count < 2) count++;
     if (!corpus.groups_present.includes('E') || corpus.engineering_practice_signals.repos_with_ci_config === 0) count++;
-    if (!corpus.groups_present.includes('F') || corpus.impact_signals.external_oss_contribution_count === 0) count++;
+    // if (!corpus.groups_present.includes('F') || corpus.impact_signals.external_oss_contribution_count === 0) count++;
     return count;
   }
 

@@ -41,9 +41,6 @@ export interface SignalCorpus {
   // ── Group E: Engineering Practices ──
   engineering_practice_signals: EngineeringPracticeSignals;
 
-  // ── Group F: Impact & External Signals ──
-  impact_signals: ImpactSignals;
-
   // ── Group G: Anti-Gaming Raw Inputs ──
   anti_gaming_inputs: AntiGamingInputs;
 }
@@ -199,24 +196,6 @@ export interface SecretLeakDetail {
   is_revoked: boolean;
 }
 
-// ─── Group F: Impact & External Signals ──────────────────────────────
-
-export interface ImpactSignals {
-  external_oss_contribution_count: number;
-  contribution_calendar_active_weeks_12m: number;
-  npm_packages: PackageRegistryEntry[];
-  pypi_packages: PackageRegistryEntry[];
-  cargo_packages: PackageRegistryEntry[];
-  stackoverflow_reputation: number;
-  stackoverflow_accepted_answer_rate: number | null;
-  stackoverflow_top_tags: string[];
-}
-
-export interface PackageRegistryEntry {
-  name: string;
-  downloads: number;
-  dependents: number;
-}
 
 // ─── Group G: Anti-Gaming Raw Inputs ─────────────────────────────────
 

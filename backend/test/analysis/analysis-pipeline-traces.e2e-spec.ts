@@ -499,7 +499,7 @@ describe('Analysis Pipeline Traces (e2e)', () => {
           actionlint_violations: 0,
         },
         impact_signals: {
-          external_oss_contribution_count: 0,
+          // external_oss_contribution_count: 0,
           contribution_calendar_active_weeks_12m: 0,
           npm_packages: [],
           pypi_packages: [],

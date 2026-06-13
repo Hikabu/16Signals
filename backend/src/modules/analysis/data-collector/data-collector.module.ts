@@ -19,7 +19,6 @@ import { GroupBCollector } from './group-collectors/group-b.collector';
 import { GroupCCollector } from './group-collectors/group-c.collector';
 import { GroupDCollector } from './group-collectors/group-d.collector';
 import { GroupECollector } from './group-collectors/group-e.collector';
-import { GroupFCollector } from './group-collectors/group-f.collector';
 import { GroupGCollector } from './group-collectors/group-g.collector';
 
 @Module({
@@ -35,7 +34,6 @@ import { GroupGCollector } from './group-collectors/group-g.collector';
     GroupCCollector,
     GroupDCollector,
     GroupECollector,
-    GroupFCollector,
     GroupGCollector,
   ],
   exports: [
