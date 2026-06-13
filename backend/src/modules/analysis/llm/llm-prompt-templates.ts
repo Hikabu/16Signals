@@ -81,12 +81,12 @@ Generate exactly 4 questions, one per type. Base each question on specific gaps 
     msgs.forEach((m, i) => sections.push(`  ${i + 1}. "${m.slice(0, 120)}"`));
 
     // PR descriptions (max 10)
-    const prs = corpus.collaboration_signals.pr_description_raw.slice(0, 10);
+    const prs = corpus.collaboration_signals.contribution.pr_description_raw.slice(0, 10);
     sections.push(`PR DESCRIPTIONS (${prs.length}):`);
     prs.forEach((p, i) => sections.push(`  ${i + 1}. "${p.slice(0, 200)}"`));
 
     // Review comments (max 10)
-    const reviews = corpus.collaboration_signals.review_comment_raw.slice(0, 10);
+    const reviews = corpus.collaboration_signals.review.authored_review_raw.slice(0, 10);
     sections.push(`REVIEW COMMENTS (${reviews.length}):`);
     reviews.forEach((r, i) => sections.push(`  ${i + 1}. "${r.slice(0, 200)}"`));
 

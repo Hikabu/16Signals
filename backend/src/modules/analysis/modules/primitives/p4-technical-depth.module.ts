@@ -38,7 +38,7 @@ export class P4TechnicalDepthModule implements AnalysisModule {
     const langCommitMap: Record<string, number> = {};
     for (const repo of repos) {
       if (repo.is_fork || !repo.primary_language) continue;
-      langCommitMap[repo.primary_language] = (langCommitMap[repo.primary_language] || 0) + repo.commit_count;
+      langCommitMap[repo.primary_language] = (langCommitMap[repo.primary_language] || 0);// + repo.commit_count;
     }
     const sorted = Object.entries(langCommitMap).sort((a, b) => b[1] - a[1]);
     const top2Deep = sorted.slice(0, 2).filter(([, c]) => c >= 200);
@@ -88,9 +88,9 @@ export class P4TechnicalDepthModule implements AnalysisModule {
     evidence.push({
       signal: 'Hard problem evidence (LLM)',
       corpus_field: 'collaboration_signals.pr_description_raw',
-      value: { sampleSize: cd.pr_description_raw.length },
-      interpretation: cd.pr_description_raw.length > 0
-        ? `${cd.pr_description_raw.length} PRs available for hard-problem classification.`
+      value: { sampleSize: cd.contribution.pr_description_raw.length },
+      interpretation: cd.contribution.pr_description_raw.length > 0
+        ? `${cd.contribution.pr_description_raw.length} PRs available for hard-problem classification.`
         : 'No PR descriptions available for analysis.',
     });
 

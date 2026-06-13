@@ -1,0 +1,379 @@
+CANDIDATE 1: torvalds
+prAuthorsCount: 1 
+prReviewersCount: 7 
+totalReviews: 46 
+substantiveReviews: 15 
+substantiveReviewsRatio: 0.32608695652173914 
+selfMergeRate: 0 
+avgDescriptionLengthWords: 299 
+prSizeDistribution: [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+] 
+prDescriptionRaw: [
+  `We stupidly thought that the local time offset was in the "DEVICE_SETTINGS" message as the time_offset field.  I'm pretty sure I've seen something like that before.\r\n` +
+    '\r\n' +
+    'But the FIT files from github issue #4401 clearly have that time offset field being zero, and there are two other ways to figure out what local time actually is, namely in the "local_time" field of the ACTIVITY message or the TIMESTAMP_CORRELATION message.\r\n' +
+    '\r\n' +
+    "Either of those seem to work for what we want, so let's parse both (we a",
+] 
+reviewCommentRaw: [
+  'Wow, I was blissfully unaware of this topic.\r\n' +
+    '\r\n' +
+    'I only did a peephole-review and it all looks reasonable to me. Only two typos in comments. I am somewhat overwhelmed by all this device-ids, string hashes, etc.\r\n' +
+    '\r\n' +
+   ] 
+reviewCommentDepthScores: [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0
+] 
+crossRepoCommentCount: 216 
+avgTimeToMergeHours: 0
+
+
+CANDIDATE 2: karpathy
+
+prAuthorsCount: 1 
+prReviewersCount: 11 
+totalReviews: 46 
+substantiveReviews: 0 
+substantiveReviewsRatio: 0 
+selfMergeRate: 0 
+avgDescriptionLengthWords: 60 
+prSizeDistribution: [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0
+] 
+prDescriptionRaw: [
+  'Call for help/discussion on autoresearch integration into [AgentHub](https://github.com/karpathy/agenthub). I have an early version deployed on [autoresearchhub.com](http://autoresearchhub.com/). The new `program.md` I am using for my first agent is below.\r\n' +
+    '\r\n' +
+    'After some iteration I might push to master of autoresearch. Just want to iterate on first a bit more and think it through a bit.\r\n' +
+    '\r\n',
+] 
+reviewCommentRaw: [
+  'stage here is whether the setup is happening on fit or test...\r\n' +
+    '\r\n' +
+    "BUT... to your point, do you think it might make more sense to change the stage to 'train', 'val', 'test'? the thing is that train, val are usually handled together (ie: split train into train/val and have a separate test set)",
+] 
+reviewCommentDepthScores: [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0
+] 
+crossRepoCommentCount: 187 
+avgTimeToMergeHours: 0
+
+
+CANDIDATE 3: gustavoguanabara
+prAuthorsCount: 1 
+prReviewersCount: 11 
+totalReviews: 46 
+substantiveReviews: 0 
+substantiveReviewsRatio: 0 
+selfMergeRate: 0 
+avgDescriptionLengthWords: 60 
+prSizeDistribution: [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0
+] 
+prDescriptionRaw: [
+  'Call for help/discussion on autoresearch integration into [AgentHub](https://github.com/karpathy/agenthub). I have an early version deployed on [autoresearchhub.com](http://autoresearchhub.com/). The new `program.md` I am using for my first agent is below.\r\n' +
+    '\r\n' +
+    'After some iteration I might push to master of autoresearch. Just want to iterate on first a bit more and think it through a bit.\r\n' +
+    '\r\n',
+] 
+reviewCommentRaw: [
+  'stage here is whether the setup is happening on fit or test...\r\n' +
+    '\r\n' +
+] 
+reviewCommentDepthScores: [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0
+] 
+crossRepoCommentCount: 187 
+avgTimeToMergeHours: 0
+
+
+/////////////////////////////
+
+V1:
+CANDIDATE 1: torvalds
+GROUP D:  
+ CONTRIBUTION:  
+         PR count:  82 
+         Unique repos contributed to:  3 
+         External repos contributed to:  3 
+         Avg PR description length (words):  299 
+         PR description raw samples:  We stupidly thought that the local time offset was in the "DEVICE_SETTINGS" message as the time_offset field.  I'm pretty sure I've seen something like that before.
+
+But the FIT files from github issue #4401 clearly have that time offset field being zero, and there are two other ways to figure out what local time actually is, namely in the "local_time" field of the ACTIVITY message or the TIMESTAMP_CORRELATION message.
+
+Either of those seem to work for what we want, so let's parse both (we a | Commit c27314d60 ("core: replace add_sample() by append_sample()") broke the dive computer interleaving when merging two dives: the sample merging (done by "merge_samples()") no longer took the offset between the two merged dives into account, and instead just blindly copied the samples from the second dive computer with no time offset.
+
+The end result was a completely broken profile.
+
+This adds back the sample offset.  It also takes the offset not from the difference in time of the two dive | The Suunto FIT files end up creating a sample every second, but a lot of those samples with no depth information, marked as "depth.mm" being negative.
+
+That doesn't end up being a problem for subsurface, _except_ that it really confuses our "dc_fixup_duration()" logic, and the dive duration ends up being completely nonsensical (generally roughly by a factor of five: every tenth sample has a depth, and we only count samples that "begin or end under water" as being relevant for the dive duration 
+ REVIEW:  
+         Review count:  0 
+         Substantive review ratio:  0 
+         Review comment raw samples:   
+ MAINTENANCE:  
+         Issue participation count:  42
+CANDIDATE 2: karpathy
+GROUP D:  
+ CONTRIBUTION:  
+         PR count:  77 
+         Unique repos contributed to:  12 
+         External repos contributed to:  5 
+         Avg PR description length (words):  60 
+         PR description raw samples:  
+         
+                      Call for help/discussion on autoresearch integration into [AgentHub](https://github.com/karpathy/agenthub). I have an early version deployed on [autoresearchhub.com](http://autoresearchhub.com/). The new `program.md` I am using for my first agent is below.
+
+                      After some iteration I might push to master of autoresearch. Just want to iterate on first a bit more and think it through a bit. | ## Summary
+
+                      - **0.9979 → 0.9697 val_bpb** over 125 experiments on H100, ~10.5 hours of autonomous agent experimentation
+                      - Key discoveries: weight decay on embeddings/VEs, init scale 0.68x, higher embedding LR with regularization
+                      - Detailed session report with full experiment log: #43
+
+                      ## Note on process
+
+                      This is an evolving experiment in collaborative autonomous research. So far session reports have been posted as Discussions (see #43, #32), but PRs may be a better format going forward. The natu | Experimental. Probably won't merge. 
+ REVIEW:  
+         Review count:  0 
+         Substantive review ratio:  0 
+         Review comment raw samples:   
+ MAINTENANCE:  
+         Issue participation count:  150
+
+CANDIDATE 3: gustavoguanabara
+GROUP D:  
+ CONTRIBUTION:  
+         PR count:  0 
+         Unique repos contributed to:  0 
+         External repos contributed to:  0 
+         Avg PR description length (words):  0 
+         PR description raw samples:   
+ REVIEW:  
+         Review count:  0 
+         Substantive review ratio:  0 
+         Review comment raw samples:   
+ MAINTENANCE:  
+         Issue participation count:  22
+
+
+
+
+
+/////////////////////////////
+
+V2:
+CANDIDATE 1: torvalds
+ CONTRIBUTION:  
+         PR count:  82 
+         Unique repos contributed to:  3 
+         External repos contributed to:  3 
+         Avg PR description length (words):  299 
+         PR description raw samples:  We stupidly thought that the local time offset was in the "DEVICE_SETTINGS" message as the time_offset field.  I'm pretty sure I've seen something like that before.
+
+But the FIT files from github issue #4401 clearly have that time offset field being zero, and there are two other ways to figure out what local time actually is, namely in the "local_time" field of the ACTIVITY message or the TIMESTAMP_CORRELATION message.
+
+Either of those seem to work for what we want, so let's parse both (we a | Commit c27314d60 ("core: replace add_sample() by append_sample()") broke the dive computer interleaving when merging two dives: the sample merging (done by "merge_samples()") no longer took the offset between the two merged dives into account, and instead just blindly copied the samples from the second dive computer with no time offset.
+
+The end result was a completely broken profile.
+
+This adds back the sample offset.  It also takes the offset not from the difference in time of the two dive | The Suunto FIT files end up creating a sample every second, but a lot of those samples with no depth information, marked as "depth.mm" being negative.
+
+That doesn't end up being a problem for subsurface, _except_ that it really confuses our "dc_fixup_duration()" logic, and the dive duration ends up being completely nonsensical (generally roughly by a factor of five: every tenth sample has a depth, and we only count samples that "begin or end under water" as being relevant for the dive duration 
+ REVIEW:  
+         Authored review count:  2 
+         Substantive authored ratio:  0 
+         Reviews received:  46 
+         Review comments received:  46 
+         Avg reviews per PR:  2 
+         Authored samples:   
+         Received samples:  This looks reasonable and doesn't appear to break the test downloads that I did with it. | Looks good to me. | well that looks obvious.
+and yes, that seems like a lot of "noise" in the .FIT file. 
+ MAINTENANCE:  
+         Issue participation count:  42
+
+
+
+CANDIDATE 2: karpathy
+GROUP D:  
+ CONTRIBUTION:  
+         PR count:  77 
+         Unique repos contributed to:  12 
+         External repos contributed to:  5 
+         Avg PR description length (words):  60 
+         PR description raw samples:  Call for help/discussion on autoresearch integration into [AgentHub](https://github.com/karpathy/agenthub). I have an early version deployed on [autoresearchhub.com](http://autoresearchhub.com/). The new `program.md` I am using for my first agent is below.
+
+After some iteration I might push to master of autoresearch. Just want to iterate on first a bit more and think it through a bit. | ## Summary
+
+- **0.9979 → 0.9697 val_bpb** over 125 experiments on H100, ~10.5 hours of autonomous agent experimentation
+- Key discoveries: weight decay on embeddings/VEs, init scale 0.68x, higher embedding LR with regularization
+- Detailed session report with full experiment log: #43
+
+## Note on process
+
+This is an evolving experiment in collaborative autonomous research. So far session reports have been posted as Discussions (see #43, #32), but PRs may be a better format going forward. The natu | Experimental. Probably won't merge. 
+ REVIEW:  
+         Authored review count:  6 
+         Substantive authored ratio:  0 
+         Reviews received:  31 
+         Review comments received:  31 
+         Avg reviews per PR:  4.43 
+         Authored samples:   
+         Received samples:  LGTM | Indeed:
+
+https://github.com/python/cpython/blob/46295677a13f141b8d52cc36202384554adba65d/Modules/_randommodule.c#L321
+
+The current wording is fine, though I think it could be a little shorter (see suggestion). Will leave to @rhettinger to decide.
+
+A | Thanks for the PR! (and Adam, for the edit)
+
+It's been ten days, so I'm going to go ahead and merge 
+ MAINTENANCE:  
+         Issue participation count:  150
+
+
+CANDIDATE 3: gustavoguanabara
+GROUP D:  
+ CONTRIBUTION:  
+         PR count:  0 
+         Unique repos contributed to:  0 
+         External repos contributed to:  0 
+         Avg PR description length (words):  0 
+         PR description raw samples:   
+ REVIEW:  
+         Authored review count:  0 
+         Substantive authored ratio:  0 
+         Reviews received:  0 
+         Review comments received:  0 
+         Avg reviews per PR:  0 
+         Authored samples:   
+         Received samples:   
+ MAINTENANCE:  
+         Issue participation count:  22
+
+TODO :
+reviews >>>
+merged_pr_count > IF 82 PRS DOES THAT MEAN 82 QUERIES TO FIGURE OUT % OF MERGED?
+
+
+
+//////////
+V3:
+
+CANDIDATE 1: torvalds
+
+GROUP D:  
+ CONTRIBUTION:  
+         PR count:  82 
+         Merged PR count:  69 
+         Unique repos contributed to:  3 
+         External repos contributed to:  3 
+         Avg PR description length (words):  299 
+         PR description raw samples:  We stupidly thought that the local time offset was in the "DEVICE_SETTINGS" message as the time_offset field.  I'm pretty sure I've seen something like that before.
+REVIEW:  
+         Authored review count:  2 
+         Substantive authored ratio:  0 
+         Reviews received:  46 
+         review_state_distribution:  
+                 Approved:  22 
+                 changesRequested:  0 
+                 commented:  23 
+         unique_reviewers_count 8 
+         Avg reviews per PR:  0.56 
+         Authored samples:   
+         Received samples:  This looks reasonable and doesn't appear to break the test downloads that I did with it. | Looks good to me. | well that looks obvious.
+and yes, that seems like a lot of "noise" in the .FIT file. 
+ MAINTENANCE:  
+         Issue participation count:  42 
+         Issue participation raw:  Right now assembling these things is unnecessarily complicated due to the wiring of the stomp switches and the screen.
+
+CANDIDATE 2: karpathy
+GROUP D:  
+ CONTRIBUTION:  
+         PR count:  77 
+         Merged PR count:  63 
+         Unique repos contributed to:  12 
+         External repos contributed to:  5 
+         Avg PR description length (words):  60 
+         PR description raw samples:  Call for help/discussion on autoresearch integration into [AgentHub](https://github.com/karpathy/agenthub). I have an early version deployed on [autoresearchhub.com](http://autoresearchhub.com/). The new `program.md` I am using for my first agent is below.
+REVIEW:  
+         Authored review count:  6 
+         Substantive authored ratio:  0 
+         Reviews received:  31 
+         review_state_distribution:  
+                 Approved:  3 
+                 changesRequested:  0 
+                 commented:  28 
+         unique_reviewers_count 9 
+         Avg reviews per PR:  0.4 
+         Authored samples:   
+         Received samples:  LGTM | Indeed:
+
+https://github.com/python/cpython/blob/46295677a13f141b8d52cc36202384554adba65d/Modules/_randommodule.c#L321
+
+The current wording is fine, though I think it could be a little shorter (see suggestion). Will leave to @rhettinger to decide.
+
+A | Thanks for the PR! (and Adam, for the edit)
+
+It's been ten days, so I'm going to go ahead and merge 
+ MAINTENANCE:  
+         Issue participation count:  150 
+         Issue participation raw:  https://github.com/karpathy/nanochat/blob/0aaca56805eb13f6e6e1fff789a08086902f12ab/nanochat/gpt.py#L99
+https://github.com/karpathy/nanochat/blob/0aaca56805eb13f6e6e1fff789a08086902f12ab/nanochat/gpt.py#L100
+
+CANDIDATE 3: gustavoguanabara
+
+GROUP D:  
+ CONTRIBUTION:  
+         PR count:  0 
+         Merged PR count:  0 
+         Unique repos contributed to:  0 
+         External repos contributed to:  0 
+         Avg PR description length (words):  0 
+         PR description raw samples:   
+ REVIEW:  
+         Authored review count:  0 
+         Substantive authored ratio:  0 
+         Reviews received:  0 
+         review_state_distribution:  
+                 Approved:  0 
+                 changesRequested:  0 
+                 commented:  0 
+         unique_reviewers_count 0 
+         Avg reviews per PR:  0 
+         Authored samples:   
+         Received samples:   
+ MAINTENANCE:  
+         Issue participation count:  22 
+         Issue participation raw:  Seu código está incompleto | Parabéns pelo novo perfil no GitHub! Use nas aulas! | Tentei criar minha conta no GitHub e o email não chega!

@@ -19,6 +19,17 @@ import { exit } from 'process';
 
 const MAX_REPOS = 30;
 
+//maybe add is enriched flag? 
+
+//ON CHOOSING "TOP" REPOS
+//for sorting quality try to figure out which repos are pinned... 
+//maybe add size to the weight of it too .. 
+//maybe also chooe to nalyze for a specific main language or smilar vibe to the job description.. 
+//or pick "best" per language/skill set
+
+
+//EXPANDING REPOS TO THOSE WHERE THE USER IS A CONTRIBUTOR...
+
 @Injectable()
 export class GroupBCollector {
   async collect(
@@ -53,7 +64,7 @@ export class GroupBCollector {
     // We do this for the top 5 repos (by quality) to avoid rate limiting.
     const enrichedRepos = await Promise.all(
       reposOrdered.map(async (r, index) => {
-        console.log("repo :", r);
+        // console.log("repo :", r);
 
         // Determine org repo: if owner login differs from username
         const repoOwner = r.owner?.login ?? username;
@@ -63,9 +74,8 @@ export class GroupBCollector {
         let hasReadme = false;
         let languages: Record<string, number> = {};
 
-        console.log("index : ", index);
         if (index < 5 && !circuitBreaker.shouldAbort()) {
-          console.log("deep check ", index);
+          // console.log("deep check ", index);
           const enrichment = await this.enrichRepository(
             octokit,
             repoOwner,
@@ -104,7 +114,7 @@ export class GroupBCollector {
       `repos=${enrichedRepos.length} readmesChecked=${enrichedRepos.filter((r) => r.has_readme).length}`,
     );
     console.log("enrichedRepos : ", enrichedRepos);
-    exit(0);
+    // exit(0);
     return enrichedRepos;
   }
 

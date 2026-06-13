@@ -574,4 +574,3 @@ group G | (anti-gaming signals)
   commit_inflation_ratio: 0,
   ai_pattern_confidence: 0,
   style_discontinuity_events: []
-}

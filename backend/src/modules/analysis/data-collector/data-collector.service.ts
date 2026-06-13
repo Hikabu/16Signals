@@ -73,10 +73,10 @@ export class DataCollectorService {
     // ── Phase 1: Independent groups (A, B, D, F) ──
     console.log("3.3.1[DataCollector] phase 1: Independent groups (A, B, D, F)");
     const phase1Results = await this.safeCollectParallel([
-      { group: 'A' as CorpusGroup, collector: () => this.groupA.collect(octokit, username, this.circuitBreaker) },
-      { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
+      // { group: 'A' as CorpusGroup, collector: () => this.groupA.collect(octokit, username, this.circuitBreaker) },
+      // { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
       { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
-      { group: 'F' as CorpusGroup, collector: () => this.groupF.collect(octokit, username, [], this.circuitBreaker) },
+      // { group: 'F' as CorpusGroup, collector: () => this.groupF.collect(octokit, username, [], this.circuitBreaker) },
     ]);
 
     const groupA = phase1Results.find((r) => r.group === 'A');

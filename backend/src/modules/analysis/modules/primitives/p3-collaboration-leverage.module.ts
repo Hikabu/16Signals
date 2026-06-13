@@ -37,17 +37,17 @@ export class P3CollaborationLeverageModule implements AnalysisModule {
     const evidence: Evidence[] = [];
 
     // CRITICAL: If pr_reviewer_count < 5, output observability_gap, not low
-    if (cd.pr_reviewer_count < 5) {
+    if (cd.review.authored_review_count < 5) {
       evidence.push({
         signal: 'Review activity threshold',
         corpus_field: 'collaboration_signals.pr_reviewer_count',
-        value: cd.pr_reviewer_count,
+        value: cd.review.authored_review_count,
         interpretation: 'Fewer than 5 PRs reviewed. Likely private/enterprise context. No negative weight applied.',
       });
 
       console.log(
         `[Module:${this.module_id}] phase=signal_threshold signal=review_activity ` +
-        `count=${cd.pr_reviewer_count} threshold=5 result=observability_gap`,
+        `count=${cd.review.authored_review_count} threshold=5 result=observability_gap`,
       );
 
       return {
@@ -63,73 +63,73 @@ export class P3CollaborationLeverageModule implements AnalysisModule {
     }
 
     // Substantive review rate
-    evidence.push({
-      signal: 'Substantive review rate',
-      corpus_field: 'collaboration_signals.substantive_review_ratio',
-      value: cd.substantive_review_ratio,
-      interpretation: cd.substantive_review_ratio >= 0.4
-        ? `${(cd.substantive_review_ratio * 100).toFixed(0)}% substantive reviews — strong engagement.`
-        : `${(cd.substantive_review_ratio * 100).toFixed(0)}% substantive reviews.`,
-    });
+    // evidence.push({
+    //   signal: 'Substantive review rate',
+    //   corpus_field: 'collaboration_signals.substantive_review_ratio',
+    //   value: cd.review.substantive_authored_review_ratio,
+    //   interpretation: cd.review.substantive_authored_review_ratio >= 0.4
+    //     ? `${(cd.review.substantive_authored_review_ratio * 100).toFixed(0)}% substantive reviews — strong engagement.`
+    //     : `${(cd.review.substantive_authored_review_ratio * 100).toFixed(0)}% substantive reviews.`,
+    // });
 
-    console.log(
-      `[Module:${this.module_id}] phase=evidence signal="Substantive review rate" ` +
-      `ratio=${cd.substantive_review_ratio.toFixed(3)}`,
-    );
+    // console.log(
+    //   `[Module:${this.module_id}] phase=evidence signal="Substantive review rate" ` +
+    //   `ratio=${cd.review.substantive_authored_review_ratio.toFixed(3)}`,
+    // );
 
     // PR author/reviewer ratio
-    const ratioMet = cd.pr_reviewer_count >= cd.pr_author_count * 0.5;
-    evidence.push({
-      signal: 'PR author/reviewer ratio',
-      corpus_field: 'collaboration_signals.pr_reviewer_count',
-      value: { authorCount: cd.pr_author_count, reviewerCount: cd.pr_reviewer_count },
-      interpretation: ratioMet
-        ? 'Balanced author/reviewer ratio — reciprocates reviews.'
-        : 'Authors more PRs than reviews. May indicate solo contribution context.',
-    });
+    // const ratioMet = cd.review.review_count >= cd.pr_author_count * 0.5;
+    // evidence.push({
+    //   signal: 'PR author/reviewer ratio',
+    //   corpus_field: 'collaboration_signals.pr_reviewer_count',
+    //   value: { authorCount: cd.pr_author_count, reviewerCount: cd.pr_reviewer_count },
+    //   interpretation: ratioMet
+    //     ? 'Balanced author/reviewer ratio — reciprocates reviews.'
+    //     : 'Authors more PRs than reviews. May indicate solo contribution context.',
+    // });
 
     // Self-merge rate
-    const selfMergeAcceptable = cd.self_merge_rate < (config.seniority === 'senior' || config.seniority === 'staff' ? 0.1 : 0.2);
-    evidence.push({
-      signal: 'Self-merge rate',
-      corpus_field: 'collaboration_signals.self_merge_rate',
-      value: cd.self_merge_rate,
-      interpretation: selfMergeAcceptable
-        ? `Self-merge rate ${(cd.self_merge_rate * 100).toFixed(0)}% — within acceptable range.`
-        : `Self-merge rate ${(cd.self_merge_rate * 100).toFixed(0)}% — elevated for this seniority.`,
-    });
+    // const selfMergeAcceptable = cd.self_merge_rate < (config.seniority === 'senior' || config.seniority === 'staff' ? 0.1 : 0.2);
+    // evidence.push({
+    //   signal: 'Self-merge rate',
+    //   corpus_field: 'collaboration_signals.self_merge_rate',
+    //   value: cd.self_merge_rate,
+    //   interpretation: selfMergeAcceptable
+    //     ? `Self-merge rate ${(cd.self_merge_rate * 100).toFixed(0)}% — within acceptable range.`
+    //     : `Self-merge rate ${(cd.self_merge_rate * 100).toFixed(0)}% — elevated for this seniority.`,
+    // });
 
-    console.log(
-      `[Module:${this.module_id}] phase=evidence signal="Self-merge rate" ` +
-      `rate=${cd.self_merge_rate.toFixed(3)} acceptable=${selfMergeAcceptable}`,
-    );
+    // console.log(
+    //   `[Module:${this.module_id}] phase=evidence signal="Self-merge rate" ` +
+    //   `rate=${cd.self_merge_rate.toFixed(3)} acceptable=${selfMergeAcceptable}`,
+    // );
 
     // PR description quality
     evidence.push({
       signal: 'PR description quality',
       corpus_field: 'collaboration_signals.avg_pr_description_length_words',
-      value: { avgWords: cd.avg_pr_description_length_words, depthScore: cd.review_comment_depth_scores },
-      interpretation: cd.avg_pr_description_length_words >= 80
-        ? `Average PR description ${cd.avg_pr_description_length_words.toFixed(0)} words — thorough context provided.`
-        : `Average PR description ${cd.avg_pr_description_length_words.toFixed(0)} words.`,
+      value: { avgWords: cd.contribution.avg_pr_description_length_words},
+      interpretation: cd.contribution.avg_pr_description_length_words >= 80
+        ? `Average PR description ${cd.contribution.avg_pr_description_length_words.toFixed(0)} words — thorough context provided.`
+        : `Average PR description ${cd.contribution.avg_pr_description_length_words.toFixed(0)} words.`,
     });
 
     // Cross-repo engagement
-    evidence.push({
-      signal: 'Cross-repo engagement',
-      corpus_field: 'collaboration_signals.cross_repo_comment_count',
-      value: cd.cross_repo_comment_count,
-      interpretation: cd.cross_repo_comment_count >= 10
-        ? `${cd.cross_repo_comment_count} cross-repo comments — engages beyond own repos.`
-        : `${cd.cross_repo_comment_count} cross-repo comments.`,
-    });
+    // evidence.push({
+    //   signal: 'Cross-repo engagement',
+    //   corpus_field: 'collaboration_signals.cross_repo_comment_count',
+    //   value: cd.review.review_comments_received_count,
+    //   interpretation: cd.review.review_comments_received_count >= 10
+    //     ? `${cd.review.received_review_raw} cross-repo comments — engages beyond own repos.`
+    //     : `${cd.review.received_review_raw} cross-repo comments.`,
+    // });
 
     const confidence = this.determineConfidence(cd);
 
-    console.log(
-      `[Module:${this.module_id}] phase=run_complete confidence=${confidence} ` +
-      `prReviewerCount=${cd.pr_reviewer_count}`,
-    );
+    // console.log(
+    //   `[Module:${this.module_id}] phase=run_complete confidence=${confidence} ` +
+    //   `prReviewerCount=${cd.pr_reviewer_count}`,
+    // );
 
     return {
       module_id: this.module_id,
@@ -151,10 +151,10 @@ export class P3CollaborationLeverageModule implements AnalysisModule {
 
   private determineConfidence(cd: SignalCorpus['collaboration_signals']): ModuleResult['confidence'] {
     let score = 0;
-    if (cd.substantive_review_ratio >= 0.4) score++;
-    if (cd.pr_reviewer_count >= cd.pr_author_count * 0.5) score++;
-    if (cd.self_merge_rate < 0.2) score++;
-    if (cd.cross_repo_comment_count >= 10) score++;
+    // if (cd.review.substantive_authored_review_ratio >= 0.4) score++;
+    // if (cd.review.review_count >= cd.pr_author_count * 0.5) score++;
+    // if (cd.self_merge_rate < 0.2) score++;
+    // if (cd.cross_repo_comment_count >= 10) score++;
     if (score >= 3) return 'strong';
     if (score >= 2) return 'moderate';
     return 'low';

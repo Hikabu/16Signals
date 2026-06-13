@@ -97,18 +97,35 @@ export class CorpusBuilderService {
         test_to_code_ratio_by_repo: {},
       }),
       collaboration_signals: this.safeGet<CollaborationSignals>(results, 'D', {
-        pr_author_count: 0,
-        pr_reviewer_count: 0,
-        substantive_review_ratio: 0,
-        self_merge_rate: 0,
-        avg_pr_description_length_words: 0,
-        pr_size_distribution: [],
-        pr_description_raw: [],
-        review_comment_raw: [],
-        review_comment_depth_scores: [],
-        cross_repo_comment_count: 0,
-        issue_triage_quality_score: null,
-        avg_time_to_merge_hours: 0,
+        contribution: {
+          pr_count: 0,
+          merged_pr_count: 0,
+          unique_repo_count: 0,
+          external_repo_count: 0,
+          avg_pr_description_length_words: 0,
+          pr_description_raw: [],
+        },
+        review: {
+          authored_review_count: 0,
+          // substantive_authored_review_ratio: 0,
+          authored_review_raw: [],
+
+          // Received reviews (IMPORTANT)
+          reviews_received_count: 0,
+          review_state_distribution: {
+            approved: 0,
+            changes_requested: 0,
+            commented: 0,
+          },
+          unique_reviewers_count: 0,
+          avg_reviews_per_pr: 0,
+          received_review_raw: [],
+        },
+        maintenance: {
+          issueParticipationCount: 0,
+          issueParticipationRaw: [],
+        }
+        
       }),
       engineering_practice_signals: this.safeGet<EngineeringPracticeSignals>(
         results,

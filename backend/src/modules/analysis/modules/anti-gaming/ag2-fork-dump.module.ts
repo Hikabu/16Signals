@@ -44,7 +44,7 @@ export class AG2ForkDumpModule implements AnalysisModule {
     });
 
     // Light Mode: count forks with zero commit activity from candidate
-    const unmodifiedForks = forks.filter((r) => r.commit_count === 0).length;
+    const unmodifiedForks = forks.filter((r) => r.size_kb === 0).length;
     const unmodifiedRatio = forks.length > 0 ? unmodifiedForks / forks.length : 0;
 
     // Omit unmodified forks from repo inventory if ratio > 0.50

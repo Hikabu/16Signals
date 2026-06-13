@@ -112,20 +112,64 @@ export interface PerRepoAuthorStats {
 
 // ─── Group D: Collaboration & Review ─────────────────────────────────
 
-export interface CollaborationSignals {
-  pr_author_count: number;
-  pr_reviewer_count: number;
-  substantive_review_ratio: number; // non-LGTM reviews / total reviews
-  self_merge_rate: number;
-  avg_pr_description_length_words: number;
-  pr_size_distribution: number[];
-  pr_description_raw: string[]; // raw text, sampled for LLM batch
-  review_comment_raw: string[]; // raw review text for LLM depth scoring
-  review_comment_depth_scores: number[]; // populated after LLM Wave 3
-  cross_repo_comment_count: number;
-  issue_triage_quality_score: number | null;
-  avg_time_to_merge_hours: number;
+export interface CollaborationSignals { 
+  contribution: ContributionBehaviorSignals;
+  review: ReviewBehaviorSignals;
+  maintenance: MaintenanceBehaviorSignals;
 }
+
+export interface ContributionBehaviorSignals {
+  pr_count: number;
+  merged_pr_count: number;
+  unique_repo_count: number;
+  external_repo_count: number;
+  avg_pr_description_length_words: number;
+  pr_description_raw: string[];
+}
+
+export interface ReviewBehaviorSignals {
+  authored_review_count: number;
+  // substantive_authored_review_ratio: number;
+  authored_review_raw: string[];
+
+  reviews_received_count: number;
+  review_state_distribution: ReviewStateDistribution;
+  unique_reviewers_count: number;
+  avg_reviews_per_pr: number;
+  received_review_raw: string[];
+}
+
+export interface MaintenanceBehaviorSignals {
+  issueParticipationCount: number;
+  issueParticipationRaw: string[];
+}
+
+
+export interface ReviewStateDistribution {
+  approved: number;
+  changes_requested: number;
+  commented: number;
+}
+
+export interface ReviewStateDistribution {
+  approved: number;
+  changes_requested: number;
+  commented: number;
+}
+
+export interface AuthoredReviewData {
+  body: string;
+  state: string;
+  created_at: string;
+}
+
+
+export interface IssueActivityData {
+  issue_url: string;
+  title: string;
+  body: string;
+}
+
 
 // ─── Group E: Engineering Practices ──────────────────────────────────
 
