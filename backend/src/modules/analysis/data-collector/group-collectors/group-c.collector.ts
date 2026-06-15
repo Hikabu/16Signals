@@ -20,10 +20,9 @@ import { Octokit } from 'octokit';
 import { CommitSignals, RepositorySignal } from '../../corpus/corpus.types';
 import { CircuitBreakerService } from '../circuit-breaker.service';
 import { exit } from 'process';
-import { rm } from 'fs';
 
-const MAX_COMMITS_PER_REPO = 100;
 const MAX_REPOS_FOR_COMMITS = 10;
+const MAX_COMMITS_PER_REPO = 5;
 
 @Injectable()
 export class GroupCCollector {
@@ -45,13 +44,15 @@ export class GroupCCollector {
 
     const freqByMonth: Record<string, number> = {};
     let totalMergeCommits = 0;
-    let totalNonMergeCommits = 0;
+    let totalCommits = 0;
     let totalSigned = 0;
     let totalCommitsSampled = 0;
 const candidateMessages: {
+  repo: string;
   message: string;
   score: number;
 }[] = [];
+
 
     for (const repo of targetRepos) {
       if (circuitBreaker.shouldAbort()) break;
@@ -72,7 +73,7 @@ const candidateMessages: {
           const commits = response.data as any[];
 
           for (const commit of commits) {
-            totalNonMergeCommits++;
+            totalCommits++;
             const isMerge = commit.parents?.length > 1;
             if (isMerge) totalMergeCommits++;
 
@@ -103,17 +104,45 @@ score += Math.min(
   20,
 );
 
-if (msg.includes(':')) score += 5;
+if (msg.includes('(')) score += 3;
+if (msg.includes(':')) score += 3;
+
+const msgLower = msg.toLowerCase();
 
 if (
-  msg.includes('fix') ||
-  msg.includes('refactor') ||
-  msg.includes('test') ||
-  msg.includes('feat')
+  msgLower.includes('fix') ||
+  msgLower.includes('refactor') ||
+  msgLower.includes('test') ||
+  msgLower.includes('feat')
 ) {
   score += 5;
 }
 
+const engineeringTerms = [
+  'refactor',
+  'migration',
+  'architecture',
+  'cache',
+  'index',
+  'performance',
+  'test',
+  'security',
+  'auth',
+  'ci',
+  'api',
+];
+
+for (const term of engineeringTerms) {
+  if (msgLower.includes(term)) {
+    score += 2;
+  }
+}
+
+
+const isBotMessage =
+  msg.startsWith('chore(deps') ||
+  msg.startsWith('build(deps') ||
+  msg.includes('dependabot');
 
             const wordCount =
               msg.split(/\s+/).length;
@@ -130,13 +159,14 @@ if (
             if (
               !isMergeMsg &&
               !isVersionBump &&
-              !isTooShort
+              !isTooShort &&
+              !isBotMessage
             ) {
-              candidateMessages.push({
-    message: msg,
-    score,
-  });
-            }
+candidateMessages.push({
+  repo: repo.name,
+  message: msg,
+  score,
+});            }
           }
 
           hasMore = commits.length === 100;
@@ -150,39 +180,56 @@ if (
         // Continue with next repo
       }
     }
-    const messageSamples =
-  candidateMessages
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 50)
-    .map(x => x.message);
 
-    const mergeRatio = totalNonMergeCommits > 0
-      ? totalMergeCommits / totalNonMergeCommits
+
+const repoCounts = new Map<string, number>();
+const messageSamples: string[] = [];
+
+for (const candidate of candidateMessages.sort(
+  (a, b) => b.score - a.score,
+)) {
+  const count =
+    repoCounts.get(candidate.repo) ?? 0;
+
+  if (count >= MAX_COMMITS_PER_REPO) {
+    continue;
+  }
+
+  repoCounts.set(
+    candidate.repo,
+    count + 1,
+  );
+
+  messageSamples.push(
+    candidate.message,
+  );
+
+  if (messageSamples.length >= 50) {
+    break;
+  }
+}
+
+    const mergeRatio = totalCommits > 0
+      ? totalMergeCommits / totalCommits
       : 0;
 
-    const signingRate = totalCommitsSampled > 0
-      ? totalSigned / totalCommitsSampled
-      : 0;
 
     console.log(
       `	\n\n[C_GroupCollector] phase=collect_complete username=${username} ` +
-      `\n\ttotalCommits=${totalNonMergeCommits} ` +
+      `\n\ttotalCommits=${totalCommits} ` +
             `\n\tmonths=${Object.keys(freqByMonth).length} ` +
       `\n\t merge_commit_ratio =${ mergeRatio}` +
-      `\n\t commit_signing_rate=${ signingRate}` +
- `\n\t message_quality_raw=${ messageSamples.slice(0, 1)}` +
- `\n\tmessage_quality_scores =${Array(messageSamples.length).fill(0) }` 
+ `\n\t message_quality_raw=${ messageSamples.slice(0, 1)}`
 
 );
 
     exit(0);
 
     return {
-      sampled_commit_count: totalNonMergeCommits,
+      sampled_commit_count: totalCommits,
       commit_frequency_by_month: freqByMonth,
       
       merge_commit_ratio: mergeRatio,
-      commit_signing_rate: signingRate,
       message_quality_raw: messageSamples,
       message_quality_scores: Array(messageSamples.length).fill(0), // Populated after LLM
 
@@ -199,6 +246,6 @@ if (
   }
 }
 
-//TODO:
-// -> sampled_commit_count pbb weak... Evaluate to rm 
-// -> message_quality_raw expand HIGH QUALITY
+
+//CHEAP SIGNALS: 
+//-> sampled_commit_count

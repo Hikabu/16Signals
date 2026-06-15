@@ -57,7 +57,6 @@ const commitSignalsSchema = z.object({
   median_commit_size_lines: z.number().min(0),
   sub_5_line_commit_ratio: z.number().min(0).max(1),
   merge_commit_ratio: z.number().min(0).max(1),
-  commit_signing_rate: z.number().min(0).max(1),
   message_quality_raw: z.array(z.string()),
   message_quality_scores: z.array(z.number().min(0).max(100)),
   //deep mode:

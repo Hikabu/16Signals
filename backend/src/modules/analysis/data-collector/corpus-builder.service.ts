@@ -87,7 +87,6 @@ export class CorpusBuilderService {
         // median_commit_size_lines: 0,
         // sub_5_line_commit_ratio: 0,
         merge_commit_ratio: 0,
-        commit_signing_rate: 0,
         message_quality_raw: [],
         message_quality_scores: [],
         // per_repo_author_stats: {},

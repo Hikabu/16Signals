@@ -85,7 +85,6 @@ export interface CommitSignals {
   commit_frequency_by_month: Record<string, number>; // 'YYYY-MM' -> count
   
   merge_commit_ratio: number;
-  commit_signing_rate: number;
   message_quality_raw: string[]; // raw message text, sampled for LLM batch
   message_quality_scores: number[]; // 0–100, populated after LLM Wave 3
 
