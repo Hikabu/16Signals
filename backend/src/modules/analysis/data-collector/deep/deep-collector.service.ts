@@ -470,9 +470,9 @@ export class DeepCollectorService {
     const delta: Partial<SignalCorpus> = {
       commit_signals: {
         ...existingCorpus.commit_signals,
-        per_repo_author_stats: perRepoAuthorStats as any,
-        complexity_trend_by_year: complexityTrend,
-        test_to_code_ratio_by_repo: testCodeRatio,
+        // per_repo_author_stats: perRepoAuthorStats as any,
+        // complexity_trend_by_year: complexityTrend,
+        // test_to_code_ratio_by_repo: testCodeRatio,
       },
       engineering_practice_signals: {
         ...existingCorpus.engineering_practice_signals,

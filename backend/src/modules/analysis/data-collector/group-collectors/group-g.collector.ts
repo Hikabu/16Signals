@@ -67,18 +67,18 @@ export class GroupGCollector {
     const forkDumpRatio = totalRepos > 0 ? forkCount / totalRepos : 0;
 
     // ── Commit inflation ratio (proxy from sub-5-line ratio) ──
-    const commitInflationRatio = commitSignals.sub_5_line_commit_ratio;
+    // const commitInflationRatio = commitSignals.sub_5_line_commit_ratio;
 
     // ── Code search flags (requires separate API call; computed here as empty) ──
     const codeSearchFlags: CodeSearchFlag[] = [];
 
     // ── Style discontinuity (requires deep analysis; empty in Light) ──
     const styleEvents: StyleDiscontinuityEvent[] = [];
-
+  
     console.log(
       `	[G_GroupCollector] phase=build_complete ` +
-      `burstRatio=${burstDormancyRatio.toFixed(2)} burstTriggered=${burstTriggeredAtEval} ` +
-      `forkRatio=${forkDumpRatio.toFixed(2)} inflationRatio=${commitInflationRatio.toFixed(2)}`,
+      `burstRatio=${burstDormancyRatio.toFixed(2)} burstTriggered=${burstTriggeredAtEval} ` 
+      // `forkRatio=${forkDumpRatio.toFixed(2)} inflationRatio=${commitInflationRatio.toFixed(2)}`,
     );
 
     return {
@@ -87,7 +87,7 @@ export class GroupGCollector {
       fork_dump_ratio: forkDumpRatio,
       code_search_flags: codeSearchFlags,
       copyleaks_results: [], // Copyleaks integration in Stage 8
-      commit_inflation_ratio: commitInflationRatio,
+      commit_inflation_ratio: 0,
       ai_pattern_confidence: 0, // Populated after LLM Wave 3
       style_discontinuity_events: styleEvents,
     };

@@ -19,6 +19,8 @@ import { Injectable } from '@nestjs/common';
 import { Octokit } from 'octokit';
 import { CommitSignals, RepositorySignal } from '../../corpus/corpus.types';
 import { CircuitBreakerService } from '../circuit-breaker.service';
+import { exit } from 'process';
+import { rm } from 'fs';
 
 const MAX_COMMITS_PER_REPO = 100;
 const MAX_REPOS_FOR_COMMITS = 10;
@@ -42,7 +44,6 @@ export class GroupCCollector {
       .slice(0, MAX_REPOS_FOR_COMMITS);
 
     const freqByMonth: Record<string, number> = {};
-    const sizeHistogram: number[] = [];
     let totalMergeCommits = 0;
     let totalNonMergeCommits = 0;
     const workHourDist: Record<string, number> = {};
@@ -86,15 +87,6 @@ export class GroupCCollector {
               workHourDist[hourKey] = (workHourDist[hourKey] || 0) + 1;
             }
 
-            // Commit size (from stats if available)
-            const stats = commit.stats;
-            const totalChanges = stats
-              ? (stats.additions || 0) + (stats.deletions || 0)
-              : 0;
-            if (totalChanges > 0) {
-              sizeHistogram.push(totalChanges);
-            }
-
             // Signing
             if (commit.commit?.verification?.verified) {
               totalSigned++;
@@ -119,18 +111,7 @@ export class GroupCCollector {
         // Continue with next repo
       }
     }
-
-    // Compute metrics
-    const sortedSizes = [...sizeHistogram].sort((a, b) => a - b);
-    const p25Idx = Math.floor(sortedSizes.length * 0.25);
-    const medianIdx = Math.floor(sortedSizes.length * 0.5);
-    const p25 = sortedSizes[p25Idx] || 0;
-    const median = sortedSizes[medianIdx] || 0;
-
-    const sub5Count = sizeHistogram.filter((s) => s < 5).length;
-    const sub5Ratio = sizeHistogram.length > 0
-      ? sub5Count / sizeHistogram.length
-      : 0;
+    
 
     const mergeRatio = totalNonMergeCommits > 0
       ? totalMergeCommits / totalNonMergeCommits
@@ -141,26 +122,43 @@ export class GroupCCollector {
       : 0;
 
     console.log(
-      `	[C_GroupCollector] phase=collect_complete username=${username} ` +
-      `totalCommits=${totalNonMergeCommits} months=${Object.keys(freqByMonth).length} ` +
-      `medianSize=${median} sub5Ratio=${sub5Ratio.toFixed(3)}`,
-    );
+      `	\n\n[C_GroupCollector] phase=collect_complete username=${username} ` +
+      `\n\ttotalCommits=${totalNonMergeCommits} ` +
+            `\n\tmonths=${Object.keys(freqByMonth).length} ` +
+      `\n\t merge_commit_ratio =${ mergeRatio}` +
+      `\n\t commit_signing_rate=${ signingRate}` +
+ `\n\twork_hour_distribution =${workHourDist }` +
+ `\n\t message_quality_raw=${ messageSamples.slice(0, 1)}` +
+ `\n\tmessage_quality_scores =${Array(messageSamples.length).fill(0) }` 
+
+);
+
+    exit(0);
 
     return {
       total_commits_lifetime: totalNonMergeCommits,
       commit_frequency_by_month: freqByMonth,
-      commit_size_histogram: sortedSizes.slice(0, 100), // Cap at 100
-      p25_commit_size_lines: p25,
-      median_commit_size_lines: median,
-      sub_5_line_commit_ratio: sub5Ratio,
+      
       merge_commit_ratio: mergeRatio,
       commit_signing_rate: signingRate,
       work_hour_distribution: workHourDist,
       message_quality_raw: messageSamples,
       message_quality_scores: Array(messageSamples.length).fill(0), // Populated after LLM
-      per_repo_author_stats: {}, // Deep Mode only
-      complexity_trend_by_year: {}, // Deep Mode only
-      test_to_code_ratio_by_repo: {}, // Deep Mode only
+
+      //DEEP MODE
+      // per_repo_author_stats: {}, // Deep Mode only
+      // complexity_trend_by_year: {}, // Deep Mode only
+      // test_to_code_ratio_by_repo: {}, // Deep Mode only
+      // commit_size_histogram: [], 
+      // p25_commit_size_lines: 0,
+      // median_commit_size_lines: 0,
+      // sub_5_line_commit_ratio: 0,
+
     };
   }
 }
+
+//TODO:
+// -> total_commits_lifetime is incorrect, rename sampled_commits or rm
+// -> work_hour_distribution is weak because of geography and who cares when someone is working right so pbb rm
+// -> message_quality_raw expand HIGH QUALITY

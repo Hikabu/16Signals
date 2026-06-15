@@ -53,7 +53,6 @@ const perRepoAuthorStatsSchema = z.object({
 const commitSignalsSchema = z.object({
   total_commits_lifetime: z.number().min(0),
   commit_frequency_by_month: z.record(z.string(), z.number()),
-  commit_size_histogram: z.array(z.number()),
   p25_commit_size_lines: z.number().min(0),
   median_commit_size_lines: z.number().min(0),
   sub_5_line_commit_ratio: z.number().min(0).max(1),
@@ -62,9 +61,12 @@ const commitSignalsSchema = z.object({
   work_hour_distribution: z.record(z.string(), z.number()),
   message_quality_raw: z.array(z.string()),
   message_quality_scores: z.array(z.number().min(0).max(100)),
+  //deep mode:
+  test_to_code_ratio_by_repo: z.record(z.string(), z.number()),
   per_repo_author_stats: z.record(z.string(), perRepoAuthorStatsSchema),
   complexity_trend_by_year: z.record(z.string(), z.number()),
-  test_to_code_ratio_by_repo: z.record(z.string(), z.number()),
+  commit_size_histogram: z.array(z.number()),
+
 });
 
 const collaborationSignalsSchema = z.object({

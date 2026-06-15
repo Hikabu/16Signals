@@ -1,4 +1,4 @@
-/**
+/*
  * Group E Collector — Engineering Practices
  *
  * Fetches: CI/CD config, testing, Docker, IaC, linting, observability markers,
@@ -7,7 +7,7 @@
  * API calls: 1 file check per repo (GET /repos/:owner/:repo/contents)
  * Output: EngineeringPracticeSignals
  *
- * Reference: corpus.types.ts Group E
+ * Reference: corpus.types.ts Group E*
  */
 
 import { Injectable } from '@nestjs/common';

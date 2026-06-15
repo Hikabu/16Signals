@@ -72,7 +72,7 @@ export class DataCollectorService {
     console.log("3.3.1[DataCollector] phase 1: Independent groups (A, B, D, F)");
     const phase1Results = await this.safeCollectParallel([
       // { group: 'A' as CorpusGroup, collector: () => this.groupA.collect(octokit, username, this.circuitBreaker) },
-      // { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
+      { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
       // { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
     ]);
 
@@ -80,7 +80,7 @@ export class DataCollectorService {
     const groupA = phase1Results.find((r) => r.group === 'A');
     const groupB = phase1Results.find((r) => r.group === 'B');
     const groupD = phase1Results.find((r) => r.group === 'D');
-    const groupF = phase1Results.find((r) => r.group === 'F');
+
     console.log("3.3.1[DataCollector] phase 1 results: ");
 console.dir(phase1Results, {
   depth: null,
@@ -114,7 +114,7 @@ console.dir(phase1Results, {
     console.log("\n3.3.2[DataCollector] phase 2: Groups dependent on B (C, E)");
     const phase2Results = await this.safeCollectParallel([
       { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
-      { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
+      // { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
     ]);
 
         console.log("3.3.2[DataCollector] phase 2 results: ");

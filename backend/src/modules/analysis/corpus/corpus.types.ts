@@ -83,10 +83,7 @@ export interface RepositorySignal {
 export interface CommitSignals {
   total_commits_lifetime: number;
   commit_frequency_by_month: Record<string, number>; // 'YYYY-MM' -> count
-  commit_size_histogram: number[]; // additions+deletions per non-merge commit
-  p25_commit_size_lines: number;
-  median_commit_size_lines: number;
-  sub_5_line_commit_ratio: number; // 0.0–1.0, excludes merge+doc commits
+  
   merge_commit_ratio: number;
   commit_signing_rate: number;
   work_hour_distribution: Record<string, number>; // 'HH' (UTC) -> commit count
@@ -94,9 +91,14 @@ export interface CommitSignals {
   message_quality_scores: number[]; // 0–100, populated after LLM Wave 3
 
   // Deep Mode only:
-  per_repo_author_stats: Record<string, PerRepoAuthorStats>;
-  complexity_trend_by_year: Record<string, number>; // from scc
-  test_to_code_ratio_by_repo: Record<string, number>; // from tokei
+  // per_repo_author_stats: Record<string, PerRepoAuthorStats>;
+  // complexity_trend_by_year: Record<string, number>; // from scc
+  // test_to_code_ratio_by_repo: Record<string, number>; // from tokei
+  // commit_size_histogram: number[]; // additions+deletions per non-merge commit
+// p25_commit_size_lines: number;
+//   median_commit_size_lines: number;
+//   sub_5_line_commit_ratio: number; // 0.0–1.0, excludes merge+doc commits
+
 }
 
 export interface PerRepoAuthorStats {

@@ -71,35 +71,35 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
     );
 
     // ── 2. Commit size discipline ──
-    const sizeMet =
-      cs.median_commit_size_lines >= 20 &&
-      cs.median_commit_size_lines <= 400 &&
-      cs.sub_5_line_commit_ratio < 0.30;
-    if (sizeMet) primarySignalsMet++;
+    // const sizeMet =
+    //   cs.median_commit_size_lines >= 20 &&
+    //   cs.median_commit_size_lines <= 400 &&
+    //   cs.sub_5_line_commit_ratio < 0.30;
+    // if (sizeMet) primarySignalsMet++;
 
-    TraceContext.captureThreshold(
-      'sizeDiscipline', cs.median_commit_size_lines, [20, 400], 'between', sizeMet,
-      [['commit_signals.median_commit_size_lines', cs.median_commit_size_lines]],
-    );
+    // TraceContext.captureThreshold(
+    //   'sizeDiscipline', cs.median_commit_size_lines, [20, 400], 'between', sizeMet,
+    //   [['commit_signals.median_commit_size_lines', cs.median_commit_size_lines]],
+    // );
 
-    evidence.push({
-      signal: 'Commit size discipline',
-      corpus_field: 'commit_signals.median_commit_size_lines',
-      value: {
-        median: cs.median_commit_size_lines,
-        p25: cs.p25_commit_size_lines,
-        sub5Ratio: cs.sub_5_line_commit_ratio,
-      },
-      interpretation: sizeMet
-        ? `Median commit size ${cs.median_commit_size_lines} lines (target 20–400). ` +
-          `Sub-5-line ratio ${(cs.sub_5_line_commit_ratio * 100).toFixed(1)}% (target < 30%).`
-        : `Median commit size ${cs.median_commit_size_lines} lines outside target range 20–400.`,
-    });
+    // evidence.push({
+    //   signal: 'Commit size discipline',
+    //   corpus_field: 'commit_signals.median_commit_size_lines',
+    //   value: {
+    //     median: cs.median_commit_size_lines,
+    //     p25: cs.p25_commit_size_lines,
+    //     sub5Ratio: cs.sub_5_line_commit_ratio,
+    //   },
+    //   interpretation: sizeMet
+    //     ? `Median commit size ${cs.median_commit_size_lines} lines (target 20–400). ` +
+    //       `Sub-5-line ratio ${(cs.sub_5_line_commit_ratio * 100).toFixed(1)}% (target < 30%).`
+    //     : `Median commit size ${cs.median_commit_size_lines} lines outside target range 20–400.`,
+    // });
 
-    console.log(
-      `[Module:${this.module_id}] phase=evidence signal="Commit size discipline" ` +
-      `median=${cs.median_commit_size_lines} sub5=${cs.sub_5_line_commit_ratio.toFixed(3)} met=${sizeMet}`,
-    );
+    // console.log(
+    //   `[Module:${this.module_id}] phase=evidence signal="Commit size discipline" ` +
+    //   `median=${cs.median_commit_size_lines} sub5=${cs.sub_5_line_commit_ratio.toFixed(3)} met=${sizeMet}`,
+    // );
 
     // ── 3. CI pass rate trajectory ──
     const quarters = Object.entries(ep.ci_pass_rate_trajectory);
@@ -130,15 +130,15 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
     );
 
     // ── 4. Test-to-code ratio (signal only, not primary) ──
-    evidence.push({
-      signal: 'Test-to-code ratio',
-      corpus_field: 'commit_signals.test_to_code_ratio_by_repo',
-      value: { repos: cs.test_to_code_ratio_by_repo },
-      interpretation:
-        ep.repos_with_test_dir > 0
-          ? `${ep.repos_with_test_dir} repos with test directories.`
-          : 'No test directories detected.',
-    });
+    // evidence.push({
+    //   signal: 'Test-to-code ratio',
+    //   corpus_field: 'commit_signals.test_to_code_ratio_by_repo',
+    //   value: { repos: cs.test_to_code_ratio_by_repo },
+    //   interpretation:
+    //     ep.repos_with_test_dir > 0
+    //       ? `${ep.repos_with_test_dir} repos with test directories.`
+    //       : 'No test directories detected.',
+    // });
 
     // ── 5. Semantic versioning ──
     evidence.push({

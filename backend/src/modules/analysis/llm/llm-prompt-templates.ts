@@ -94,7 +94,7 @@ Generate exactly 4 questions, one per type. Base each question on specific gaps 
     sections.push(`METADATA:`);
     sections.push(`  Total lifetime commits: ${cs.total_commits_lifetime}`);
     sections.push(`  Active months: ${Object.keys(cs.commit_frequency_by_month).length}`);
-    sections.push(`  Sub-5-line commit ratio: ${cs.sub_5_line_commit_ratio.toFixed(3)}`);
+    // sections.push(`  Sub-5-line commit ratio: ${cs.sub_5_line_commit_ratio.toFixed(3)}`);
     sections.push(`  Merge commit ratio: ${cs.merge_commit_ratio.toFixed(3)}`);
     sections.push(`  Style discontinuity events: ${ag.style_discontinuity_events.length}`);
     sections.push(`  AI config files: ${ep.ai_config_files_present.join(', ') || 'none'}`);

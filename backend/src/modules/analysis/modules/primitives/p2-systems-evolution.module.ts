@@ -62,37 +62,37 @@ export class P2SystemsEvolutionModule implements AnalysisModule {
     }
 
     // Complexity trajectory (Light Mode: limited signal)
-    const complexityYears = Object.keys(corpus.commit_signals.complexity_trend_by_year);
-    if (complexityYears.length >= 2) {
-      const values = complexityYears.map((y) => corpus.commit_signals.complexity_trend_by_year[y]);
-      const isFlatOrDecreasing = values[values.length - 1] <= values[0];
+    // const complexityYears = Object.keys(corpus.commit_signals.complexity_trend_by_year);
+    // if (complexityYears.length >= 2) {
+    //   const values = complexityYears.map((y) => corpus.commit_signals.complexity_trend_by_year[y]);
+    //   const isFlatOrDecreasing = values[values.length - 1] <= values[0];
 
-      evidence.push({
-        signal: 'Complexity trajectory',
-        corpus_field: 'commit_signals.complexity_trend_by_year',
-        value: corpus.commit_signals.complexity_trend_by_year,
-        interpretation: isFlatOrDecreasing
-          ? `Complexity flat or decreasing over ${complexityYears.length} years. Strong signal.`
-          : `Complexity increasing over ${complexityYears.length} years. Light Mode — limited depth.`,
-      });
+      // evidence.push({
+      //   signal: 'Complexity trajectory',
+      //   corpus_field: 'commit_signals.complexity_trend_by_year',
+      //   value: corpus.commit_signals.complexity_trend_by_year,
+      //   interpretation: isFlatOrDecreasing
+      //     ? `Complexity flat or decreasing over ${complexityYears.length} years. Strong signal.`
+      //     : `Complexity increasing over ${complexityYears.length} years. Light Mode — limited depth.`,
+      // });
 
-      console.log(
-        `[Module:${this.module_id}] phase=evidence signal="Complexity trajectory" ` +
-        `years=${complexityYears.length} trend=${isFlatOrDecreasing ? 'stable/improving' : 'increasing'}`,
-      );
-    } else {
-      evidence.push({
-        signal: 'Complexity trajectory',
-        corpus_field: 'commit_signals.complexity_trend_by_year',
-        value: complexityYears.length,
-        interpretation: 'Deep Mode required for complexity trajectory analysis. Light Mode: insufficient data.',
-      });
+    //   console.log(
+    //     `[Module:${this.module_id}] phase=evidence signal="Complexity trajectory" ` +
+    //     `years=${complexityYears.length} trend=${isFlatOrDecreasing ? 'stable/improving' : 'increasing'}`,
+    //   );
+    // } else {
+    //   evidence.push({
+    //     signal: 'Complexity trajectory',
+    //     corpus_field: 'commit_signals.complexity_trend_by_year',
+    //     value: complexityYears.length,
+    //     interpretation: 'Deep Mode required for complexity trajectory analysis. Light Mode: insufficient data.',
+    //   });
 
-      console.log(
-        `[Module:${this.module_id}] phase=evidence signal="Complexity trajectory" ` +
-        `reason=deep_mode_required complexityYears=${complexityYears.length}`,
-      );
-    }
+    //   console.log(
+    //     `[Module:${this.module_id}] phase=evidence signal="Complexity trajectory" ` +
+    //     `reason=deep_mode_required complexityYears=${complexityYears.length}`,
+    //   );
+    // }
 
     // Refactor commit evidence from message quality
     const refactorSignals = corpus.commit_signals.message_quality_raw.filter(
@@ -115,29 +115,29 @@ export class P2SystemsEvolutionModule implements AnalysisModule {
     );
 
     // Long-lived code survival (Deep Mode)
-    const reposWithAuthorStats = Object.keys(corpus.commit_signals.per_repo_author_stats);
-    const longLivedRepos = reposWithAuthorStats.filter(
-      (repo) => corpus.commit_signals.per_repo_author_stats[repo].authorship_pct >= 0.3,
-    ).length;
+    // const reposWithAuthorStats = Object.keys(corpus.commit_signals.per_repo_author_stats);
+    // const longLivedRepos = reposWithAuthorStats.filter(
+    //   (repo) => corpus.commit_signals.per_repo_author_stats[repo].authorship_pct >= 0.3,
+    // ).length;
 
-    evidence.push({
-      signal: 'Long-lived code survival',
-      corpus_field: 'commit_signals.per_repo_author_stats',
-      value: { totalRepos: reposWithAuthorStats.length, longLivedRepos },
-      interpretation: reposWithAuthorStats.length > 0
-        ? longLivedRepos >= 2
-          ? `${longLivedRepos} repos with ≥30% authorship — strong stewardship signal.`
-          : `${longLivedRepos} repo(s) with ≥30% authorship.`
-        : 'Deep Mode required for authorship analysis.',
-    });
+    // evidence.push({
+    //   signal: 'Long-lived code survival',
+    //   corpus_field: 'commit_signals.per_repo_author_stats',
+    //   value: { totalRepos: reposWithAuthorStats.length, longLivedRepos },
+    //   interpretation: reposWithAuthorStats.length > 0
+    //     ? longLivedRepos >= 2
+    //       ? `${longLivedRepos} repos with ≥30% authorship — strong stewardship signal.`
+    //       : `${longLivedRepos} repo(s) with ≥30% authorship.`
+    //     : 'Deep Mode required for authorship analysis.',
+    // });
 
-    console.log(
-      `[Module:${this.module_id}] phase=evidence signal="Long-lived code survival" ` +
-      `longLivedRepos=${longLivedRepos} totalRepos=${reposWithAuthorStats.length}`,
-    );
+    // console.log(
+    //   `[Module:${this.module_id}] phase=evidence signal="Long-lived code survival" ` +
+    //   `longLivedRepos=${longLivedRepos} totalRepos=${reposWithAuthorStats.length}`,
+    // );
 
     // Confidence determination
-    const confidence = this.determineConfidence(complexityYears.length, refactorSignals, longLivedRepos);
+    const confidence = this.determineConfidence(0, refactorSignals, 0);
 
     console.log(
       `[Module:${this.module_id}] phase=run_complete confidence=${confidence}`,
