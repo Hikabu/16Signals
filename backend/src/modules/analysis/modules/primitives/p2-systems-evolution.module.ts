@@ -155,7 +155,6 @@ export class P2SystemsEvolutionModule implements AnalysisModule {
         'commit_signals.complexity_trend_by_year',
         'commit_signals.message_quality_raw',
         'commit_signals.per_repo_author_stats',
-        'engineering_practice_signals.feature_flag_usage_detected',
       ],
     };
   }

@@ -476,9 +476,6 @@ export class DeepCollectorService {
       },
       engineering_practice_signals: {
         ...existingCorpus.engineering_practice_signals,
-        secret_leak_detected: totalSecretLeaks > 0,
-        secret_leak_details: secretLeakDetails,
-        sast_finding_density: null, // Requires semgrep integration refinement
       },
     };
 

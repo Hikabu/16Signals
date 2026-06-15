@@ -27,19 +27,19 @@ export class P6AILeverageModule implements AnalysisModule {
   run(corpus: SignalCorpus, config: AnalysisConfig): ModuleResult {
     console.log(`[Module:${this.module_id}] phase=run_start username=${corpus.github_username}`);
 
-    const aiConfigFiles = corpus.engineering_practice_signals.ai_config_files_present;
+    // const aiConfigFiles = corpus.engineering_practice_signals.ai_config_files_present;
     const aiConfidence = corpus.anti_gaming_inputs.ai_pattern_confidence;
 
     const evidence: Evidence[] = [];
 
-    evidence.push({
-      signal: 'AI config files detected',
-      corpus_field: 'engineering_practice_signals.ai_config_files_present',
-      value: aiConfigFiles,
-      interpretation: aiConfigFiles.length > 0
-        ? `${aiConfigFiles.length} AI config file(s) found: ${aiConfigFiles.join(', ')}`
-        : 'No AI config files detected.',
-    });
+    // evidence.push({
+    //   signal: 'AI config files detected',
+    //   corpus_field: 'engineering_practice_signals.ai_config_files_present',
+    //   value: aiConfigFiles,
+    //   interpretation: aiConfigFiles.length > 0
+    //     ? `${aiConfigFiles.length} AI config file(s) found: ${aiConfigFiles.join(', ')}`
+    //     : 'No AI config files detected.',
+    // });
 
     evidence.push({
       signal: 'AI pattern confidence (LLM)',
@@ -51,7 +51,7 @@ export class P6AILeverageModule implements AnalysisModule {
     });
 
     console.log(
-      `[Module:${this.module_id}] phase=evidence aiConfigFiles=${aiConfigFiles.length} aiConfidence=${aiConfidence}`,
+      // `[Module:${this.module_id}] phase=evidence aiConfigFiles=${aiConfigFiles.length} aiConfidence=${aiConfidence}`,
     );
 
     // Stub: returns 'traditional' until Stage 5 (LLM integration)
@@ -71,7 +71,6 @@ export class P6AILeverageModule implements AnalysisModule {
       flags: [],
       interview_probe: null,
       raw_signals_used: [
-        'engineering_practice_signals.ai_config_files_present',
         'anti_gaming_inputs.ai_pattern_confidence',
         'commit_signals.message_quality_raw',
         'anti_gaming_inputs.style_discontinuity_events',

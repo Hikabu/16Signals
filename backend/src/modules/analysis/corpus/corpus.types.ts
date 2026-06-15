@@ -173,19 +173,7 @@ export interface IssueActivityData {
 export interface EngineeringPracticeSignals {
   repos_with_test_dir: number;
   repos_with_ci_config: number;
-  repos_with_docker: number;
-  repos_with_iac: number;
-  repos_with_linting: number;
   ci_pass_rate_trajectory: Record<string, number>; // 'YYYY-Q' -> 0.0–1.0
-  semantic_versioning_discipline: boolean;
-  avg_dependabot_resolution_days: number | null;
-  secret_leak_detected: boolean; // from gitleaks (Deep only)
-  secret_leak_details: SecretLeakDetail[];
-  sast_finding_density: number | null; // critical+high per 1000 SLOC (Deep only)
-  observability_markers_present: string[]; // ['logging','metrics','tracing']
-  feature_flag_usage_detected: boolean;
-  ai_config_files_present: string[];
-  actionlint_violations: number;
 }
 
 export interface SecretLeakDetail {

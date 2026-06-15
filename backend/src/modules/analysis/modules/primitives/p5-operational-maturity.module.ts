@@ -33,55 +33,37 @@ export class P5OperationalMaturityModule implements AnalysisModule {
     const flags: Flag[] = [];
 
     // Secret management — HARD flag if detected
-    if (ep.secret_leak_detected) {
-      const hardLeaks = ep.secret_leak_details.filter(
-        (d) => !/test\/|fixture\/|example\/|mock\//.test(d.file_path),
-      );
-      if (hardLeaks.length > 0) {
-        flags.push({
-          flag_id: 'SECRET_LEAK_HARD',
-          flag_type: 'HARD',
-          severity: 'CRITICAL',
-          module_id: this.module_id,
-          description: `${hardLeaks.length} credential(s) detected in repository code.`,
-          evidence_paths: hardLeaks.map((l) => `engineering_practice_signals.secret_leak_details[${l.file_path}]`),
-          escalate_to_hiring_manager: true,
-          clear_without_interview: false,
-          auto_reject: false,
-          interview_probe: `I noticed a credential was committed to your repository. Can you walk me through what happened and how you handled the remediation?`,
-        });
-        console.log(`[Module:${this.module_id}] phase=flag_raised flagId=SECRET_LEAK_HARD count=${hardLeaks.length}`);
-      }
-    }
+    // if (ep.secret_leak_detected) {
+    //   const hardLeaks = ep.secret_leak_details.filter(
+    //     (d) => !/test\/|fixture\/|example\/|mock\//.test(d.file_path),
+    //   );
+    //   if (hardLeaks.length > 0) {
+    //     flags.push({
+    //       flag_id: 'SECRET_LEAK_HARD',
+    //       flag_type: 'HARD',
+    //       severity: 'CRITICAL',
+    //       module_id: this.module_id,
+    //       description: `${hardLeaks.length} credential(s) detected in repository code.`,
+    //       evidence_paths: hardLeaks.map((l) => `engineering_practice_signals.secret_leak_details[${l.file_path}]`),
+    //       escalate_to_hiring_manager: true,
+    //       clear_without_interview: false,
+    //       auto_reject: false,
+    //       interview_probe: `I noticed a credential was committed to your repository. Can you walk me through what happened and how you handled the remediation?`,
+    //     });
+    //     console.log(`[Module:${this.module_id}] phase=flag_raised flagId=SECRET_LEAK_HARD count=${hardLeaks.length}`);
+    //   }
+    // }
 
-    evidence.push({
-      signal: 'Secret management',
-      corpus_field: 'engineering_practice_signals.secret_leak_detected',
-      value: { detected: ep.secret_leak_detected, detailCount: ep.secret_leak_details.length },
-      interpretation: ep.secret_leak_detected ? 'Credentials detected — requires interview clarification.' : 'No credentials detected.',
-    });
+    // evidence.push({
+    //   signal: 'Secret management',
+    //   corpus_field: 'engineering_practice_signals.secret_leak_detected',
+    //   value: { detected: ep.secret_leak_detected, detailCount: ep.secret_leak_details.length },
+    //   interpretation: ep.secret_leak_detected ? 'Credentials detected — requires interview clarification.' : 'No credentials detected.',
+    // });
 
-    // Observability tooling
-    evidence.push({
-      signal: 'Observability tooling',
-      corpus_field: 'engineering_practice_signals.observability_markers_present',
-      value: ep.observability_markers_present,
-      interpretation: ep.observability_markers_present.length >= 2
-        ? `${ep.observability_markers_present.length} observability markers.`
-        : 'Limited observability markers.',
-    });
+  
 
-    // IaC presence
-    evidence.push({
-      signal: 'IaC presence',
-      corpus_field: 'engineering_practice_signals.repos_with_iac',
-      value: ep.repos_with_iac,
-      interpretation: ep.repos_with_iac >= 2
-        ? `${ep.repos_with_iac} repos with IaC (Terraform/Pulumi/CDK).`
-        : `${ep.repos_with_iac} repos with IaC.`,
-    });
 
-    console.log(`[Module:${this.module_id}] phase=evidence observability=${ep.observability_markers_present.length} iac=${ep.repos_with_iac}`);
 
     const confidence = flags.length > 0 ? 'low' : this.determineConfidence(ep);
 
@@ -96,9 +78,7 @@ export class P5OperationalMaturityModule implements AnalysisModule {
       raw_signals_used: [
         'engineering_practice_signals.secret_leak_detected',
         'engineering_practice_signals.secret_leak_details',
-        'engineering_practice_signals.observability_markers_present',
         'engineering_practice_signals.repos_with_iac',
-        'engineering_practice_signals.feature_flag_usage_detected',
         'engineering_practice_signals.sast_finding_density',
         'engineering_practice_signals.avg_dependabot_resolution_days',
       ],
@@ -107,10 +87,7 @@ export class P5OperationalMaturityModule implements AnalysisModule {
 
   private determineConfidence(ep: SignalCorpus['engineering_practice_signals']): ModuleResult['confidence'] {
     let score = 0;
-    if (ep.repos_with_docker > 0) score++;
     if (ep.repos_with_ci_config > 0) score++;
-    if (ep.observability_markers_present.length >= 2) score++;
-    if (ep.repos_with_iac >= 2) score++;
     if (score >= 3) return 'strong';
     if (score >= 2) return 'moderate';
     if (score >= 1) return 'low';

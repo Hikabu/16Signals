@@ -97,7 +97,6 @@ Generate exactly 4 questions, one per type. Base each question on specific gaps 
     // sections.push(`  Sub-5-line commit ratio: ${cs.sub_5_line_commit_ratio.toFixed(3)}`);
     sections.push(`  Merge commit ratio: ${cs.merge_commit_ratio.toFixed(3)}`);
     sections.push(`  Style discontinuity events: ${ag.style_discontinuity_events.length}`);
-    sections.push(`  AI config files: ${ep.ai_config_files_present.join(', ') || 'none'}`);
 
     return sections.join('\n');
   }

@@ -94,17 +94,12 @@ const engineeringPracticeSignalsSchema = z.object({
   repos_with_test_dir: z.number().min(0),
   repos_with_ci_config: z.number().min(0),
   repos_with_docker: z.number().min(0),
-  repos_with_iac: z.number().min(0),
-  repos_with_linting: z.number().min(0),
   ci_pass_rate_trajectory: z.record(z.string(), z.number().min(0).max(1)),
   semantic_versioning_discipline: z.boolean(),
   avg_dependabot_resolution_days: z.number().min(0).nullable(),
   secret_leak_detected: z.boolean(),
   secret_leak_details: z.array(secretLeakDetailSchema),
   sast_finding_density: z.number().min(0).nullable(),
-  observability_markers_present: z.array(z.string()),
-  feature_flag_usage_detected: z.boolean(),
-  ai_config_files_present: z.array(z.string()),
   actionlint_violations: z.number().min(0),
 });
 

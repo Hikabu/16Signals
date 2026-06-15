@@ -52,72 +52,72 @@ export class AG6CredentialLeakModule implements AnalysisModule {
       };
     }
 
-    // Deep Mode: evaluate secret leaks
-    evidence.push({
-      signal: 'Secret leak detection',
-      corpus_field: 'engineering_practice_signals.secret_leak_detected',
-      value: ep.secret_leak_detected,
-      interpretation: ep.secret_leak_detected ? 'Credentials detected in git history.' : 'No credentials detected.',
-    });
+    // // Deep Mode: evaluate secret leaks
+    // evidence.push({
+    //   signal: 'Secret leak detection',
+    //   corpus_field: 'engineering_practice_signals.secret_leak_detected',
+    //   value: ep.secret_leak_detected,
+    //   interpretation: ep.secret_leak_detected ? 'Credentials detected in git history.' : 'No credentials detected.',
+    // });
 
-    if (ep.secret_leak_detected) {
-      // Apply false positive filter
-      const hardLeaks = ep.secret_leak_details.filter(
-        (d) =>
-          !/test\/|fixture\/|example\/|mock\//.test(d.file_path) &&
-          !/YOUR_.*HERE|xxx+|placeholder/.test(d.secret_type),
-      );
+    // if (ep.secret_leak_detected) {
+    //   // Apply false positive filter
+    //   const hardLeaks = ep.secret_leak_details.filter(
+    //     (d) =>
+    //       !/test\/|fixture\/|example\/|mock\//.test(d.file_path) &&
+    //       !/YOUR_.*HERE|xxx+|placeholder/.test(d.secret_type),
+    //   );
 
-      const softLeaks = ep.secret_leak_details.length - hardLeaks.length;
+    //   const softLeaks = ep.secret_leak_details.length - hardLeaks.length;
 
-      evidence.push({
-        signal: 'Hard vs soft leak count',
-        corpus_field: 'engineering_practice_signals.secret_leak_details',
-        value: { total: ep.secret_leak_details.length, hard: hardLeaks.length, soft: softLeaks },
-        interpretation: `${hardLeaks.length} hard leak(s), ${softLeaks} false positive(s).`,
-      });
+    //   evidence.push({
+    //     signal: 'Hard vs soft leak count',
+    //     corpus_field: 'engineering_practice_signals.secret_leak_details',
+    //     value: { total: ep.secret_leak_details.length, hard: hardLeaks.length, soft: softLeaks },
+    //     interpretation: `${hardLeaks.length} hard leak(s), ${softLeaks} false positive(s).`,
+    //   });
 
-      // HARD flag for confirmed leaks
-      if (hardLeaks.length > 0) {
-        for (const leak of hardLeaks) {
-          flags.push({
-            flag_id: `CREDENTIAL_LEAK_${leak.secret_type.replace(/\s+/g, '_').toUpperCase()}`,
-            flag_type: 'HARD',
-            severity: 'CRITICAL',
-            module_id: this.module_id,
-            description: `Credential leak detected: ${leak.secret_type} in ${leak.file_path} (repo: ${leak.repo})`,
-            evidence_paths: [
-              `engineering_practice_signals.secret_leak_details[${leak.file_path}]`,
-            ],
-            escalate_to_hiring_manager: true,
-            clear_without_interview: false,
-            auto_reject: false,
-            interview_probe: `I noticed a credential was committed to your repository at ${leak.repo}. Can you walk me through what happened and how you handled the remediation?`,
-          });
-        }
+    //   // HARD flag for confirmed leaks
+    //   if (hardLeaks.length > 0) {
+    //     for (const leak of hardLeaks) {
+    //       flags.push({
+    //         flag_id: `CREDENTIAL_LEAK_${leak.secret_type.replace(/\s+/g, '_').toUpperCase()}`,
+    //         flag_type: 'HARD',
+    //         severity: 'CRITICAL',
+    //         module_id: this.module_id,
+    //         description: `Credential leak detected: ${leak.secret_type} in ${leak.file_path} (repo: ${leak.repo})`,
+    //         evidence_paths: [
+    //           `engineering_practice_signals.secret_leak_details[${leak.file_path}]`,
+    //         ],
+    //         escalate_to_hiring_manager: true,
+    //         clear_without_interview: false,
+    //         auto_reject: false,
+    //         interview_probe: `I noticed a credential was committed to your repository at ${leak.repo}. Can you walk me through what happened and how you handled the remediation?`,
+    //       });
+    //     }
 
-        console.log(
-          `[Module:${this.module_id}] phase=flag_raised count=${hardLeaks.length} ` +
-          `types=${hardLeaks.map((l) => l.secret_type).join(',')}`,
-        );
-      }
+    //     console.log(
+    //       `[Module:${this.module_id}] phase=flag_raised count=${hardLeaks.length} ` +
+    //       `types=${hardLeaks.map((l) => l.secret_type).join(',')}`,
+    //     );
+    //   }
 
-      // SOFT flag for false positives
-      if (softLeaks > 0) {
-        flags.push({
-          flag_id: 'CREDENTIAL_LEAK_SOFT_FP',
-          flag_type: 'SOFT',
-          severity: 'INFO',
-          module_id: this.module_id,
-          description: `${softLeaks} potential credential exposure(s) in test/fixture files.`,
-          evidence_paths: [],
-          escalate_to_hiring_manager: false,
-          clear_without_interview: true,
-          auto_reject: false,
-          interview_probe: 'Potential credential exposure detected in what appears to be a test fixture — verify in interview that this is intentionally non-functional.',
-        });
-      }
-    }
+    //   // SOFT flag for false positives
+    //   if (softLeaks > 0) {
+    //     flags.push({
+    //       flag_id: 'CREDENTIAL_LEAK_SOFT_FP',
+    //       flag_type: 'SOFT',
+    //       severity: 'INFO',
+    //       module_id: this.module_id,
+    //       description: `${softLeaks} potential credential exposure(s) in test/fixture files.`,
+    //       evidence_paths: [],
+    //       escalate_to_hiring_manager: false,
+    //       clear_without_interview: true,
+    //       auto_reject: false,
+    //       interview_probe: 'Potential credential exposure detected in what appears to be a test fixture — verify in interview that this is intentionally non-functional.',
+    //     });
+    //   }
+    // }
 
     return {
       module_id: this.module_id,

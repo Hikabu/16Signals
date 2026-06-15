@@ -52,20 +52,20 @@ export class AG5AIGenerationDetectionModule implements AnalysisModule {
     });
 
     // AI config files
-    const aiConfigFiles = corpus.engineering_practice_signals.ai_config_files_present;
-    evidence.push({
-      signal: 'AI config files',
-      corpus_field: 'engineering_practice_signals.ai_config_files_present',
-      value: aiConfigFiles,
-      interpretation: aiConfigFiles.length > 0
-        ? `${aiConfigFiles.length} AI config file(s) found.`
-        : 'No AI config files detected.',
-    });
+    // const aiConfigFiles = corpus.engineering_practice_signals.ai_config_files_present;
+    // evidence.push({
+    //   signal: 'AI config files',
+    //   corpus_field: 'engineering_practice_signals.ai_config_files_present',
+    //   value: aiConfigFiles,
+    //   interpretation: aiConfigFiles.length > 0
+    //     ? `${aiConfigFiles.length} AI config file(s) found.`
+    //     : 'No AI config files detected.',
+    // });
 
-    console.log(
-      `[Module:${this.module_id}] phase=evidence styleEvents=${styleEvents.length} ` +
-      `aiConfidence=${aiConfidence} aiConfigs=${aiConfigFiles.length}`,
-    );
+    // console.log(
+    //   `[Module:${this.module_id}] phase=evidence styleEvents=${styleEvents.length} ` +
+    //   `aiConfidence=${aiConfidence} aiConfigs=${aiConfigFiles.length}`,
+    // );
 
     // Stub: P6 classification not available until Stage 5
     // In production, this module reads P6's output from the Wave 3 results

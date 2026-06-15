@@ -46,19 +46,9 @@ export class GroupECollector {
 
     let reposWithTestDir = 0;
     let reposWithCi = 0;
-    let reposWithDocker = 0;
-    let reposWithIac = 0;
-    let reposWithLinting = 0;
-    const aiConfigFiles = new Set<string>();
-    const obsMarkers = new Set<string>();
-    let semverDiscipline = false;
-    let featureFlagUsage = false;
-    let totalActionlintViolations = 0;
 
     for (const repo of targetRepos) {
       if (circuitBreaker.shouldAbort()) break;
-
-      const repoFullName = `${username}/${repo.name}`;
 
       // Check test directory
       for (const testPath of CHECK_PATHS.testDir) {
@@ -75,81 +65,7 @@ export class GroupECollector {
           break;
         }
       }
-
-      // Check Docker
-      for (const dockerPath of CHECK_PATHS.docker) {
-        if (await this.fileExists(octokit, username, repo.name, dockerPath, circuitBreaker)) {
-          reposWithDocker++;
-          break;
-        }
-      }
-
-      // Check IaC
-      for (const iacPath of CHECK_PATHS.iac) {
-        if (await this.fileExists(octokit, username, repo.name, iacPath, circuitBreaker)) {
-          reposWithIac++;
-          break;
-        }
-      }
-
-      // Check linting config
-      for (const lintPath of CHECK_PATHS.linting) {
-        if (await this.fileExists(octokit, username, repo.name, lintPath, circuitBreaker)) {
-          reposWithLinting++;
-          break;
-        }
-      }
-
-      // Check AI config files
-      for (const aiPath of CHECK_PATHS.aiConfig) {
-        if (await this.fileExists(octokit, username, repo.name, aiPath, circuitBreaker)) {
-          aiConfigFiles.add(aiPath);
-        }
-      }
-
-      // Check README for observability markers
-      if (repo.has_readme) {
-        try {
-          const readmeResp = await octokit.rest.repos.getReadme({
-            owner: username,
-            repo: repo.name,
-          });
-          circuitBreaker.updateFromHeaders(readmeResp.headers as any);
-
-          const content = Buffer.from(
-            (readmeResp.data as any).content || '',
-            'base64',
-          ).toString('utf-8').toLowerCase();
-
-          for (const marker of CHECK_PATHS.observability) {
-            if (content.includes(marker)) {
-              obsMarkers.add(marker);
-            }
-          }
-
-          if (content.includes('feature flag') || content.includes('feature toggle')) {
-            featureFlagUsage = true;
-          }
-        } catch {
-          // README not available
-        }
-      }
-
-      // Check actionlint (simulated — real analysis in Deep Mode)
-      try {
-        const workflowsResp = await octokit.rest.repos.getContent({
-          owner: username,
-          repo: repo.name,
-          path: '.github/workflows',
-        });
-        circuitBreaker.updateFromHeaders(workflowsResp.headers as any);
-        // Count workflow files as a proxy
-        const files = Array.isArray(workflowsResp.data) ? workflowsResp.data : [];
-        // We can't actually run actionlint from REST; this is a placeholder
-        totalActionlintViolations += 0;
-      } catch {
-        // No workflows directory
-      }
+     
     }
 
     // Compute real CI pass rate from GitHub Actions workflow runs.
@@ -163,26 +79,15 @@ export class GroupECollector {
 
     console.log(
       `	[E_GroupCollector] phase=collect_complete username=${username} ` +
-      `tests=${reposWithTestDir} ci=${reposWithCi} docker=${reposWithDocker} ` +
-      `iac=${reposWithIac} lint=${reposWithLinting}`,
+      `tests=${reposWithTestDir} `+
+      `ci=${reposWithCi} ` +
+      `ci success=${ciPassRateTrajectory}`
     );
 
     return {
       repos_with_test_dir: reposWithTestDir,
       repos_with_ci_config: reposWithCi,
-      repos_with_docker: reposWithDocker,
-      repos_with_iac: reposWithIac,
-      repos_with_linting: reposWithLinting,
       ci_pass_rate_trajectory: ciPassRateTrajectory,
-      semantic_versioning_discipline: semverDiscipline,
-      avg_dependabot_resolution_days: null, // Requires dependabot API
-      secret_leak_detected: false, // Deep Mode only (gitleaks)
-      secret_leak_details: [], // Deep Mode only
-      sast_finding_density: null, // Deep Mode only (semgrep)
-      observability_markers_present: Array.from(obsMarkers),
-      feature_flag_usage_detected: featureFlagUsage,
-      ai_config_files_present: Array.from(aiConfigFiles),
-      actionlint_violations: totalActionlintViolations,
     };
   }
 

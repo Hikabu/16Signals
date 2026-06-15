@@ -223,7 +223,7 @@ for (const candidate of candidateMessages.sort(
 
 );
 
-    exit(0);
+    // exit(0);
 
     return {
       sampled_commit_count: totalCommits,

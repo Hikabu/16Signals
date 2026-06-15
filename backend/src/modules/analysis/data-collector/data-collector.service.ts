@@ -113,8 +113,8 @@ console.dir(phase1Results, {
     // ── Phase 2: Groups dependent on B (C, E) ──
     console.log("\n3.3.2[DataCollector] phase 2: Groups dependent on B (C, E)");
     const phase2Results = await this.safeCollectParallel([
-      { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
-      // { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
+      // { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
+      { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
     ]);
 
         console.log("3.3.2[DataCollector] phase 2 results: ");

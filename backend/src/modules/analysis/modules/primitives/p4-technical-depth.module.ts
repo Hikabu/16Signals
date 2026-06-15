@@ -53,16 +53,6 @@ export class P4TechnicalDepthModule implements AnalysisModule {
 
     console.log(`[Module:${this.module_id}] phase=evidence signal="Depth by commit volume" deepLanguages=${top2Deep.length}`);
 
-    // Operational depth markers
-    const opMarkers = corpus.engineering_practice_signals.observability_markers_present;
-    evidence.push({
-      signal: 'Operational depth markers',
-      corpus_field: 'engineering_practice_signals.observability_markers_present',
-      value: opMarkers,
-      interpretation: opMarkers.length >= 2
-        ? `${opMarkers.length} operational markers detected — logging, metrics, or tracing.`
-        : `${opMarkers.length} operational markers.`,
-    });
 
 
 
@@ -76,7 +66,7 @@ export class P4TechnicalDepthModule implements AnalysisModule {
         : 'No PR descriptions available for analysis.',
     });
 
-    const confidence = this.determineConfidence(top2Deep.length, opMarkers.length, true);
+    const confidence = this.determineConfidence(top2Deep.length, 0, true);
 
     return {
       module_id: this.module_id,
@@ -89,7 +79,6 @@ export class P4TechnicalDepthModule implements AnalysisModule {
       raw_signals_used: [
         'repositories[].commit_count',
         'repositories[].primary_language',
-        'engineering_practice_signals.observability_markers_present',
         'impact_signals.{npm,pypi,cargo}_packages',
         'collaboration_signals.pr_description_raw',
       ],

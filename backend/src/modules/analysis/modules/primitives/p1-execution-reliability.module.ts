@@ -140,15 +140,15 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
     //       : 'No test directories detected.',
     // });
 
-    // ── 5. Semantic versioning ──
-    evidence.push({
-      signal: 'Semantic versioning discipline',
-      corpus_field: 'engineering_practice_signals.semantic_versioning_discipline',
-      value: ep.semantic_versioning_discipline,
-      interpretation: ep.semantic_versioning_discipline
-        ? 'Semantic versioning detected (vMAJOR.MINOR.PATCH).'
-        : 'No semantic versioning pattern detected.',
-    });
+    // // ── 5. Semantic versioning ──
+    // evidence.push({
+    //   signal: 'Semantic versioning discipline',
+    //   corpus_field: 'engineering_practice_signals.semantic_versioning_discipline',
+    //   value: ep.semantic_versioning_discipline,
+    //   interpretation: ep.semantic_versioning_discipline
+    //     ? 'Semantic versioning detected (vMAJOR.MINOR.PATCH).'
+    //     : 'No semantic versioning pattern detected.',
+    // });
 
     // ── Seniority adjustments ──
     const isJunior = config.seniority === 'intern' || config.seniority === 'junior';
