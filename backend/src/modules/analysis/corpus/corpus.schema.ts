@@ -51,14 +51,13 @@ const perRepoAuthorStatsSchema = z.object({
 });
 
 const commitSignalsSchema = z.object({
-  total_commits_lifetime: z.number().min(0),
+  sampled_commit_count: z.number().min(0),
   commit_frequency_by_month: z.record(z.string(), z.number()),
   p25_commit_size_lines: z.number().min(0),
   median_commit_size_lines: z.number().min(0),
   sub_5_line_commit_ratio: z.number().min(0).max(1),
   merge_commit_ratio: z.number().min(0).max(1),
   commit_signing_rate: z.number().min(0).max(1),
-  work_hour_distribution: z.record(z.string(), z.number()),
   message_quality_raw: z.array(z.string()),
   message_quality_scores: z.array(z.number().min(0).max(100)),
   //deep mode:

@@ -169,7 +169,7 @@ Deep Mode does everything from Phase 1, then adds:
 - `primaryMet >= 3 && activeMonths < 12` → **moderate** (blocked: "activeMonths=N < 12")
 - `primaryMet >= 2 && activeMonths >= 6` → **moderate**
 - `primaryMet >= 1` → **low**
-- Junior + `total_commits_lifetime > 0` → **low**
+- Junior + `sampled_commit_count > 0` → **low**
 - Otherwise → **observability_gap**
 
 **Light vs Deep: Same.** No Deep-only fields affect P1 confidence.
@@ -327,7 +327,7 @@ This module reads P6's Wave 3 output, which is not available until Stage 5.
 | Rung 0 gate | `company_claim === null` | ✅ | ✅ | Early exit → obs_gap |
 | Rung 1: Email domain match | `commit_email_domains` | ✅ | ✅ | confirmed/unconfirmed |
 | Rung 2: Org membership | `github_org_memberships` | ⚠️ Partial | ✅ Full | confirmed/unconfirmed/partial |
-| Rung 3: Contribution fingerprint | `total_commits_lifetime + org match` | ❌ Partial | ✅ Full | confirmed/unconfirmed/partial |
+| Rung 3: Contribution fingerprint | `sampled_commit_count + org match` | ❌ Partial | ✅ Full | confirmed/unconfirmed/partial |
 
 **Light vs Deep CRITICAL:** Rungs 2-3 are only fully confirmed in Deep mode.
 Light mode returns "partial" for Rung 2 and "partial" for Rung 3.
@@ -872,7 +872,7 @@ npx ts-node src/scripts/debug-analysis.ts module p7_authenticity_confidence ente
     commit_frequency_by_month:  24 active months
     median_commit_size_lines:  200
     sub_5_line_commit_ratio:   0.10
-    total_commits_lifetime:    5000
+    sampled_commit_count:    5000
 
   GROUP E (Engineering Practices):
     ci_pass_rate_trajectory:   4 quarters

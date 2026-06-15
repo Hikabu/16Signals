@@ -70,7 +70,7 @@
 //     },
 //   ],
 //   commit_signals: {
-//     total_commits_lifetime: 850,
+//     sampled_commit_count: 850,
 //     commit_frequency_by_month: {
 //       '2025-06': 65, '2025-07': 58, '2025-08': 72, '2025-09': 61,
 //       '2025-10': 53, '2025-11': 67, '2025-12': 49, '2026-01': 71,

@@ -430,7 +430,7 @@ group: 'F',
 
 group: 'C',
     data: {
-      total_commits_lifetime: 560,
+      sampled_commit_count: 560,
       commit_frequency_by_month: {
         '2026-03': 11,
         '2025-10': 35,

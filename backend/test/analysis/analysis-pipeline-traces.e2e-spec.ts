@@ -107,7 +107,7 @@ describe('Analysis Pipeline Traces (e2e)', () => {
 
       // ── Group C — Commit Intelligence ──
       expect(corpus.commit_signals).toBeDefined();
-      expect(typeof corpus.commit_signals.total_commits_lifetime).toBe('number');
+      expect(typeof corpus.commit_signals.sampled_commit_count).toBe('number');
       expect(typeof corpus.commit_signals.sub_5_line_commit_ratio).toBe('number');
       // message_quality_scores are placeholder zeros — expected per spec
       expect(Array.isArray(corpus.commit_signals.message_quality_scores)).toBe(true);
@@ -452,7 +452,7 @@ describe('Analysis Pipeline Traces (e2e)', () => {
         },
         repositories: [],
         commit_signals: {
-          total_commits_lifetime: 0,
+          sampled_commit_count: 0,
           commit_frequency_by_month: {},
           commit_size_histogram: [],
           p25_commit_size_lines: 0,
@@ -460,7 +460,6 @@ describe('Analysis Pipeline Traces (e2e)', () => {
           sub_5_line_commit_ratio: 0,
           merge_commit_ratio: 0,
           commit_signing_rate: 0,
-          work_hour_distribution: {},
           message_quality_raw: [],
           message_quality_scores: [],
           per_repo_author_stats: {},

@@ -114,7 +114,7 @@ export class EVEmploymentVerificationModule implements AnalysisModule {
 
     // Rung 3: Contribution fingerprint (Deep Mode only)
     if (corpus.collection_mode === 'deep' || corpus.collection_mode === 'deep_partial') {
-      const totalCommits = cs.total_commits_lifetime;
+      const totalCommits = cs.sampled_commit_count;
       if (totalCommits > 0 && orgMatch) {
         rungs.push({
           level: 3,
@@ -146,7 +146,7 @@ export class EVEmploymentVerificationModule implements AnalysisModule {
           ? 'identity.commit_email_domains'
           : rung.level === 2
             ? 'identity.github_org_memberships'
-            : 'commit_signals.total_commits_lifetime',
+            : 'commit_signals.sampled_commit_count',
         value: { companiesClaimed: [companyClaim], emailDomains, orgMemberships },
         interpretation: rung.description,
       });
@@ -176,7 +176,7 @@ export class EVEmploymentVerificationModule implements AnalysisModule {
         'identity.company_claim',
         'identity.commit_email_domains',
         'identity.github_org_memberships',
-        'commit_signals.total_commits_lifetime',
+        'commit_signals.sampled_commit_count',
       ],
     };
   }

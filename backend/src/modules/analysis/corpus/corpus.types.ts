@@ -81,12 +81,11 @@ export interface RepositorySignal {
 // ─── Group C: Commit Intelligence ────────────────────────────────────
 
 export interface CommitSignals {
-  total_commits_lifetime: number;
+  sampled_commit_count: number;
   commit_frequency_by_month: Record<string, number>; // 'YYYY-MM' -> count
   
   merge_commit_ratio: number;
   commit_signing_rate: number;
-  work_hour_distribution: Record<string, number>; // 'HH' (UTC) -> commit count
   message_quality_raw: string[]; // raw message text, sampled for LLM batch
   message_quality_scores: number[]; // 0–100, populated after LLM Wave 3
 

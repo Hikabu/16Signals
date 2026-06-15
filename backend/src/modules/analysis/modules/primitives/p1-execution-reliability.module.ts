@@ -169,7 +169,7 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
       traceBlocked.push({ branch: 'moderate', blockedBy: `primarySignalsMet=${adjustedPrimaryMet} < 2` });
     }
     TraceContext.captureBranch('confidence_determination', confidence,
-      { primarySignalsMet: adjustedPrimaryMet, activeMonths, isJunior, totalCommits: cs.total_commits_lifetime },
+      { primarySignalsMet: adjustedPrimaryMet, activeMonths, isJunior, totalCommits: cs.sampled_commit_count },
       traceBlocked,
     );
 
@@ -244,7 +244,7 @@ export class P1ExecutionReliabilityModule implements AnalysisModule {
     if (primaryMet >= 1) return 'low';
 
     // No primary signals met
-    if (isJunior && cs.total_commits_lifetime > 0) return 'low';
+    if (isJunior && cs.sampled_commit_count > 0) return 'low';
     return 'observability_gap';
   }
 

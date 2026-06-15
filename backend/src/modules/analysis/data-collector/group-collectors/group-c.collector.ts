@@ -5,7 +5,7 @@
  * Uses REST API to iterate commits per repo (up to 100 per repo).
  *
  * Computes:
- *   - total_commits_lifetime
+ *   - sampled_commit_count
  *   - commit_frequency_by_month
  *   - commit_size_histogram, p25/median/small-ratio
  *   - merge_commit_ratio, commit_signing_rate
@@ -46,10 +46,12 @@ export class GroupCCollector {
     const freqByMonth: Record<string, number> = {};
     let totalMergeCommits = 0;
     let totalNonMergeCommits = 0;
-    const workHourDist: Record<string, number> = {};
-    const messageSamples: string[] = [];
     let totalSigned = 0;
     let totalCommitsSampled = 0;
+const candidateMessages: {
+  message: string;
+  score: number;
+}[] = [];
 
     for (const repo of targetRepos) {
       if (circuitBreaker.shouldAbort()) break;
@@ -81,10 +83,6 @@ export class GroupCCollector {
             if (date) {
               const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
               freqByMonth[monthKey] = (freqByMonth[monthKey] || 0) + 1;
-
-              // Work hour distribution (UTC)
-              const hourKey = String(date.getUTCHours()).padStart(2, '0');
-              workHourDist[hourKey] = (workHourDist[hourKey] || 0) + 1;
             }
 
             // Signing
@@ -94,9 +92,50 @@ export class GroupCCollector {
             totalCommitsSampled++;
 
             // Message quality samples (up to 50 per user)
-            if (messageSamples.length < 50) {
-              const msg = commit.commit?.message || '';
-              if (msg.length > 5) messageSamples.push(msg);
+            const msg =
+              (commit.commit?.message || '')
+                .trim();
+
+                let score = 0;
+
+score += Math.min(
+  msg.split(/\s+/).length,
+  20,
+);
+
+if (msg.includes(':')) score += 5;
+
+if (
+  msg.includes('fix') ||
+  msg.includes('refactor') ||
+  msg.includes('test') ||
+  msg.includes('feat')
+) {
+  score += 5;
+}
+
+
+            const wordCount =
+              msg.split(/\s+/).length;
+
+            const isMergeMsg =
+              msg.startsWith('Merge ');
+
+            const isVersionBump =
+              /^v?\d+\.\d+/.test(msg);
+
+            const isTooShort =
+              wordCount < 3;
+
+            if (
+              !isMergeMsg &&
+              !isVersionBump &&
+              !isTooShort
+            ) {
+              candidateMessages.push({
+    message: msg,
+    score,
+  });
             }
           }
 
@@ -111,7 +150,11 @@ export class GroupCCollector {
         // Continue with next repo
       }
     }
-    
+    const messageSamples =
+  candidateMessages
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 50)
+    .map(x => x.message);
 
     const mergeRatio = totalNonMergeCommits > 0
       ? totalMergeCommits / totalNonMergeCommits
@@ -127,7 +170,6 @@ export class GroupCCollector {
             `\n\tmonths=${Object.keys(freqByMonth).length} ` +
       `\n\t merge_commit_ratio =${ mergeRatio}` +
       `\n\t commit_signing_rate=${ signingRate}` +
- `\n\twork_hour_distribution =${workHourDist }` +
  `\n\t message_quality_raw=${ messageSamples.slice(0, 1)}` +
  `\n\tmessage_quality_scores =${Array(messageSamples.length).fill(0) }` 
 
@@ -136,12 +178,11 @@ export class GroupCCollector {
     exit(0);
 
     return {
-      total_commits_lifetime: totalNonMergeCommits,
+      sampled_commit_count: totalNonMergeCommits,
       commit_frequency_by_month: freqByMonth,
       
       merge_commit_ratio: mergeRatio,
       commit_signing_rate: signingRate,
-      work_hour_distribution: workHourDist,
       message_quality_raw: messageSamples,
       message_quality_scores: Array(messageSamples.length).fill(0), // Populated after LLM
 
@@ -159,6 +200,5 @@ export class GroupCCollector {
 }
 
 //TODO:
-// -> total_commits_lifetime is incorrect, rename sampled_commits or rm
-// -> work_hour_distribution is weak because of geography and who cares when someone is working right so pbb rm
+// -> sampled_commit_count pbb weak... Evaluate to rm 
 // -> message_quality_raw expand HIGH QUALITY

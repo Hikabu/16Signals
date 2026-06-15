@@ -202,7 +202,7 @@ recency_weight
 ```
 ────────────────────────────────────
   commit_signals: {
-    total_commits_lifetime: number;
+    sampled_commit_count: number;
 ```
 
 ```

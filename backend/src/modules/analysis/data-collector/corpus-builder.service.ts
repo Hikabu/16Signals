@@ -80,7 +80,7 @@ export class CorpusBuilderService {
       }),
       repositories: this.safeGet<RepositorySignal[]>(results, 'B', []),
       commit_signals: this.safeGet<CommitSignals>(results, 'C', {
-        total_commits_lifetime: 0,
+        sampled_commit_count: 0,
         commit_frequency_by_month: {},
         // commit_size_histogram: [],
         // p25_commit_size_lines: 0,
@@ -88,7 +88,6 @@ export class CorpusBuilderService {
         // sub_5_line_commit_ratio: 0,
         merge_commit_ratio: 0,
         commit_signing_rate: 0,
-        work_hour_distribution: {},
         message_quality_raw: [],
         message_quality_scores: [],
         // per_repo_author_stats: {},

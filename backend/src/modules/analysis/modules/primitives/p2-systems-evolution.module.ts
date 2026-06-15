@@ -39,8 +39,8 @@ export class P2SystemsEvolutionModule implements AnalysisModule {
     if (isJunior) {
       evidence.push({
         signal: 'Systems evolution — Junior adjustment',
-        corpus_field: 'commit_signals.total_commits_lifetime',
-        value: corpus.commit_signals.total_commits_lifetime,
+        corpus_field: 'commit_signals.sampled_commit_count',
+        value: corpus.commit_signals.sampled_commit_count,
         interpretation: 'Systems evolution signals not expected at Junior level. Score is informational only.',
       });
 
