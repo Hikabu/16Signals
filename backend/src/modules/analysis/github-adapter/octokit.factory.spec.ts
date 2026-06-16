@@ -9,10 +9,17 @@ jest.mock('octokit', () => {
   return {
     Octokit: jest.fn().mockImplementation((config) => ({
       _config: config,
+
+      graphql: jest.fn().mockResolvedValue({
+        rateLimit: {
+          limit: 5000,
+          remaining: 4999,
+          resetAt: '2026-01-01T00:00:00Z',
+        },
+      }),
     })),
   };
 });
-
 // Mock crypto util
 jest.mock('../../../shared/utils/crypto.utils', () => ({
   decrypt: jest.fn((data, key) => `decrypted-${data}`),
@@ -106,18 +113,14 @@ describe('OctokitFactory', () => {
       },
     });
     expect(Octokit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        request: expect.objectContaining({
-          headers: expect.objectContaining({
-            authorization: 'token decrypted-encrypted-token',
-          }),
-        }),
-      }),
+       expect.objectContaining({
+    auth: 'decrypted-encrypted-token',
+  }),
     );
     // Verify it's not the system token
-    expect((octokit as any)._config.request.headers.authorization).toEqual(
-      'token decrypted-encrypted-token',
-    );
+    expect((octokit as any)._config.auth).toEqual(
+  'decrypted-encrypted-token',
+);
   });
 
   it('2. userId present, profile has no encryptedToken -> falls back to system token', async () => {
@@ -130,13 +133,9 @@ describe('OctokitFactory', () => {
     const octokit = await factory.forJob('user-1');
 
     expect(Octokit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        request: expect.objectContaining({
-          headers: expect.objectContaining({
-            authorization: 'token system-token',
-          }),
-        }),
-      }),
+       expect.objectContaining({
+    auth: 'system-token',
+  }),
     );
   });
 
@@ -160,13 +159,9 @@ describe('OctokitFactory', () => {
       'octokit_token_decrypt_failed',
     );
     expect(Octokit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        request: expect.objectContaining({
-          headers: expect.objectContaining({
-            authorization: 'token system-token',
-          }),
-        }),
-      }),
+       expect.objectContaining({
+    auth: 'system-token',
+  }),
     );
   });
 
@@ -175,13 +170,9 @@ describe('OctokitFactory', () => {
 
     expect(prisma.candidate.findUnique).not.toHaveBeenCalled();
     expect(Octokit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        request: expect.objectContaining({
-          headers: expect.objectContaining({
-            authorization: 'token system-token',
-          }),
-        }),
-      }),
+       expect.objectContaining({
+    auth: 'system-token',
+  }),
     );
   });
 });

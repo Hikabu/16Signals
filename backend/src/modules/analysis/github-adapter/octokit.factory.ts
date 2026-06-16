@@ -65,14 +65,22 @@ export class OctokitFactory {
 
           const token = decrypt(data, key);
           this.logger.debug({ userId }, 'octokit_using_user_token');
-          const octokit = new Octokit({
-            request: {
-              headers: {
-                authorization: `token ${token}`,
-                'X-GitHub-Api-Version': '2022-11-28',
-              },
-            },
-          });
+          // const octokit = new Octokit({
+          //   request: {
+          //     headers: {
+          //       authorization: `token ${token}`,
+          //       'X-GitHub-Api-Version': '2022-11-28',
+          //     },
+          //   },
+          // });
+             const octokit = new Octokit({
+  auth: token, // Automatically creates the "Bearer/token" header
+  request: {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28', // Good practice to keep this!
+    },
+  },
+});
          
           (octokit as any).__githubTokenSource = 'user';
           return octokit;
