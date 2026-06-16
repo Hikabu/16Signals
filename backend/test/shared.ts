@@ -10,6 +10,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { getQueueToken } from '@nestjs/bullmq';
 import cookieParser from 'cookie-parser';
 
+jest.mock('@octokit/auth-app', () => ({
+  createAppAuth: jest.fn(() => jest.fn()),
+}));
 
 export const getCookieValue = (
   setCookie: string[] | string | undefined,
