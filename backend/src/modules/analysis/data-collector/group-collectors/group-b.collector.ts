@@ -120,19 +120,22 @@ export class GroupBCollector {
 
   private filterRepos(repos: any[], username: string): any[] {
     return repos
-      .filter((r) => !this.isProfileReadmeRepo(r, username))
+      .filter((r) => !this.isSpecialUserRepo(r, username))
       .slice(0, MAX_REPOS);
   }
 
-  private isProfileReadmeRepo(
-    repo: any,
-    username: string,
-  ): boolean {
-    return (
-      repo.owner?.login === username &&
-      repo.name === username
-    );
-  }
+private isSpecialUserRepo(
+  repo: any,
+  username: string,
+): boolean {
+  return (
+    repo.owner?.login === username &&
+    (
+      repo.name === username ||
+      repo.name === `${username}.github.io`
+    )
+  );
+}
 
   private computeQuality(repo: any): number {
     const stars = repo.stargazers_count ?? 0;

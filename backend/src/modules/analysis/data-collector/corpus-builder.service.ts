@@ -21,6 +21,7 @@ import {
   EngineeringPracticeSignals,
   AntiGamingInputs,
 } from '../corpus/corpus.types';
+import { exit } from 'process';
 
 export interface GroupCollectionResult {
   group: CorpusGroup;
@@ -43,6 +44,8 @@ export class CorpusBuilderService {
     collectionMode: CollectionMode,
     results: GroupCollectionResult[],
   ): SignalCorpus {
+    if (results.length > 0)
+     exit(0);
     console.log(
       `[CorpusBuilder] phase=build_start username=${username} mode=${collectionMode}`,
     );

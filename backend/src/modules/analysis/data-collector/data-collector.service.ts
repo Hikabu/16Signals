@@ -71,9 +71,9 @@ export class DataCollectorService {
     // ── Phase 1: Independent groups (A, B, D, F) ──
     console.log("3.3.1[DataCollector] phase 1: Independent groups (A, B, D, F)");
     const phase1Results = await this.safeCollectParallel([
-      // { group: 'A' as CorpusGroup, collector: () => this.groupA.collect(octokit, username, this.circuitBreaker) },
+      { group: 'A' as CorpusGroup, collector: () => this.groupA.collect(octokit, username, this.circuitBreaker) },
       { group: 'B' as CorpusGroup, collector: () => this.groupB.collect(octokit, username, this.circuitBreaker) },
-      // { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
+      { group: 'D' as CorpusGroup, collector: () => this.groupD.collect(octokit, username, this.circuitBreaker) },
     ]);
 
 
@@ -113,7 +113,7 @@ console.dir(phase1Results, {
     // ── Phase 2: Groups dependent on B (C, E) ──
     console.log("\n3.3.2[DataCollector] phase 2: Groups dependent on B (C, E)");
     const phase2Results = await this.safeCollectParallel([
-      // { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
+      { group: 'C' as CorpusGroup, collector: () => this.groupC.collect(octokit, username, repos, this.circuitBreaker) },
       { group: 'E' as CorpusGroup, collector: () => this.groupE.collect(octokit, username, repos, this.circuitBreaker) },
     ]);
 
@@ -122,6 +122,8 @@ console.dir(phase2Results, {
   depth: null,
   colors: true,
 });
+
+
 
     for (const result of phase2Results) {
       if (!result.error && result.data !== null) {
@@ -133,25 +135,30 @@ console.dir(phase2Results, {
 
     const commitSignals = phase2Results.find((r) => r.group === 'C')?.data;
 
-    // ── Phase 3: Group G (computational, depends on B + C) ──
-    console.log("\n3.3.3[DataCollector] phase 3: Group G (computational, depends on B + C)");
-    if (!this.circuitBreaker.shouldAbort() && commitSignals) {
-      const antiGamingData = this.groupG.collectLight(commitSignals, repos);
-          console.log("3.3.3[DataCollector] phase 3 results: (group G | anti-gaming signals) ");
-console.dir(antiGamingData, {
-  depth: null,
-  colors: true,
-});
-      phase2Results.push({
-        group: 'G',
-        data: antiGamingData,
-        error: null,
-      });
-      collectedGroups.push('G');
-    }
+//     // ── Phase 3: Group G (computational, depends on B + C) ──
+//     console.log("\n3.3.3[DataCollector] phase 3: Group G (computational, depends on B + C)");
+//     if (!this.circuitBreaker.shouldAbort() && commitSignals) {
+//       const antiGamingData = this.groupG.collectLight(commitSignals, repos);
+//           console.log("3.3.3[DataCollector] phase 3 results: (group G | anti-gaming signals) ");
+// console.dir(antiGamingData, {
+//   depth: null,
+//   colors: true,
+// });
+//       phase2Results.push({
+//         group: 'G',
+//         data: antiGamingData,
+//         error: null,
+//       });
+//       collectedGroups.push('G');
+//     }
 
     // Combine all results
     const allResults = [...phase1Results, ...phase2Results];
+            console.log("3.3.4.0 [DataCollector] ALL results: ");
+console.dir(allResults, {
+  depth: null,
+  colors: true,
+});
 
     // Build corpus
     const corpus = this.corpusBuilder.build(username, 'light', allResults);

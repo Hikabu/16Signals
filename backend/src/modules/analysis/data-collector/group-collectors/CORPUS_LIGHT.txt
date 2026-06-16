@@ -1,0 +1,38 @@
+account_age_days
+bio
+company_claim
+linked_urls
+commit_email_domains
+github_org_memberships
+hireable_flag
+
+per_top_repo {
+    name
+    full_name
+    primary_language
+    star_count
+    fork_count
+    size_kb
+    is_fork
+    is_archived
+    is_private
+    is_org_repo
+    pushed_at
+    has_readme
+    topics
+    homepage_url
+    languages
+    quality_score
+}
+
+sampled_commit_count
+commit_frequency_by_month
+merge_commit_ratio
+message_quality_raw
+message_quality_scores
+
+external_oss_contribution_count
+
+repos_with_test_dir
+repos_with_ci_config
+ci_pass_rate_trajectory
