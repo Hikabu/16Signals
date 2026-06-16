@@ -3,16 +3,16 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import supertest from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
-import { GITHUB_REST_FIXTURE } from '../src/modules/scoring/github-adapter/__fixtures__/github-rest.fixture';
-import { GITHUB_GRAPHQL_FIXTURE } from '../src/modules/scoring/github-adapter/__fixtures__/github-graphql.fixture';
-import { GITHUB_EVENTS_FIXTURE } from '../src/modules/scoring/github-adapter/__fixtures__/github-events.fixture';
+import { GithubAdapterService } from '../src/modules/analysis/github-adapter/github-adapter.service';
+import { GITHUB_REST_FIXTURE } from '../src/modules/analysis/github-adapter/__fixtures__/github-rest.fixture';
+import { GITHUB_GRAPHQL_FIXTURE } from '../src/modules/analysis/github-adapter/__fixtures__/github-graphql.fixture';
+import { GITHUB_EVENTS_FIXTURE } from '../src/modules/analysis/github-adapter/__fixtures__/github-events.fixture';
 import { GithubSyncProcessor } from '../src/queues/github-sync.processor';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole, SyncStatus } from '@prisma/client';
 import { encrypt } from '../src/shared/utils/crypto.utils';
 import { getQueueToken } from '@nestjs/bullmq';
-import { OctokitFactory } from '../src/modules/scoring/github-adapter/octokit.factory';
+import { OctokitFactory } from '../src/modules/analysis/github-adapter/octokit.factory';
 
 const expectedGraphQL = {
   pullRequests: GITHUB_GRAPHQL_FIXTURE.pullRequests.length,

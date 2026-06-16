@@ -1,1 +1,0 @@
-export const SCORING_SCHEMA_VERSION = 'v1';

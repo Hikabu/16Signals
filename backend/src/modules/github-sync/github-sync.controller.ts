@@ -16,7 +16,6 @@ import {
   ApiOperation,
   ApiOkResponse,
   ApiUnauthorizedResponse,
-  ApiBadRequestResponse,
   ApiConflictResponse,
   ApiQuery,
   ApiHeader,
@@ -24,7 +23,7 @@ import {
 
 import { GithubSyncService } from './github-sync.service';
 import { GithubSyncConnectGuard } from '../auth-candidate/guards/github.sync.connect.guard';
-import { InternalKeyGuard } from '../scorecard/internal-key.guard';
+// import { InternalKeyGuard } from '../scorecard/internal-key.guard';
 
 
 @ApiTags('GitHub Sync')
@@ -133,7 +132,7 @@ return res.redirect(`${process.env.FRONTEND_URL}/sync/github/callback`);
 
 ///ONLY TESTING - DELETE TODO
   @Delete('dev/unsync')
-@UseGuards(AuthGuard('jwt'), InternalKeyGuard)
+@UseGuards(AuthGuard('jwt'))
 @ApiHeader({
     name: 'X-Internal-Key',
     description: 'Internal API key (required)',

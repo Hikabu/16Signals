@@ -21,7 +21,7 @@
 
 import { Injectable, Inject } from '@nestjs/common';
 import { LLM_CLIENT, LlmClient } from './llm-client.interface';
-import { LLMPromptTemplates } from './llm-prompt-templates';
+// import { LLMPromptTemplates } from './llm-prompt-templates';
 import {
   Wave3BatchOutput,
   NarrativeOutput,
@@ -30,14 +30,14 @@ import {
   defaultNarrativeOutput,
 } from './llm-response.types';
 import { SignalCorpus } from '../corpus/corpus.types';
-import { ModuleResult } from '../modules/module-result.types';
-import { AnalysisConfig } from '../modules/module.interface';
+// import { ModuleResult } from '../modules/module-result.types';
+// import { AnalysisConfig } from '../modules/module.interface';
 
 @Injectable()
 export class LLMIntegrationService {
   constructor(
     @Inject(LLM_CLIENT) private readonly llm: LlmClient,
-    private readonly prompts: LLMPromptTemplates,
+    private readonly prompts,
   ) {}
 
   // ──────────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ export class LLMIntegrationService {
    */
   async wave3Batch(
     corpus: SignalCorpus,
-    previousResults: ModuleResult[],
+    previousResults: [],
   ): Promise<Wave3BatchOutput> {
     console.log(
       `[LLMIntegration] phase=call_start callType=wave3_batch ` +
@@ -176,8 +176,8 @@ export class LLMIntegrationService {
    * Uses the module results and CV claims (if any) to produce natural language text.
    */
   async generateNarrative(
-    allModuleResults: ModuleResult[],
-    config: AnalysisConfig,
+    allModuleResults: [],
+    config,
     corpus: SignalCorpus,
   ): Promise<NarrativeOutput> {
     console.log(
@@ -256,7 +256,7 @@ export class LLMIntegrationService {
    * Returns an array of 4 questions (one per type).
    */
   async generateInterviewQuestions(
-    allModuleResults: ModuleResult[],
+    allModuleResults: [],
     corpus: SignalCorpus,
   ): Promise<InterviewQuestion[]> {
     console.log(

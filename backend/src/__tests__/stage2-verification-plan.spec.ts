@@ -14,8 +14,8 @@ import { AppModule } from '../app.module';
 import { WorkerModule } from '../queues/worker.module';
 import { ScoringService } from '../modules/scoring/scoring-service/scoring.service';
 import { SignalExtractorService } from '../modules/scoring/signal-extractor/signal-extractor.service';
-import { CacheService } from '../modules/scoring/cache/cache.service';
-import { GithubAdapterService } from '../modules/scoring/github-adapter/github-adapter.service';
+import { CacheService } from '../modules/analysis/cache/cache.service';
+import { GithubAdapterService } from '../modules/analysis/github-adapter/github-adapter.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import {

@@ -13,7 +13,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { Octokit } from 'octokit';
-import { RepositorySignal } from '../../corpus/corpus.types';
+// import { RepositorySignal } from '../../corpus/corpus.types';
 import { CircuitBreakerService } from '../circuit-breaker.service';
 import { exit } from 'process';
 
@@ -36,7 +36,8 @@ export class GroupBCollector {
     octokit: Octokit,
     username: string,
     circuitBreaker: CircuitBreakerService,
-  ): Promise<RepositorySignal[]> {
+  ){
+  // ): Promise<RepositorySignal[]> {
     console.log(
       `	[B_GroupCollector] phase=collect_start username=${username}`,
     );

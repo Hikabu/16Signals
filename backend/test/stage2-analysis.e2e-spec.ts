@@ -4,13 +4,13 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
+import { GithubAdapterService } from '../src/modules/analysis/github-adapter/github-adapter.service';
 import { SolanaAdapterService } from '../src/modules/scoring/web3-adapter/solana-adapter.service';
 import { AnalysisResult } from '../src/modules/scoring/types/result.types';
 import { PrismaService } from '../src/prisma/prisma.service';
 import Redis from 'ioredis';
 import { WorkerModule } from '../src/queues/worker.module';
-import { GitHubRawData } from '../src/modules/scoring/github-adapter/github-data.types';
+import { GitHubRawData } from '../src/modules/analysis/github-adapter/github-data.types';
 import { Logger } from 'nestjs-pino';
 
 describe('Colosseum Stage 2 Analysis Web3 & Edge Cases (E2E)', () => {

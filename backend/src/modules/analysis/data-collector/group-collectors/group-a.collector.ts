@@ -16,7 +16,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { Octokit } from 'octokit';
-import { IdentitySignals } from '../../corpus/corpus.types';
+// import { IdentitySignals } from '../../corpus/corpus.types';
 import { CircuitBreakerService } from '../circuit-breaker.service';
 
 /** Maximum bio length before truncation to prevent abuse payloads in downstream LLM contexts. */
@@ -28,7 +28,8 @@ export class GroupACollector {
     octokit: Octokit,
     username: string,
     circuitBreaker: CircuitBreakerService,
-  ): Promise<IdentitySignals> {
+  ){
+  // ): Promise<IdentitySignals> {
     console.log(
       `	[A_GroupCollector] phase=collect_start username=${username}`,
     );

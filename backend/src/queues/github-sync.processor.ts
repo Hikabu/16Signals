@@ -4,9 +4,7 @@ import { Logger, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncStatus } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
-import { OctokitFactory } from '../modules/scoring/github-adapter/octokit.factory';
-import { DataCollectorService } from '../modules/analysis/data-collector/data-collector.service';
-import { CorpusCacheService } from '../modules/analysis/corpus/corpus-cache.service';
+import { OctokitFactory } from '../modules/analysis/github-adapter/octokit.factory';
 
 /**
  * GithubSyncProcessor — Refactored to use the new GitIntel pipeline.
@@ -24,8 +22,8 @@ export class GithubSyncProcessor extends WorkerHost {
   private readonly logger = new Logger(GithubSyncProcessor.name);
 
   constructor(
-    private readonly dataCollector: DataCollectorService,
-    private readonly corpusCache: CorpusCacheService,
+    // private readonly dataCollector: DataCollectorService,
+    // private readonly corpusCache: CorpusCacheService,
     private readonly prisma: PrismaService,
     @InjectQueue('signal-compute') private readonly signalQueue: Queue,
     private readonly octokitFactory: OctokitFactory,
@@ -72,72 +70,53 @@ export class GithubSyncProcessor extends WorkerHost {
         },
       });
       console.log(`[GithubSyncProcessor] phase=sync_progress jobId=${jobId} progress=20 status=SYNC_REQUEST`);
+      //TODO -> UPDATE MIGRATE
 
-      // (c) Collect data using the new GitIntel DataCollectorService
-      // This produces a SignalCorpus with all 7 groups (A-G) and caching
-      const resolvedUserId = job.data.userId;
-      const octokit = await this.octokitFactory.forJob(resolvedUserId ?? null);
-      console.log(`[GithubSyncProcessor] phase=collect_start jobId=${jobId} username=${username} mode=light`);
+      // // (c) Collect data using the new GitIntel DataCollectorService
 
-      const { corpus, groupsCollected, errors } = await this.dataCollector.collectLightMode(
-        octokit,
-        username,
-        jobId,
-      );
+      // // (d) Store corpus in Redis cache with 7d TTL
+     
 
-      console.log(
-        `[GithubSyncProcessor] phase=collect_complete jobId=${jobId} ` +
-        `username=${username} groups=${groupsCollected.join(',')} ` +
-        `errors=${errors.length} corpusId=${corpus.corpus_id}`,
-      );
+      // // (e) Build transaction operations for DB persistence
+      // const operations: any[] = [];
 
-      // (d) Store corpus in Redis cache with 7d TTL
-      await this.corpusCache.set(corpus);
-      console.log(
-        `[GithubSyncProcessor] phase=corpus_cached jobId=${jobId} ` +
-        `corpusId=${corpus.corpus_id} ttl=7d`,
-      );
+      // // DeveloperProfile cooldown update (if developerProfileId is set)
+      // if (profile.developerProfileId) {
+      //   operations.push(
+      //     this.prisma.developerProfile.update({
+      //       where: { id: profile.developerProfileId },
+      //       data: {
+      //         githubCooldownUntil: new Date(
+      //           Date.now() + 24 * 60 * 60 * 1000,
+      //         ),
+      //       },
+      //     }),
+      //   );
+      // }
 
-      // (e) Build transaction operations for DB persistence
-      const operations: any[] = [];
+      // // GithubProfile update — store corpus JSON for backward compatibility
+      // operations.push(
+      //   this.prisma.githubProfile.update({
+      //     where: { id: githubProfileId },
+      //     data: {
+      //       rawDataSnapshot: corpus as any,
+      //       lastSyncAt: new Date(),
+      //       syncError: null,
+      //       syncStatus: SyncStatus.SYNC_SUCCESS,
+      //       syncProgress: 100,
+      //     },
+      //   }),
+      // );
 
-      // DeveloperProfile cooldown update (if developerProfileId is set)
-      if (profile.developerProfileId) {
-        operations.push(
-          this.prisma.developerProfile.update({
-            where: { id: profile.developerProfileId },
-            data: {
-              githubCooldownUntil: new Date(
-                Date.now() + 24 * 60 * 60 * 1000,
-              ),
-            },
-          }),
-        );
-      }
+      // // (f) Execute transaction
+      // await this.prisma.$transaction(operations);
 
-      // GithubProfile update — store corpus JSON for backward compatibility
-      operations.push(
-        this.prisma.githubProfile.update({
-          where: { id: githubProfileId },
-          data: {
-            rawDataSnapshot: corpus as any,
-            lastSyncAt: new Date(),
-            syncError: null,
-            syncStatus: SyncStatus.SYNC_SUCCESS,
-            syncProgress: 100,
-          },
-        }),
-      );
-
-      // (f) Execute transaction
-      await this.prisma.$transaction(operations);
-
-      console.log(
-        `[GithubSyncProcessor] phase=sync_complete jobId=${jobId} ` +
-        `username=${username} groups=${groupsCollected.join(',')} ` +
-        `corpusId=${corpus.corpus_id}`,
-      );
-      this.logger.log({ jobId, githubProfileId }, 'github_sync_completed');
+      // console.log(
+      //   `[GithubSyncProcessor] phase=sync_complete jobId=${jobId} ` +
+      //   `username=${username} groups=${groupsCollected.join(',')} ` +
+      //   `corpusId=${corpus.corpus_id}`,
+      // );
+      // this.logger.log({ jobId, githubProfileId }, 'github_sync_completed');
     } catch (error) {
       console.log(
         `[GithubSyncProcessor] phase=sync_error jobId=${jobId} ` +

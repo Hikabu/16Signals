@@ -42,7 +42,6 @@ const MAX_REDIS_RETRY_DELAY_MS = 2000;
       { name: 'github-sync' },
       { name: 'signal-compute' },
       { name: 'email' },
-      { name: 'analysis' },
     ),
   ],
   exports: [BullModule],

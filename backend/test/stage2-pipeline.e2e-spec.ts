@@ -4,7 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
+import { GithubAdapterService } from '../src/modules/analysis/github-adapter/github-adapter.service';
 import {
   ALEX_BACKEND,
   SARAH_FULLSTACK,

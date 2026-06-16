@@ -8,7 +8,6 @@ import {
   PrismaHealthIndicator,
 } from '@nestjs/terminus';
 import Redis from 'ioredis';
-import { Public } from '../auth-employer/decorators/public.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @ApiTags('System')
@@ -23,7 +22,6 @@ export class HealthController {
 
   @Get()
   @SkipThrottle()
-  @Public()
   @HealthCheck()
   check() {
     return this.health.check([

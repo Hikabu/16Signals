@@ -13,7 +13,7 @@ import { VoucherQualityService } from '../src/modules/vouchers/voucher-quality.s
 import { Connection } from '@solana/web3.js';
 import { AuthGuard } from '@nestjs/passport';
 import { OptionalJwtAuthGuard } from '../src/modules/auth-candidate/guards/optional-jwt-auth.guard';
-import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
+import { GithubAdapterService } from '../src/modules/analysis/github-adapter/github-adapter.service';
 import { SolanaAdapterService } from '../src/modules/scoring/web3-adapter/solana-adapter.service';
 import { ALEX_BACKEND } from '../src/modules/scoring/signal-extractor/__fixtures__/seed-developers';
 import { WorkerModule } from '../src/queues/worker.module';

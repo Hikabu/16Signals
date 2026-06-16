@@ -27,13 +27,13 @@ import { ConfigModule } from '@nestjs/config';
 import { LLM_CLIENT } from './llm-client.interface';
 import { GeminiClient } from './gemini-client';
 import { LLMIntegrationService } from './llm-integration.service';
-import { LLMPromptTemplates } from './llm-prompt-templates';
+// import { LLMPromptTemplates } from './llm-prompt-templates';
 
 @Module({
   imports: [ConfigModule],
   providers: [
     GeminiClient,
-    LLMPromptTemplates,
+    // LLMPromptTemplates,
     LLMIntegrationService,
     {
       provide: LLM_CLIENT,

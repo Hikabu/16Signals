@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { GithubAdapterService } from '../src/modules/scoring/github-adapter/github-adapter.service';
+import { GithubAdapterService } from '../src/modules/analysis/github-adapter/github-adapter.service';
 import { SignalExtractorService } from '../src/modules/scoring/signal-extractor/signal-extractor.service';
 import { ScoringService } from '../src/modules/scoring/scoring-service/scoring.service';
 import { SummaryGeneratorService } from '../src/modules/scoring/summary-generator/summary-generator.service';
