@@ -40,10 +40,7 @@ export function shouldTrace(
 ): boolean {
   const cfg = getConfig();
   if (cfg.level === 'off') return false;
-  if (
-    cfg.components.length > 0 &&
-    !cfg.components.includes(component)
-  ) {
+  if (cfg.components.length > 0 && !cfg.components.includes(component)) {
     return false;
   }
   if (cfg.level === 'summary' && level === 'detailed') return false;

@@ -14,23 +14,22 @@ async function bootstrap() {
         : ['log', 'error', 'warn', 'debug'],
   });
 
-//ONLY TESTING    
-await debug_closeOpenJobs(app);
+  //ONLY TESTING
+  await debug_closeOpenJobs(app);
   app.enableShutdownHooks();
   registerShutdown(app);
   logger.log('Worker is running');
 }
 
-async function debug_closeOpenJobs(app: INestApplicationContext){
-  console.log("KILLING IT");
-     const queue = app.get(getQueueToken('analysis'));
+async function debug_closeOpenJobs(app: INestApplicationContext) {
+  console.log('KILLING IT');
+  const queue = app.get(getQueueToken('analysis'));
 
   await queue.obliterate({
     force: true,
   });
 
-  console.log("finished queue!!!!!1");
-
+  console.log('finished queue!!!!!1');
 }
 
 function registerShutdown(app: INestApplicationContext) {

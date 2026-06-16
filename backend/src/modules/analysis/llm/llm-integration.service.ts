@@ -57,7 +57,7 @@ export class LLMIntegrationService {
   ): Promise<Wave3BatchOutput> {
     console.log(
       `[LLMIntegration] phase=call_start callType=wave3_batch ` +
-      `tokenEstimate=3500 username=${corpus.github_username}`,
+        `tokenEstimate=3500 username=${corpus.github_username}`,
     );
 
     const userPrompt = this.prompts.buildWave3BatchPrompt(corpus);
@@ -72,18 +72,18 @@ export class LLMIntegrationService {
       const parsed = this.parseWave3Response(rawResponse);
       console.log(
         `[LLMIntegration] phase=wave3_parsed ` +
-        `commitQuality=${parsed.commit_quality.length} ` +
-        `prQuality=${parsed.pr_description_quality.length} ` +
-        `reviewDepth=${parsed.review_depth.length} ` +
-        `hardProblems=${parsed.hard_problem_detection.length} ` +
-        `aiClassification=${parsed.ai_leverage.classification}`,
+          `commitQuality=${parsed.commit_quality.length} ` +
+          `prQuality=${parsed.pr_description_quality.length} ` +
+          `reviewDepth=${parsed.review_depth.length} ` +
+          `hardProblems=${parsed.hard_problem_detection.length} ` +
+          `aiClassification=${parsed.ai_leverage.classification}`,
       );
 
       return parsed;
     } catch (error) {
       console.log(
         `[LLMIntegration] phase=fallback callType=wave3_batch ` +
-        `reason=${(error as Error).message}`,
+          `reason=${(error as Error).message}`,
       );
       return defaultWave3BatchOutput();
     }
@@ -97,13 +97,17 @@ export class LLMIntegrationService {
     // Strip markdown fences if present
     let cleaned = raw.trim();
     if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      cleaned = cleaned
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/i, '');
     }
 
     // Extract JSON object
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.log(`[LLMIntegration] phase=json_parse_error error=no_json_found`);
+      console.log(
+        `[LLMIntegration] phase=json_parse_error error=no_json_found`,
+      );
       return defaultWave3BatchOutput();
     }
 
@@ -115,11 +119,15 @@ export class LLMIntegrationService {
           ? parsed.commit_quality.map(Number).filter((n: number) => !isNaN(n))
           : [],
         pr_description_quality: Array.isArray(parsed.pr_description_quality)
-          ? parsed.pr_description_quality.map(Number).filter((n: number) => !isNaN(n))
+          ? parsed.pr_description_quality
+              .map(Number)
+              .filter((n: number) => !isNaN(n))
           : [],
         review_depth: Array.isArray(parsed.review_depth)
           ? parsed.review_depth.filter((d: string) =>
-              ['LGTM_only', 'surface', 'root_cause', 'architectural'].includes(d),
+              ['LGTM_only', 'surface', 'root_cause', 'architectural'].includes(
+                d,
+              ),
             )
           : [],
         hard_problem_detection: Array.isArray(parsed.hard_problem_detection)
@@ -127,21 +135,26 @@ export class LLMIntegrationService {
               ['hard_problem', 'moderate', 'routine', 'unclear'].includes(d),
             )
           : [],
-        ai_leverage: parsed.ai_leverage && typeof parsed.ai_leverage === 'object'
-          ? {
-              classification: this.validateAIClassification(
-                parsed.ai_leverage.classification,
-              ),
-              confidence_0_to_100: Math.max(
-                0,
-                Math.min(100, Number(parsed.ai_leverage.confidence_0_to_100) || 0),
-              ),
-              reasoning: parsed.ai_leverage.reasoning || 'No reasoning provided.',
-              key_evidence: Array.isArray(parsed.ai_leverage.key_evidence)
-                ? parsed.ai_leverage.key_evidence
-                : [],
-            }
-          : defaultWave3BatchOutput().ai_leverage,
+        ai_leverage:
+          parsed.ai_leverage && typeof parsed.ai_leverage === 'object'
+            ? {
+                classification: this.validateAIClassification(
+                  parsed.ai_leverage.classification,
+                ),
+                confidence_0_to_100: Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    Number(parsed.ai_leverage.confidence_0_to_100) || 0,
+                  ),
+                ),
+                reasoning:
+                  parsed.ai_leverage.reasoning || 'No reasoning provided.',
+                key_evidence: Array.isArray(parsed.ai_leverage.key_evidence)
+                  ? parsed.ai_leverage.key_evidence
+                  : [],
+              }
+            : defaultWave3BatchOutput().ai_leverage,
       };
     } catch (error) {
       console.log(
@@ -154,7 +167,9 @@ export class LLMIntegrationService {
   /**
    * Validate AI classification against allowed values.
    */
-  private validateAIClassification(value: string): Wave3BatchOutput['ai_leverage']['classification'] {
+  private validateAIClassification(
+    value: string,
+  ): Wave3BatchOutput['ai_leverage']['classification'] {
     const validValues = [
       'ai_architect',
       'ai_operator',
@@ -182,7 +197,7 @@ export class LLMIntegrationService {
   ): Promise<NarrativeOutput> {
     console.log(
       `[LLMIntegration] phase=call_start callType=narrative ` +
-      `tokenEstimate=2500 username=${corpus.github_username}`,
+        `tokenEstimate=2500 username=${corpus.github_username}`,
     );
 
     const userPrompt = this.prompts.buildNarrativePrompt(
@@ -202,7 +217,7 @@ export class LLMIntegrationService {
     } catch (error) {
       console.log(
         `[LLMIntegration] phase=fallback callType=narrative ` +
-        `reason=${(error as Error).message}`,
+          `reason=${(error as Error).message}`,
       );
       return defaultNarrativeOutput();
     }
@@ -222,8 +237,10 @@ export class LLMIntegrationService {
 
     return {
       profile_summary: sectionA || defaultNarrativeOutput().profile_summary,
-      cv_cross_reference: sectionB || defaultNarrativeOutput().cv_cross_reference,
-      work_pattern_intelligence: sectionC || defaultNarrativeOutput().work_pattern_intelligence,
+      cv_cross_reference:
+        sectionB || defaultNarrativeOutput().cv_cross_reference,
+      work_pattern_intelligence:
+        sectionC || defaultNarrativeOutput().work_pattern_intelligence,
     };
   }
 
@@ -261,7 +278,7 @@ export class LLMIntegrationService {
   ): Promise<InterviewQuestion[]> {
     console.log(
       `[LLMIntegration] phase=call_start callType=interview_questions ` +
-      `tokenEstimate=2000 username=${corpus.github_username}`,
+        `tokenEstimate=2000 username=${corpus.github_username}`,
     );
 
     const userPrompt = this.prompts.buildInterviewQuestionsPrompt(
@@ -280,7 +297,7 @@ export class LLMIntegrationService {
     } catch (error) {
       console.log(
         `[LLMIntegration] phase=fallback callType=interview_questions ` +
-        `reason=${(error as Error).message}`,
+          `reason=${(error as Error).message}`,
       );
       return [];
     }
@@ -293,7 +310,9 @@ export class LLMIntegrationService {
     // Strip markdown fences if present
     let cleaned = raw.trim();
     if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      cleaned = cleaned
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/i, '');
     }
 
     try {
@@ -310,9 +329,7 @@ export class LLMIntegrationService {
       return parsed
         .filter(
           (q: any) =>
-            q &&
-            typeof q.question === 'string' &&
-            validTypes.includes(q.type),
+            q && typeof q.question === 'string' && validTypes.includes(q.type),
         )
         .map((q: any) => ({
           type: q.type,

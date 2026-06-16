@@ -19,7 +19,9 @@ export type VerifiedPrivyUser = {
   wallet: string | null;
 };
 
-export async function verifyPrivyToken(token: string): Promise<VerifiedPrivyUser> {
+export async function verifyPrivyToken(
+  token: string,
+): Promise<VerifiedPrivyUser> {
   const appId = process.env.PRIVY_APP_ID;
   if (!appId) {
     throw new Error('PRIVY_APP_ID is not configured');
@@ -42,9 +44,9 @@ export async function verifyPrivyToken(token: string): Promise<VerifiedPrivyUser
     id: claims.sub,
     email:
       (typeof claims.email === 'string' && claims.email) ||
-      (typeof claims.preferred_username === 'string' && claims.preferred_username) ||
+      (typeof claims.preferred_username === 'string' &&
+        claims.preferred_username) ||
       null,
     wallet: typeof smartWallet === 'string' ? smartWallet : null,
   };
 }
-

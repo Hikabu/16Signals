@@ -34,9 +34,8 @@ export class UpdateUserDto {
       'Username can only contain letters, numbers, underscores, dots, and hyphens',
   })
   username?: string;
-  
-// IsOptional()
-//   @IsString()
-//   avatarUrl?: string;
 
+  // IsOptional()
+  //   @IsString()
+  //   avatarUrl?: string;
 }

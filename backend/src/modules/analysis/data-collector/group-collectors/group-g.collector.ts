@@ -74,10 +74,10 @@ export class GroupGCollector {
 
     // ── Style discontinuity (requires deep analysis; empty in Light) ──
     const styleEvents: StyleDiscontinuityEvent[] = [];
-  
+
     console.log(
       `	[G_GroupCollector] phase=build_complete ` +
-      `burstRatio=${burstDormancyRatio.toFixed(2)} burstTriggered=${burstTriggeredAtEval} ` 
+        `burstRatio=${burstDormancyRatio.toFixed(2)} burstTriggered=${burstTriggeredAtEval} `,
       // `forkRatio=${forkDumpRatio.toFixed(2)} inflationRatio=${commitInflationRatio.toFixed(2)}`,
     );
 

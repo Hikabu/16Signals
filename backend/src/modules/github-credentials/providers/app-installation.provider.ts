@@ -154,19 +154,19 @@ export class AppInstallationProvider implements IGitHubCredentialProvider {
   //     );
   //   }
   // }
-private decodePrivateKey(encoded: string): string {
-  if (encoded.includes('-----BEGIN')) {
-    return encoded.replace(/\\n/g, '\n');
+  private decodePrivateKey(encoded: string): string {
+    if (encoded.includes('-----BEGIN')) {
+      return encoded.replace(/\\n/g, '\n');
+    }
+
+    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+
+    if (!decoded.includes('-----BEGIN')) {
+      throw new Error('Decoded content is not a valid PEM key');
+    }
+
+    return decoded.replace(/\\n/g, '\n');
   }
-
-  const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-
-  if (!decoded.includes('-----BEGIN')) {
-    throw new Error('Decoded content is not a valid PEM key');
-  }
-
-  return decoded.replace(/\\n/g, '\n');
-}
   /**
    * Retrieve a required config value, throwing if missing.
    */

@@ -19,8 +19,6 @@ const isTest = process.env.NODE_ENV === 'test';
     GitHubCredentialsModule,
     ...(isTest ? [] : [QueuesModule]),
   ],
-  providers: isTest
-    ? []
-    : [EmailProcessor, GithubSyncProcessor],
+  providers: isTest ? [] : [EmailProcessor, GithubSyncProcessor],
 })
 export class WorkerModule {}

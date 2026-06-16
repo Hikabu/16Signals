@@ -41,7 +41,9 @@ export class GithubSyncProcessor extends WorkerHost {
     const { candidateId, githubProfileId } = job.data;
     const jobId = job.id?.toString() || 'sync';
     this.logger.log({ jobId, githubProfileId }, 'github_sync_started');
-    console.log(`[GithubSyncProcessor] phase=sync_start jobId=${jobId} githubProfileId=${githubProfileId}`);
+    console.log(
+      `[GithubSyncProcessor] phase=sync_start jobId=${jobId} githubProfileId=${githubProfileId}`,
+    );
 
     // (a) Load GithubProfile
     const profile = await this.prisma.githubProfile.findUnique({
@@ -58,7 +60,9 @@ export class GithubSyncProcessor extends WorkerHost {
     }
 
     const username = profile.githubUsername;
-    console.log(`[GithubSyncProcessor] phase=profile_loaded jobId=${jobId} username=${username}`);
+    console.log(
+      `[GithubSyncProcessor] phase=profile_loaded jobId=${jobId} username=${username}`,
+    );
 
     try {
       // (b) Set syncStatus = IN_PROGRESS, syncProgress = 20%
@@ -69,13 +73,14 @@ export class GithubSyncProcessor extends WorkerHost {
           syncProgress: 20,
         },
       });
-      console.log(`[GithubSyncProcessor] phase=sync_progress jobId=${jobId} progress=20 status=SYNC_REQUEST`);
+      console.log(
+        `[GithubSyncProcessor] phase=sync_progress jobId=${jobId} progress=20 status=SYNC_REQUEST`,
+      );
       //TODO -> UPDATE MIGRATE
 
       // // (c) Collect data using the new GitIntel DataCollectorService
 
       // // (d) Store corpus in Redis cache with 7d TTL
-     
 
       // // (e) Build transaction operations for DB persistence
       // const operations: any[] = [];
@@ -120,7 +125,7 @@ export class GithubSyncProcessor extends WorkerHost {
     } catch (error) {
       console.log(
         `[GithubSyncProcessor] phase=sync_error jobId=${jobId} ` +
-        `error=${(error as Error).message}`,
+          `error=${(error as Error).message}`,
       );
       this.logger.error(
         `GitHub sync failed for profile ${githubProfileId}: ${error.message}`,

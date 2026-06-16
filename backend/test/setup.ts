@@ -34,7 +34,6 @@ process.env.PRIVY_BYPASS ??= 'true';
 process.env.WALLET_CHALLENGE_SECRET ??= 'test-wallet-challenge-secret';
 process.env.HELIUS_WEBHOOK_SECRET ??= 'test-helius-webhook-secret';
 
-
 jest.mock(
   'otplib',
   () => {

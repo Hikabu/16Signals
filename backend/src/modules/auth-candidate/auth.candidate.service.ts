@@ -336,7 +336,9 @@ export class AuthCandidateService {
 
     if (account) {
       if (!account.user.email && profile.email) {
-        const emailTaken = await this.prisma.user.findUnique({ where: { email: profile.email } });
+        const emailTaken = await this.prisma.user.findUnique({
+          where: { email: profile.email },
+        });
         if (!emailTaken) {
           await this.prisma.user.update({
             where: { id: account.user.id },
@@ -421,7 +423,9 @@ export class AuthCandidateService {
     if (profile.email) {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (user && !user.email) {
-        const emailTaken = await this.prisma.user.findUnique({ where: { email: profile.email } });
+        const emailTaken = await this.prisma.user.findUnique({
+          where: { email: profile.email },
+        });
         if (!emailTaken) {
           await this.prisma.user.update({
             where: { id: userId },
@@ -462,10 +466,10 @@ export class AuthCandidateService {
     });
 
     await this.prisma.candidate.create({
-        data: {
-          userId: user.id,
-        },
-      });
+      data: {
+        userId: user.id,
+      },
+    });
 
     await this.redis.del(`onboarding_claim:${oauth.claimId}`);
 
@@ -741,4 +745,3 @@ export class AuthCandidateService {
     this.logger.log(`PASSWORD_CHANGE: User ${userId} changed/set password`);
   }
 }
-

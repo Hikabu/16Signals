@@ -27,13 +27,11 @@ export class OctokitFactory {
         githubAuthEnabled: this.githubAuthEnabled,
         tokenLength: systemToken?.length ?? 0,
         tokenHint: systemToken
-    ? `${systemToken.slice(0,8)}...${systemToken.slice(-4)}`
-    : 'missing'
+          ? `${systemToken.slice(0, 8)}...${systemToken.slice(-4)}`
+          : 'missing',
       },
       'octokit_factory_ready',
     );
-
-    
   }
 
   async forJob(userId: string | null): Promise<Octokit> {
@@ -73,15 +71,15 @@ export class OctokitFactory {
           //     },
           //   },
           // });
-             const octokit = new Octokit({
-  auth: token, // Automatically creates the "Bearer/token" header
-  request: {
-    headers: {
-      'X-GitHub-Api-Version': '2022-11-28', // Good practice to keep this!
-    },
-  },
-});
-         
+          const octokit = new Octokit({
+            auth: token, // Automatically creates the "Bearer/token" header
+            request: {
+              headers: {
+                'X-GitHub-Api-Version': '2022-11-28', // Good practice to keep this!
+              },
+            },
+          });
+
           (octokit as any).__githubTokenSource = 'user';
           return octokit;
         } catch (err: any) {
@@ -122,14 +120,14 @@ export class OctokitFactory {
     //   },
     // });
     const octokit = new Octokit({
-  auth: systemToken, // Automatically creates the "Bearer/token" header
-  request: {
-    headers: {
-      'X-GitHub-Api-Version': '2022-11-28', // Good practice to keep this!
-    },
-  },
-});
-     const rl = await octokit.graphql(`
+      auth: systemToken, // Automatically creates the "Bearer/token" header
+      request: {
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28', // Good practice to keep this!
+        },
+      },
+    });
+    const rl = await octokit.graphql(`
 {
   rateLimit {
     limit
@@ -141,10 +139,7 @@ export class OctokitFactory {
 }
 `);
 
-console.log(
-  '[GitHub GraphQL RateLimit]',
-  JSON.stringify(rl, null, 2)
-);
+    console.log('[GitHub GraphQL RateLimit]', JSON.stringify(rl, null, 2));
     (octokit as any).__githubTokenSource = 'system';
     return octokit;
   }

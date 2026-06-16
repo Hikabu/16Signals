@@ -113,14 +113,12 @@ describe('OctokitFactory', () => {
       },
     });
     expect(Octokit).toHaveBeenCalledWith(
-       expect.objectContaining({
-    auth: 'decrypted-encrypted-token',
-  }),
+      expect.objectContaining({
+        auth: 'decrypted-encrypted-token',
+      }),
     );
     // Verify it's not the system token
-    expect((octokit as any)._config.auth).toEqual(
-  'decrypted-encrypted-token',
-);
+    expect((octokit as any)._config.auth).toEqual('decrypted-encrypted-token');
   });
 
   it('2. userId present, profile has no encryptedToken -> falls back to system token', async () => {
@@ -133,9 +131,9 @@ describe('OctokitFactory', () => {
     const octokit = await factory.forJob('user-1');
 
     expect(Octokit).toHaveBeenCalledWith(
-       expect.objectContaining({
-    auth: 'system-token',
-  }),
+      expect.objectContaining({
+        auth: 'system-token',
+      }),
     );
   });
 
@@ -159,9 +157,9 @@ describe('OctokitFactory', () => {
       'octokit_token_decrypt_failed',
     );
     expect(Octokit).toHaveBeenCalledWith(
-       expect.objectContaining({
-    auth: 'system-token',
-  }),
+      expect.objectContaining({
+        auth: 'system-token',
+      }),
     );
   });
 
@@ -170,9 +168,9 @@ describe('OctokitFactory', () => {
 
     expect(prisma.candidate.findUnique).not.toHaveBeenCalled();
     expect(Octokit).toHaveBeenCalledWith(
-       expect.objectContaining({
-    auth: 'system-token',
-  }),
+      expect.objectContaining({
+        auth: 'system-token',
+      }),
     );
   });
 });

@@ -24,5 +24,4 @@ export class UpdateCandidateDto {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
-
 }

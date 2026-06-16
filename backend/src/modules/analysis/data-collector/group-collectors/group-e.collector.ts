@@ -12,17 +12,51 @@
 
 import { Injectable } from '@nestjs/common';
 import { Octokit } from 'octokit';
-import { EngineeringPracticeSignals, RepositorySignal } from '../../corpus/corpus.types';
+import {
+  EngineeringPracticeSignals,
+  RepositorySignal,
+} from '../../corpus/corpus.types';
 import { CircuitBreakerService } from '../circuit-breaker.service';
 
 const CHECK_PATHS = {
-  testDir: ['test/', 'tests/', '__tests__/', 'spec/', 'jest.config', 'vitest.config', 'pytest.ini'],
-  ciConfig: ['.github/workflows/', '.gitlab-ci.yml', 'Jenkinsfile', '.circleci/'],
+  testDir: [
+    'test/',
+    'tests/',
+    '__tests__/',
+    'spec/',
+    'jest.config',
+    'vitest.config',
+    'pytest.ini',
+  ],
+  ciConfig: [
+    '.github/workflows/',
+    '.gitlab-ci.yml',
+    'Jenkinsfile',
+    '.circleci/',
+  ],
   docker: ['Dockerfile', 'docker-compose.yml', '.dockerignore'],
   iac: ['terraform/', 'Pulumi', '.k8s/', 'kubernetes/', 'helm/'],
-  linting: ['.eslintrc', '.prettierrc', 'tslint.json', 'golangci.yml', '.rubocop.yml'],
-  aiConfig: ['.cursorrules', 'claude.md', '.github/copilot-instructions.md', 'ai-context.md'],
-  observability: ['prometheus', 'grafana', 'datadog', 'newrelic', 'opentelemetry', 'sentry'],
+  linting: [
+    '.eslintrc',
+    '.prettierrc',
+    'tslint.json',
+    'golangci.yml',
+    '.rubocop.yml',
+  ],
+  aiConfig: [
+    '.cursorrules',
+    'claude.md',
+    '.github/copilot-instructions.md',
+    'ai-context.md',
+  ],
+  observability: [
+    'prometheus',
+    'grafana',
+    'datadog',
+    'newrelic',
+    'opentelemetry',
+    'sentry',
+  ],
 };
 
 const MAX_REPOS_TO_CHECK = 10;
@@ -35,9 +69,7 @@ export class GroupECollector {
     repos: RepositorySignal[],
     circuitBreaker: CircuitBreakerService,
   ): Promise<EngineeringPracticeSignals> {
-    console.log(
-      `	[E_GroupCollector] phase=collect_start username=${username}`,
-    );
+    console.log(`	[E_GroupCollector] phase=collect_start username=${username}`);
 
     const targetRepos = repos
       .filter((r) => !r.is_fork && !r.is_archived)
@@ -52,7 +84,15 @@ export class GroupECollector {
 
       // Check test directory
       for (const testPath of CHECK_PATHS.testDir) {
-        if (await this.fileExists(octokit, username, repo.name, testPath, circuitBreaker)) {
+        if (
+          await this.fileExists(
+            octokit,
+            username,
+            repo.name,
+            testPath,
+            circuitBreaker,
+          )
+        ) {
           reposWithTestDir++;
           break;
         }
@@ -60,12 +100,19 @@ export class GroupECollector {
 
       // Check CI config
       for (const ciPath of CHECK_PATHS.ciConfig) {
-        if (await this.fileExists(octokit, username, repo.name, ciPath, circuitBreaker)) {
+        if (
+          await this.fileExists(
+            octokit,
+            username,
+            repo.name,
+            ciPath,
+            circuitBreaker,
+          )
+        ) {
           reposWithCi++;
           break;
         }
       }
-     
     }
 
     // Compute real CI pass rate from GitHub Actions workflow runs.
@@ -79,9 +126,9 @@ export class GroupECollector {
 
     console.log(
       `	[E_GroupCollector] phase=collect_complete username=${username} ` +
-      `tests=${reposWithTestDir} `+
-      `ci=${reposWithCi} ` +
-      `ci success=${ciPassRateTrajectory}`
+        `tests=${reposWithTestDir} ` +
+        `ci=${reposWithCi} ` +
+        `ci success=${ciPassRateTrajectory}`,
     );
 
     return {
@@ -103,7 +150,11 @@ export class GroupECollector {
     circuitBreaker: CircuitBreakerService,
   ): Promise<Record<string, number>> {
     const trajectory: Record<string, number> = {};
-    const repoCiData: Array<{ quarter: string; passed: number; total: number }> = [];
+    const repoCiData: Array<{
+      quarter: string;
+      passed: number;
+      total: number;
+    }> = [];
 
     for (const repo of targetRepos) {
       if (circuitBreaker.shouldAbort()) break;
@@ -137,7 +188,10 @@ export class GroupECollector {
             const quarter = `${runDate.getFullYear()}-Q${Math.ceil((runDate.getMonth() + 1) / 3)}`;
 
             const passed = run.conclusion === 'success' ? 1 : 0;
-            const failed = run.conclusion === 'failure' || run.conclusion === 'cancelled' ? 1 : 0;
+            const failed =
+              run.conclusion === 'failure' || run.conclusion === 'cancelled'
+                ? 1
+                : 0;
 
             if (passed > 0 || failed > 0) {
               repoCiData.push({ quarter, passed, total: 1 });
@@ -160,9 +214,10 @@ export class GroupECollector {
     }
 
     for (const [quarter, stats] of Object.entries(quarterAgg)) {
-      trajectory[quarter] = stats.total > 0
-        ? Math.round((stats.passed / stats.total) * 100) / 100
-        : 0;
+      trajectory[quarter] =
+        stats.total > 0
+          ? Math.round((stats.passed / stats.total) * 100) / 100
+          : 0;
     }
 
     return trajectory;

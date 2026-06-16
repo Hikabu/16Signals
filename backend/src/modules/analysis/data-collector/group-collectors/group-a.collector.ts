@@ -28,11 +28,9 @@ export class GroupACollector {
     octokit: Octokit,
     username: string,
     circuitBreaker: CircuitBreakerService,
-  ){
-  // ): Promise<IdentitySignals> {
-    console.log(
-      `	[A_GroupCollector] phase=collect_start username=${username}`,
-    );
+  ) {
+    // ): Promise<IdentitySignals> {
+    console.log(`	[A_GroupCollector] phase=collect_start username=${username}`);
 
     // ── Fetch the user profile ──────────────────────────────────────────
     const response = await octokit.rest.users.getByUsername({ username });
@@ -87,9 +85,7 @@ export class GroupACollector {
 
     // 3. Derived Twitter / X URL
     if (profile.twitter_username && profile.twitter_username.trim()) {
-      linkedUrls.push(
-        `https://twitter.com/${profile.twitter_username.trim()}`,
-      );
+      linkedUrls.push(`https://twitter.com/${profile.twitter_username.trim()}`);
     }
 
     // ── commit_email_domains ────────────────────────────────────────────
@@ -154,7 +150,7 @@ export class GroupACollector {
     } catch (error) {
       console.log(
         `  [A_GroupCollector] phase=orgs_error username=${username} ` +
-        `error=${(error as Error).message}`,
+          `error=${(error as Error).message}`,
       );
       // Keep orgMemberships as [] on failure — org membership is a
       // supplementary signal; failure should not block the collection.
@@ -166,19 +162,27 @@ export class GroupACollector {
 
     console.log(
       `	[A_GroupCollector] phase=collect_complete username=${username} ` +
-      `ageDays=${accountAgeDays} company=${profile.company ?? '(none)'} ` +
-      `hireable=${profile.hireable} orgs=${orgMemberships.length} ` +
-      `emailDomains=${commitEmailDomains.length} urls=${linkedUrls.length}`,
+        `ageDays=${accountAgeDays} company=${profile.company ?? '(none)'} ` +
+        `hireable=${profile.hireable} orgs=${orgMemberships.length} ` +
+        `emailDomains=${commitEmailDomains.length} urls=${linkedUrls.length}`,
     );
 
-    console.log("\nresult GRUOP A: ",
-      "\naccount_age_days:", accountAgeDays,
-      "\nbio:", bio,
-      "\ncompany_claim:", companyClaim,
-      "\nlinked_urls:", linkedUrls,
-      "\ncommit_email_domains:", commitEmailDomains,
-      "\ngithub_org_memberships:", orgMemberships,
-      "\nhireable_flag:", hireableFlag,
+    console.log(
+      '\nresult GRUOP A: ',
+      '\naccount_age_days:',
+      accountAgeDays,
+      '\nbio:',
+      bio,
+      '\ncompany_claim:',
+      companyClaim,
+      '\nlinked_urls:',
+      linkedUrls,
+      '\ncommit_email_domains:',
+      commitEmailDomains,
+      '\ngithub_org_memberships:',
+      orgMemberships,
+      '\nhireable_flag:',
+      hireableFlag,
     );
 
     return {

@@ -27,7 +27,6 @@ export class UserProfileResponseDto {
   @ApiProperty({ nullable: true })
   name: string;
 
-
   @ApiProperty()
   role: string;
 
@@ -62,7 +61,6 @@ export class CandidateProfileResponseDto {
 
   @ApiProperty({ nullable: true })
   website: string;
-
 
   @ApiProperty()
   careerPath: number;

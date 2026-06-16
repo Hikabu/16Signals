@@ -64,7 +64,7 @@ export class GitHubCredentialsService {
     // ── Step 2: Resolve installation Octokit (if applicable) ──
     let installationOctokit;
     let rawToken;
-    let sourceDescription = `primary=${(primary as any).__githubTokenSource ?? 'unknown'}`;
+    let sourceDescription = `primary=${primary.__githubTokenSource ?? 'unknown'}`;
 
     if (await this.appInstallationProvider.canProvide(context)) {
       try {
@@ -161,16 +161,14 @@ export class GitHubCredentialsService {
       await installationOctokit.rest.users.getByUsername({
         username,
       });
-      this.logger.debug(
-        `Installation access validated for user=${username}`,
-      );
+      this.logger.debug(`Installation access validated for user=${username}`);
     } catch (error: any) {
       const status = error.status || error.response?.status;
 
       if (status === 404 || status === 403 || status === 401) {
         throw new HttpException(
           `GitHub App installation not authorized for user '${username}'. ` +
-            'Ensure the installation has access to this user\'s repositories.',
+            "Ensure the installation has access to this user's repositories.",
           HttpStatus.UNAUTHORIZED,
         );
       }

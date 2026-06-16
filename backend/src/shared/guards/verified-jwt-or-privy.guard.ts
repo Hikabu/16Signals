@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as jose from 'jose';
 import { verifyPrivyToken } from '../auth/verify-privy-token';
 
@@ -28,7 +33,10 @@ export class VerifiedJwtOrPrivyGuard implements CanActivate {
     const internalSecret = process.env.JWT_ACCESS_SECRET;
     if (internalSecret) {
       try {
-        const { payload } = await jose.jwtVerify(token, new TextEncoder().encode(internalSecret));
+        const { payload } = await jose.jwtVerify(
+          token,
+          new TextEncoder().encode(internalSecret),
+        );
         const p = payload as InternalJwtPayload;
         if (p?.sub) {
           req.user = {
@@ -63,4 +71,3 @@ export class VerifiedJwtOrPrivyGuard implements CanActivate {
     }
   }
 }
-

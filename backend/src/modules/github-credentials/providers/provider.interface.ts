@@ -87,7 +87,9 @@ export interface IGitHubCredentialProvider {
    * Only implemented by GitHub App-based providers.
    * Used for private repo access in Deep Mode.
    */
-  createInstallationOctokit?(context: GitHubCredentialContext): Promise<Octokit>;
+  createInstallationOctokit?(
+    context: GitHubCredentialContext,
+  ): Promise<Octokit>;
 
   /**
    * Optionally get a raw token string for direct use (git clone, curl, etc.).

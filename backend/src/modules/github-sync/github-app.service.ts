@@ -32,30 +32,25 @@ export class GitHubAppService {
   /**
    * Verify the webhook signature from GitHub.
    */
-verifySignature(
-  payload: Buffer,
-  signatureHeader: string,
-): boolean {
-  const secret = this.config.get<string>(
-    'GITHUB_ANALYSIS_WEBHOOK_SECRET',
-  );
+  verifySignature(payload: Buffer, signatureHeader: string): boolean {
+    const secret = this.config.get<string>('GITHUB_ANALYSIS_WEBHOOK_SECRET');
 
-  if (!secret) {
-    return true;
+    if (!secret) {
+      return true;
+    }
+
+    const received = signatureHeader.replace('sha256=', '');
+
+    const digest = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+
+    return crypto.timingSafeEqual(
+      Buffer.from(received, 'hex'),
+      Buffer.from(digest, 'hex'),
+    );
   }
-
-  const received = signatureHeader.replace('sha256=', '');
-
-  const digest = crypto
-    .createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
-
-  return crypto.timingSafeEqual(
-    Buffer.from(received, 'hex'),
-    Buffer.from(digest, 'hex'),
-  );
-}
 
   /**
    * Handle a GitHub App webhook event.
@@ -66,9 +61,17 @@ verifySignature(
       case 'installation':
         return this.handleInstallationEvent(payload);
       case 'ping':
-        return { handled: true, event: 'ping', message: 'Webhook configured successfully' };
+        return {
+          handled: true,
+          event: 'ping',
+          message: 'Webhook configured successfully',
+        };
       default:
-        return { handled: false, event, message: `Event '${event}' not handled` };
+        return {
+          handled: false,
+          event,
+          message: `Event '${event}' not handled`,
+        };
     }
   }
 
@@ -83,7 +86,11 @@ verifySignature(
     const account = installation?.account;
 
     if (!installation?.id || !account?.login) {
-      return { handled: false, event: 'installation', message: 'Missing installation id or account login' };
+      return {
+        handled: false,
+        event: 'installation',
+        message: 'Missing installation id or account login',
+      };
     }
 
     const installationId = String(installation.id);
@@ -110,7 +117,11 @@ verifySignature(
         this.logger.log(
           `Installation ${installationId} linked to GithubProfile '${githubUsername}' (upserted)`,
         );
-        return { handled: true, event: 'installation.created', message: `Installation ${installationId} linked to '${githubUsername}'` };
+        return {
+          handled: true,
+          event: 'installation.created',
+          message: `Installation ${installationId} linked to '${githubUsername}'`,
+        };
       }
 
       case 'suspend':
@@ -119,12 +130,22 @@ verifySignature(
           where: { githubUsername, installationId },
           data: { installationId: null },
         });
-        this.logger.log(`Installation ${installationId} removed from GithubProfile '${githubUsername}'`);
-        return { handled: true, event: 'installation.deleted', message: `Installation removed from '${githubUsername}'` };
+        this.logger.log(
+          `Installation ${installationId} removed from GithubProfile '${githubUsername}'`,
+        );
+        return {
+          handled: true,
+          event: 'installation.deleted',
+          message: `Installation removed from '${githubUsername}'`,
+        };
       }
 
       default:
-        return { handled: false, event: `installation.${action}`, message: `Action '${action}' acknowledged` };
+        return {
+          handled: false,
+          event: `installation.${action}`,
+          message: `Action '${action}' acknowledged`,
+        };
     }
   }
 
@@ -158,7 +179,7 @@ verifySignature(
     };
   }
 
-  async getInstallationStatusByUsername(githubUsername: string){
+  async getInstallationStatusByUsername(githubUsername: string) {
     const profile = await this.prisma.githubProfile.findUnique({
       where: { githubUsername },
       select: { installationId: true, githubUsername: true },
@@ -171,7 +192,7 @@ verifySignature(
     return {
       installed: !!profile.installationId,
       installationId: profile.installationId,
-      githubUsername: profile.githubUsername, 
+      githubUsername: profile.githubUsername,
     };
   }
 
@@ -197,11 +218,19 @@ verifySignature(
 
     const profile = candidate?.devProfile?.githubProfile;
     if (!profile) {
-      return { linked: false, message: 'No GitHub profile found. Connect GitHub first via /sync/github/connect.' };
+      return {
+        linked: false,
+        message:
+          'No GitHub profile found. Connect GitHub first via /sync/github/connect.',
+      };
     }
 
     if (profile.installationId) {
-      return { linked: true, installationId: profile.installationId, message: 'Already linked' };
+      return {
+        linked: true,
+        installationId: profile.installationId,
+        message: 'Already linked',
+      };
     }
 
     // Try to find the installation via the App's JWT
@@ -215,7 +244,11 @@ verifySignature(
       );
 
       if (!appId || !privateKey) {
-        return { linked: false, message: 'GitHub App not configured (missing GITHUB_ANALYSIS_APP_ID or GITHUB_ANALYSIS_PRIVATE_KEY)' };
+        return {
+          linked: false,
+          message:
+            'GitHub App not configured (missing GITHUB_ANALYSIS_APP_ID or GITHUB_ANALYSIS_PRIVATE_KEY)',
+        };
       }
 
       const appOctokit = new Octokit({
@@ -224,7 +257,9 @@ verifySignature(
       });
 
       // List installations for this App
-      const { data: installations } = await (appOctokit as any).rest.apps.listInstallations({
+      const { data: installations } = await (
+        appOctokit as any
+      ).rest.apps.listInstallations({
         per_page: 100,
       });
 
@@ -238,8 +273,14 @@ verifySignature(
           where: { id: profile.id },
           data: { installationId: String(match.id) },
         });
-        this.logger.log(`Installation ${match.id} linked to '${profile.githubUsername}' via verify`);
-        return { linked: true, installationId: String(match.id), message: 'Installation linked' };
+        this.logger.log(
+          `Installation ${match.id} linked to '${profile.githubUsername}' via verify`,
+        );
+        return {
+          linked: true,
+          installationId: String(match.id),
+          message: 'Installation linked',
+        };
       }
 
       return {
@@ -247,8 +288,13 @@ verifySignature(
         message: `No installation found for GitHub user '${profile.githubUsername}'. Install the App at /sync/github/app/install.`,
       };
     } catch (error) {
-      this.logger.error(`verifyInstallation failed: ${(error as Error).message}`);
-      return { linked: false, message: `Verification failed: ${(error as Error).message}` };
+      this.logger.error(
+        `verifyInstallation failed: ${(error as Error).message}`,
+      );
+      return {
+        linked: false,
+        message: `Verification failed: ${(error as Error).message}`,
+      };
     }
   }
 
@@ -261,7 +307,9 @@ verifySignature(
       select: {
         devProfile: {
           select: {
-            githubProfile: { select: { id: true, installationId: true, githubUsername: true } },
+            githubProfile: {
+              select: { id: true, installationId: true, githubUsername: true },
+            },
           },
         },
       },
@@ -277,7 +325,9 @@ verifySignature(
       data: { installationId: null },
     });
 
-    this.logger.log(`Installation manually cleared for '${profile.githubUsername}'`);
+    this.logger.log(
+      `Installation manually cleared for '${profile.githubUsername}'`,
+    );
     return { ok: true, message: 'Installation cleared' };
   }
 
@@ -292,7 +342,9 @@ verifySignature(
       throw new Error('Decoded content is not a valid PEM key');
     } catch (error) {
       if ((error as Error).message.includes('Decoded content')) throw error;
-      throw new Error('GITHUB_ANALYSIS_PRIVATE_KEY is not a valid base64-encoded PEM key');
+      throw new Error(
+        'GITHUB_ANALYSIS_PRIVATE_KEY is not a valid base64-encoded PEM key',
+      );
     }
   }
 }

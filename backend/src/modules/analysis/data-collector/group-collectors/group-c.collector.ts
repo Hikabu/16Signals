@@ -47,12 +47,11 @@ export class GroupCCollector {
     let totalCommits = 0;
     let totalSigned = 0;
     let totalCommitsSampled = 0;
-const candidateMessages: {
-  repo: string;
-  message: string;
-  score: number;
-}[] = [];
-
+    const candidateMessages: {
+      repo: string;
+      message: string;
+      score: number;
+    }[] = [];
 
     for (const repo of targetRepos) {
       if (circuitBreaker.shouldAbort()) break;
@@ -93,80 +92,66 @@ const candidateMessages: {
             totalCommitsSampled++;
 
             // Message quality samples (up to 50 per user)
-            const msg =
-              (commit.commit?.message || '')
-                .trim();
+            const msg = (commit.commit?.message || '').trim();
 
-                let score = 0;
+            let score = 0;
 
-score += Math.min(
-  msg.split(/\s+/).length,
-  20,
-);
+            score += Math.min(msg.split(/\s+/).length, 20);
 
-if (msg.includes('(')) score += 3;
-if (msg.includes(':')) score += 3;
+            if (msg.includes('(')) score += 3;
+            if (msg.includes(':')) score += 3;
 
-const msgLower = msg.toLowerCase();
-
-if (
-  msgLower.includes('fix') ||
-  msgLower.includes('refactor') ||
-  msgLower.includes('test') ||
-  msgLower.includes('feat')
-) {
-  score += 5;
-}
-
-const engineeringTerms = [
-  'refactor',
-  'migration',
-  'architecture',
-  'cache',
-  'index',
-  'performance',
-  'test',
-  'security',
-  'auth',
-  'ci',
-  'api',
-];
-
-for (const term of engineeringTerms) {
-  if (msgLower.includes(term)) {
-    score += 2;
-  }
-}
-
-
-const isBotMessage =
-  msg.startsWith('chore(deps') ||
-  msg.startsWith('build(deps') ||
-  msg.includes('dependabot');
-
-            const wordCount =
-              msg.split(/\s+/).length;
-
-            const isMergeMsg =
-              msg.startsWith('Merge ');
-
-            const isVersionBump =
-              /^v?\d+\.\d+/.test(msg);
-
-            const isTooShort =
-              wordCount < 3;
+            const msgLower = msg.toLowerCase();
 
             if (
-              !isMergeMsg &&
-              !isVersionBump &&
-              !isTooShort &&
-              !isBotMessage
+              msgLower.includes('fix') ||
+              msgLower.includes('refactor') ||
+              msgLower.includes('test') ||
+              msgLower.includes('feat')
             ) {
-candidateMessages.push({
-  repo: repo.name,
-  message: msg,
-  score,
-});            }
+              score += 5;
+            }
+
+            const engineeringTerms = [
+              'refactor',
+              'migration',
+              'architecture',
+              'cache',
+              'index',
+              'performance',
+              'test',
+              'security',
+              'auth',
+              'ci',
+              'api',
+            ];
+
+            for (const term of engineeringTerms) {
+              if (msgLower.includes(term)) {
+                score += 2;
+              }
+            }
+
+            const isBotMessage =
+              msg.startsWith('chore(deps') ||
+              msg.startsWith('build(deps') ||
+              msg.includes('dependabot');
+
+            const wordCount = msg.split(/\s+/).length;
+
+            const isMergeMsg = msg.startsWith('Merge ');
+
+            const isVersionBump = /^v?\d+\.\d+/.test(msg);
+
+            const isTooShort = wordCount < 3;
+
+            if (!isMergeMsg && !isVersionBump && !isTooShort && !isBotMessage) {
+              candidateMessages.push({
+                repo: repo.name,
+                message: msg,
+                score,
+              });
+            }
           }
 
           hasMore = commits.length === 100;
@@ -175,60 +160,49 @@ candidateMessages.push({
       } catch (err: any) {
         console.log(
           `	[C_GroupCollector] phase=repo_error repo=${repo.name} ` +
-          `error=${err.message}`,
+            `error=${err.message}`,
         );
         // Continue with next repo
       }
     }
 
+    const repoCounts = new Map<string, number>();
+    const messageSamples: string[] = [];
 
-const repoCounts = new Map<string, number>();
-const messageSamples: string[] = [];
+    for (const candidate of candidateMessages.sort(
+      (a, b) => b.score - a.score,
+    )) {
+      const count = repoCounts.get(candidate.repo) ?? 0;
 
-for (const candidate of candidateMessages.sort(
-  (a, b) => b.score - a.score,
-)) {
-  const count =
-    repoCounts.get(candidate.repo) ?? 0;
+      if (count >= MAX_COMMITS_PER_REPO) {
+        continue;
+      }
 
-  if (count >= MAX_COMMITS_PER_REPO) {
-    continue;
-  }
+      repoCounts.set(candidate.repo, count + 1);
 
-  repoCounts.set(
-    candidate.repo,
-    count + 1,
-  );
+      messageSamples.push(candidate.message);
 
-  messageSamples.push(
-    candidate.message,
-  );
+      if (messageSamples.length >= 50) {
+        break;
+      }
+    }
 
-  if (messageSamples.length >= 50) {
-    break;
-  }
-}
-
-    const mergeRatio = totalCommits > 0
-      ? totalMergeCommits / totalCommits
-      : 0;
-
+    const mergeRatio = totalCommits > 0 ? totalMergeCommits / totalCommits : 0;
 
     console.log(
       `	\n\n[C_GroupCollector] phase=collect_complete username=${username} ` +
-      `\n\ttotalCommits=${totalCommits} ` +
-            `\n\tmonths=${Object.keys(freqByMonth).length} ` +
-      `\n\t merge_commit_ratio =${ mergeRatio}` +
- `\n\t message_quality_raw=${ messageSamples.slice(0, 1)}`
-
-);
+        `\n\ttotalCommits=${totalCommits} ` +
+        `\n\tmonths=${Object.keys(freqByMonth).length} ` +
+        `\n\t merge_commit_ratio =${mergeRatio}` +
+        `\n\t message_quality_raw=${messageSamples.slice(0, 1)}`,
+    );
 
     // exit(0);
 
     return {
       sampled_commit_count: totalCommits,
       commit_frequency_by_month: freqByMonth,
-      
+
       merge_commit_ratio: mergeRatio,
       message_quality_raw: messageSamples,
       message_quality_scores: Array(messageSamples.length).fill(0), // Populated after LLM
@@ -237,15 +211,13 @@ for (const candidate of candidateMessages.sort(
       // per_repo_author_stats: {}, // Deep Mode only
       // complexity_trend_by_year: {}, // Deep Mode only
       // test_to_code_ratio_by_repo: {}, // Deep Mode only
-      // commit_size_histogram: [], 
+      // commit_size_histogram: [],
       // p25_commit_size_lines: 0,
       // median_commit_size_lines: 0,
       // sub_5_line_commit_ratio: 0,
-
     };
   }
 }
 
-
-//CHEAP SIGNALS: 
+//CHEAP SIGNALS:
 //-> sampled_commit_count

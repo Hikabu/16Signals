@@ -32,7 +32,8 @@ export function loadFeatureFlags(): FeatureFlags {
     useNewPipeline: process.env.USE_NEW_PIPELINE === 'true',
     enableDeepMode: process.env.ENABLE_DEEP_MODE === 'true',
     llmEnabled: process.env.LLM_ENABLED !== 'false',
-    traceLevel: (process.env.TRACE_LEVEL as FeatureFlags['traceLevel']) || 'summary',
+    traceLevel:
+      (process.env.TRACE_LEVEL as FeatureFlags['traceLevel']) || 'summary',
     enableCvVerifier: process.env.ENABLE_CV_VERIFIER !== 'false',
   };
 }

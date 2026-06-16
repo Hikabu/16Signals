@@ -34,7 +34,9 @@ export interface Wave3BatchOutput {
   /** Review depth classification per comment */
   review_depth: Array<'LGTM_only' | 'surface' | 'root_cause' | 'architectural'>;
   /** Hard problem classification per commit/PR */
-  hard_problem_detection: Array<'hard_problem' | 'moderate' | 'routine' | 'unclear'>;
+  hard_problem_detection: Array<
+    'hard_problem' | 'moderate' | 'routine' | 'unclear'
+  >;
   /** AI leverage classification */
   ai_leverage: AILeverageClassification;
 }
@@ -85,9 +87,14 @@ export interface FlagOutput {
 // ─── Primitive Result (canonical per-primitive output) ───────────────
 
 export interface PrimitiveResult {
-  primitive_id: string;        // e.g. 'p1', 'p2', ... 'p7'
-  module_id: string;           // e.g. 'p1_execution_reliability'
-  confidence: 'strong' | 'moderate' | 'low' | 'observability_gap' | 'insufficient_data';
+  primitive_id: string; // e.g. 'p1', 'p2', ... 'p7'
+  module_id: string; // e.g. 'p1_execution_reliability'
+  confidence:
+    | 'strong'
+    | 'moderate'
+    | 'low'
+    | 'observability_gap'
+    | 'insufficient_data';
   score_label: string;
   evidence_count: number;
   interview_probe: string | null;
@@ -96,13 +103,13 @@ export interface PrimitiveResult {
 // ─── Evidence Brief Output (canonical, the single source of truth) ───
 
 export interface EvidenceBriefSections {
-  A: string;   // Profile in 90 Seconds
-  B: string;   // Tech Reality vs CV Claims
-  C: string;   // Work Pattern Intelligence
-  D: string;   // Red Flags & Verification Gaps
-  E: string;   // Interview Intelligence
-  F: string | null;  // Role & Stack Match (conditional on JD)
-  G: string;   // What This Evaluation Cannot Tell You
+  A: string; // Profile in 90 Seconds
+  B: string; // Tech Reality vs CV Claims
+  C: string; // Work Pattern Intelligence
+  D: string; // Red Flags & Verification Gaps
+  E: string; // Interview Intelligence
+  F: string | null; // Role & Stack Match (conditional on JD)
+  G: string; // What This Evaluation Cannot Tell You
 }
 
 export interface BriefMetadata {

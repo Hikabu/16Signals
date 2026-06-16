@@ -5,7 +5,7 @@
  * Uses GraphQL for efficiency. Falls back to REST if GraphQL unavailable.
  * Limits to top 30 repos sorted by push recency.
  *
- * API calls: 1 REST (repos.listForUser) 
+ * API calls: 1 REST (repos.listForUser)
  * Output: RepositorySignal[]
  *
  * Reference: corpus.types.ts Group B
@@ -19,14 +19,13 @@ import { exit } from 'process';
 
 const MAX_REPOS = 30;
 
-//maybe add is enriched flag? 
+//maybe add is enriched flag?
 
 //ON CHOOSING "TOP" REPOS
-//for sorting quality try to figure out which repos are pinned... 
-//maybe add size to the weight of it too .. 
-//maybe also chooe to nalyze for a specific main language or smilar vibe to the job description.. 
+//for sorting quality try to figure out which repos are pinned...
+//maybe add size to the weight of it too ..
+//maybe also chooe to nalyze for a specific main language or smilar vibe to the job description..
 //or pick "best" per language/skill set
-
 
 //EXPANDING REPOS TO THOSE WHERE THE USER IS A CONTRIBUTOR...
 
@@ -36,12 +35,9 @@ export class GroupBCollector {
     octokit: Octokit,
     username: string,
     circuitBreaker: CircuitBreakerService,
-  ){
-  // ): Promise<RepositorySignal[]> {
-    console.log(
-      `	[B_GroupCollector] phase=collect_start username=${username}`,
-    );
-
+  ) {
+    // ): Promise<RepositorySignal[]> {
+    console.log(`	[B_GroupCollector] phase=collect_start username=${username}`);
 
     const response = await octokit.rest.repos.listForUser({
       username,
@@ -109,12 +105,11 @@ export class GroupBCollector {
       }),
     );
 
-
     console.log(
       `	[B_GroupCollector] phase=collect_complete username=${username} ` +
-      `repos=${enrichedRepos.length} readmesChecked=${enrichedRepos.filter((r) => r.has_readme).length}`,
+        `repos=${enrichedRepos.length} readmesChecked=${enrichedRepos.filter((r) => r.has_readme).length}`,
     );
-    console.log("enrichedRepos : ", enrichedRepos);
+    console.log('enrichedRepos : ', enrichedRepos);
     // exit(0);
     return enrichedRepos;
   }
@@ -125,32 +120,20 @@ export class GroupBCollector {
       .slice(0, MAX_REPOS);
   }
 
-private isSpecialUserRepo(
-  repo: any,
-  username: string,
-): boolean {
-  return (
-    repo.owner?.login === username &&
-    (
-      repo.name === username ||
-      repo.name === `${username}.github.io`
-    )
-  );
-}
+  private isSpecialUserRepo(repo: any, username: string): boolean {
+    return (
+      repo.owner?.login === username &&
+      (repo.name === username || repo.name === `${username}.github.io`)
+    );
+  }
 
   private computeQuality(repo: any): number {
     const stars = repo.stargazers_count ?? 0;
     const forks = repo.forks_count ?? 0;
 
-    const recencyWeight = this.computeRecencyWeight(
-      new Date(repo.pushed_at)
-    );
+    const recencyWeight = this.computeRecencyWeight(new Date(repo.pushed_at));
 
-    return (
-      stars * 0.4 +
-      forks * 0.2 +
-      recencyWeight * 100 * 0.4
-    );
+    return stars * 0.4 + forks * 0.2 + recencyWeight * 100 * 0.4;
   }
 
   private computeRecencyWeight(pushedAt: Date): number {
@@ -201,11 +184,10 @@ private isSpecialUserRepo(
     circuitBreaker: CircuitBreakerService,
   ): Promise<Record<string, number>> {
     try {
-      const response =
-        await octokit.rest.repos.listLanguages({
-          owner,
-          repo,
-        });
+      const response = await octokit.rest.repos.listLanguages({
+        owner,
+        repo,
+      });
 
       circuitBreaker.updateFromHeaders(response.headers as any);
 

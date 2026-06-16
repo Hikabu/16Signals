@@ -37,7 +37,7 @@ export class GithubSyncService {
     const callbackUrl = `${this.config.get('app.url')}${this.config.get('auth.githubSyncConnectCallback')}`;
     // console.log('callback url: ', callbackUrl);
     const scopes = encodeURIComponent('read:user repo');
-    //TODO >>> START CONNECT 
+    //TODO >>> START CONNECT
     return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scopes}&state=${state}`;
   }
 
@@ -115,7 +115,10 @@ export class GithubSyncService {
     }
 
     // Rate limit check using DeveloperProfile.githubCooldownUntil
-    if (devProfile?.githubCooldownUntil && devProfile.githubCooldownUntil > new Date()) {
+    if (
+      devProfile?.githubCooldownUntil &&
+      devProfile.githubCooldownUntil > new Date()
+    ) {
       const diffMs = devProfile.githubCooldownUntil.getTime() - Date.now();
       const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
 
@@ -162,14 +165,14 @@ export class GithubSyncService {
 
   // ─── Status ───────────────────────────────────────────────────────
   async getSyncStatus(userId: string) {
-  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
-  
-  if (!devProfile?.githubProfile) {
-    return {
-      isLinked: false,
-      syncStatus: 'NOT_SYNCED',
-    };
-  }
+    const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+
+    if (!devProfile?.githubProfile) {
+      return {
+        isLinked: false,
+        syncStatus: 'NOT_SYNCED',
+      };
+    }
 
     const profile = devProfile.githubProfile;
     return {
@@ -182,33 +185,33 @@ export class GithubSyncService {
       cooldownUntil: devProfile.githubCooldownUntil,
     };
   }
-///ONLY TESTING - DELETE TODO
+  ///ONLY TESTING - DELETE TODO
 
   async unsyncGithub(userId: string) {
-  const { devProfile } = await this.profileResolver.ensureDevStack(userId);
+    const { devProfile } = await this.profileResolver.ensureDevStack(userId);
 
-  if (!devProfile?.githubProfile) {
+    if (!devProfile?.githubProfile) {
+      return {
+        ok: true,
+        message: 'Already unsynced',
+      };
+    }
+
+    // reset github profile
+    await this.prisma.githubProfile.delete({
+      where: { id: devProfile.githubProfile.id },
+    });
+
+    await this.prisma.developerProfile.update({
+      where: { id: devProfile.id },
+      data: {
+        githubCooldownUntil: null,
+      },
+    });
+
     return {
       ok: true,
-      message: 'Already unsynced',
+      message: 'GitHub unsynced successfully',
     };
   }
-
-  // reset github profile
- await this.prisma.githubProfile.delete({
-  where: { id: devProfile.githubProfile.id },
-});
-
-await this.prisma.developerProfile.update({
-  where: { id: devProfile.id },
-  data: {
-    githubCooldownUntil: null,
-  },
-});
-
-  return {
-    ok: true,
-    message: 'GitHub unsynced successfully',
-  };
-}
 }

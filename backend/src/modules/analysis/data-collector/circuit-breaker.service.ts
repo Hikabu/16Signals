@@ -27,7 +27,7 @@ export interface CircuitBreakerState {
 export class CircuitBreakerService {
   private aborted = false;
   private limit = 0;
-private used = 0;
+  private used = 0;
   private remaining = 500;
   private resetAt: Date | null = null;
   private reason: string | null = null;
@@ -36,48 +36,49 @@ private used = 0;
   /**
    * Update the circuit breaker state from GitHub API response headers.
    */
-  updateFromHeaders(headers: Record<string, string | number | undefined>): void {
-  if (this.aborted) return;
+  updateFromHeaders(
+    headers: Record<string, string | number | undefined>,
+  ): void {
+    if (this.aborted) return;
 
-  const limit = headers?.['x-ratelimit-limit'];
-  const remaining = headers?.['x-ratelimit-remaining'];
-  const used = headers?.['x-ratelimit-used'];
-  const reset = headers?.['x-ratelimit-reset'];
+    const limit = headers?.['x-ratelimit-limit'];
+    const remaining = headers?.['x-ratelimit-remaining'];
+    const used = headers?.['x-ratelimit-used'];
+    const reset = headers?.['x-ratelimit-reset'];
 
-  if (limit !== undefined) {
-    this.limit = Number(limit);
-  }
+    if (limit !== undefined) {
+      this.limit = Number(limit);
+    }
 
-  if (remaining !== undefined) {
-    this.remaining = Number(remaining);
-  }
+    if (remaining !== undefined) {
+      this.remaining = Number(remaining);
+    }
 
-  if (used !== undefined) {
-    this.used = Number(used);
-  }
+    if (used !== undefined) {
+      this.used = Number(used);
+    }
 
-  if (reset !== undefined) {
-    this.resetAt = new Date(Number(reset) * 1000);
-  }
-
-  console.log(
-    `\t\t[GitHubRateLimit] limit=${this.limit} ` +
-    `used=${this.used} ` +
-    `remaining=${this.remaining} ` +
-    `resetAt=${this.resetAt?.toISOString()}`
-  );
-
-  if (this.remaining < this.abortThreshold) {
-    this.aborted = true;
-    this.reason =
-      `Rate limit remaining (${this.remaining}) below threshold (${this.abortThreshold})`;
+    if (reset !== undefined) {
+      this.resetAt = new Date(Number(reset) * 1000);
+    }
 
     console.log(
-      `[CircuitBreaker] phase=trip remaining=${this.remaining} ` +
-      `threshold=${this.abortThreshold}`
+      `\t\t[GitHubRateLimit] limit=${this.limit} ` +
+        `used=${this.used} ` +
+        `remaining=${this.remaining} ` +
+        `resetAt=${this.resetAt?.toISOString()}`,
     );
+
+    if (this.remaining < this.abortThreshold) {
+      this.aborted = true;
+      this.reason = `Rate limit remaining (${this.remaining}) below threshold (${this.abortThreshold})`;
+
+      console.log(
+        `[CircuitBreaker] phase=trip remaining=${this.remaining} ` +
+          `threshold=${this.abortThreshold}`,
+      );
+    }
   }
-}
 
   /**
    * Whether collection should abort.

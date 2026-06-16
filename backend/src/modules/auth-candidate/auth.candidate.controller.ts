@@ -189,11 +189,7 @@ export class AuthCandidateController {
       'Validates credentials and returns auth state (tokens, MFA, onboarding, or verification).',
   })
   @ApiBody({ type: LoginDtoSchema })
-  async login(
-    @Body() dto: any,
-    @Req() req: any,
-    @Res() res: Response,
-  ) {
+  async login(@Body() dto: any, @Req() req: any, @Res() res: Response) {
     const result = await this.authService.login(dto);
     return this.handleAuthResponse(req, res, result);
   }
@@ -421,11 +417,7 @@ export class AuthCandidateController {
 
   @Post('mfa/verify')
   @ApiBody({ type: VerifyMfaDto })
-  async verifyMfa(
-    @Body() dto: any,
-    @Req() req: any,
-    @Res() res: Response,
-  ) {
+  async verifyMfa(@Body() dto: any, @Req() req: any, @Res() res: Response) {
     const result = await this.authService.verifyMfa(
       dto.userId,
       dto.code,
@@ -456,7 +448,8 @@ export class AuthCandidateController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get security settings',
-    description: 'Returns mfaEnabled status, hasPassword, and linkedProviders for the authenticated user.',
+    description:
+      'Returns mfaEnabled status, hasPassword, and linkedProviders for the authenticated user.',
   })
   @ApiOkResponse({
     description: 'Security info',
@@ -479,7 +472,8 @@ export class AuthCandidateController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Change or set password',
-    description: 'If the user already has a local password, currentPassword is required. If not (OAuth-only user), sets a password without requiring currentPassword.',
+    description:
+      'If the user already has a local password, currentPassword is required. If not (OAuth-only user), sets a password without requiring currentPassword.',
   })
   @ApiBody({
     schema: {
@@ -494,4 +488,3 @@ export class AuthCandidateController {
     return { success: true };
   }
 }
-

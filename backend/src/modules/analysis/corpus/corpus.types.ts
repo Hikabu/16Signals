@@ -83,7 +83,7 @@ export interface RepositorySignal {
 export interface CommitSignals {
   sampled_commit_count: number;
   commit_frequency_by_month: Record<string, number>; // 'YYYY-MM' -> count
-  
+
   merge_commit_ratio: number;
   message_quality_raw: string[]; // raw message text, sampled for LLM batch
   message_quality_scores: number[]; // 0–100, populated after LLM Wave 3
@@ -93,10 +93,9 @@ export interface CommitSignals {
   // complexity_trend_by_year: Record<string, number>; // from scc
   // test_to_code_ratio_by_repo: Record<string, number>; // from tokei
   // commit_size_histogram: number[]; // additions+deletions per non-merge commit
-// p25_commit_size_lines: number;
-//   median_commit_size_lines: number;
-//   sub_5_line_commit_ratio: number; // 0.0–1.0, excludes merge+doc commits
-
+  // p25_commit_size_lines: number;
+  //   median_commit_size_lines: number;
+  //   sub_5_line_commit_ratio: number; // 0.0–1.0, excludes merge+doc commits
 }
 
 export interface PerRepoAuthorStats {
@@ -109,7 +108,7 @@ export interface PerRepoAuthorStats {
 
 // ─── Group D: Collaboration & Review ─────────────────────────────────
 
-export interface CollaborationSignals { 
+export interface CollaborationSignals {
   contribution: ContributionBehaviorSignals;
   review: ReviewBehaviorSignals;
   maintenance: MaintenanceBehaviorSignals;
@@ -141,7 +140,6 @@ export interface MaintenanceBehaviorSignals {
   issueParticipationRaw: string[];
 }
 
-
 export interface ReviewStateDistribution {
   approved: number;
   changes_requested: number;
@@ -160,13 +158,11 @@ export interface AuthoredReviewData {
   created_at: string;
 }
 
-
 export interface IssueActivityData {
   issue_url: string;
   title: string;
   body: string;
 }
-
 
 // ─── Group E: Engineering Practices ──────────────────────────────────
 
@@ -183,7 +179,6 @@ export interface SecretLeakDetail {
   commit_sha: string;
   is_revoked: boolean;
 }
-
 
 // ─── Group G: Anti-Gaming Raw Inputs ─────────────────────────────────
 

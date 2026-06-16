@@ -37,7 +37,7 @@ export class GeminiClient implements LlmClient {
 
     this.logger.log(
       `[GeminiLLM] phase=initialized model=${this.model} ` +
-      `maxTokens=${this.maxTokens} temperature=${this.temperature}`,
+        `maxTokens=${this.maxTokens} temperature=${this.temperature}`,
     );
   }
 
@@ -73,8 +73,8 @@ export class GeminiClient implements LlmClient {
 
     this.logger.log(
       `[GeminiLLM] phase=call_complete ` +
-      `callType=${options?.requireJson ? 'json' : 'text'} ` +
-      `durationMs=${durationMs} responseLength=${content.length}`,
+        `callType=${options?.requireJson ? 'json' : 'text'} ` +
+        `durationMs=${durationMs} responseLength=${content.length}`,
     );
 
     return content;
@@ -99,29 +99,31 @@ export class GeminiClient implements LlmClient {
           const delay = Math.min(5000 * Math.pow(2, attempt - 1), 45000);
           this.logger.warn(
             `[GeminiLLM] phase=retry ` +
-            `callType=${options?.requireJson ? 'json' : 'text'} ` +
-            `attempt=${attempt}/${maxRetries} delayMs=${delay}`,
+              `callType=${options?.requireJson ? 'json' : 'text'} ` +
+              `attempt=${attempt}/${maxRetries} delayMs=${delay}`,
           );
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
         return await this.chatCompletion(systemPrompt, userPrompt, options);
       } catch (error) {
-        const err = error as any;
+        const err = error;
 
         // Don't retry on 4xx client errors (invalid request, auth, etc.)
         if (err.status && err.status >= 400 && err.status < 500) {
           this.logger.error(
             `[GeminiLLM] phase=client_error ` +
-            `status=${err.status} message=${err.message}`,
+              `status=${err.status} message=${err.message}`,
           );
           throw error;
         }
 
         // Don't retry on safety filter blocks
-        if (err.message?.includes('SAFETY') || err.message?.includes('RECITATION')) {
+        if (
+          err.message?.includes('SAFETY') ||
+          err.message?.includes('RECITATION')
+        ) {
           this.logger.error(
-            `[GeminiLLM] phase=safety_block ` +
-            `message=${err.message}`,
+            `[GeminiLLM] phase=safety_block ` + `message=${err.message}`,
           );
           throw error;
         }
