@@ -42,23 +42,12 @@ jobs:
       JWT_REFRESH_SECRET: ci-refresh-secret-with-at-least-thirty-two-chars
       JWT_MFA_SECRET: ci-mfa-secret-with-at-least-thirty-two-chars
       JWT_ONBOARDING_SECRET: ci-onboarding-secret-with-at-least-thirty-two-chars
-      JWT_EXPIRY: 15m
-      JWT_REFRESH_EXPIRY: 7d
-      JWT_ISSUER: colosseum-api
-      JWT_AUDIENCE: colosseum-client
       AUTH_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
-      PRIVY_APP_ID: ci-privy-app
-      PRIVY_SECRET: ci-privy-secret
-      PRIVY_JWKS_URL: https://auth.privy.io/api/v1/apps/ci-privy-app/jwks.json
-      PRIVY_BYPASS: "true"
       GITHUB_CLIENT_ID: ci-github-client-id
       GITHUB_CLIENT_SECRET: ci-github-client-secret
       GITHUB_SYSTEM_TOKEN: ci-github-system-token
       GOOGLE_CLIENT_ID: ci-google-client-id
       GOOGLE_CLIENT_SECRET: ci-google-client-secret
-      INTERNAL_API_KEY: ci-internal-api-key
-      HELIUS_WEBHOOK_SECRET: ci-helius-webhook-secret
-      WALLET_CHALLENGE_SECRET: ci-wallet-challenge-secret
       GOOGLE_AI_API_KEY: ci-google-ai-api-key
     services:
       postgres:
@@ -189,43 +178,18 @@ jobs:
               JWT_MFA_SECRET=JWT_MFA_SECRET:latest,\
               JWT_ONBOARDING_SECRET=JWT_ONBOARDING_SECRET:latest,\
               AUTH_ENCRYPTION_KEY=AUTH_ENCRYPTION_KEY:latest,\
-              PRIVY_SECRET=PRIVY_SECRET:latest,\
-              INTERNAL_API_KEY=INTERNAL_API_KEY:latest,\
-              HELIUS_API_KEY=HELIUS_API_KEY:latest,\
-              HELIUS_WEBHOOK_SECRET=HELIUS_WEBHOOK_SECRET:latest,\
-              WALLET_CHALLENGE_SECRET=WALLET_CHALLENGE_SECRET:latest,\
               RESEND_API_KEY=RESEND_API_KEY:latest,\
               GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,\
-              ALCHEMY_API_KEY=ALCHEMY_API_KEY:latest,\
               GITHUB_APP_ID=GITHUB_APP_ID:latest,\
               GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,\
               REDIS_HOST=REDIS_HOST:latest,\
-              CLOUDINARY_API_SECRET=CLOUDINARY_API_SECRET:latest,\
-              CLOUDINARY_API_KEY=CLOUDINARY_API_KEY:latest,\
               DIRECT_URL=DIRECT_URL:latest,\
-              PRIVY_JWKS_URL=PRIVY_JWKS_URL:latest" \
             --set-env-vars="\
               GITHUB_AUTH_ENABLED=true,\
               GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},\
-              PRIVY_APP_ID=${{ secrets.PRIVY_APP_ID }},\
-              SOLANA_RPC_URL=${{ secrets.SOLANA_RPC_URL }},\
-              SENTRY_DSN=${{ secrets.SENTRY_DSN }},\
-              RPC_URL=${{ secrets.RPC_URL }},\
-              SOLANA_DEVNET_RPC_URL=${{ secrets.SOLANA_DEVNET_RPC_URL }},\
               RESEND_FROM=${{ secrets.RESEND_FROM }},\
-              APP_BASE_URL=${{ secrets.APP_BASE_URL }},\
-              VOUCH_ICON_URL=${{ secrets.VOUCH_ICON_URL }},\
-              CLOUD_SQL_CONNECTION_NAME=${{ secrets.CLOUD_SQL_CONNECTION_NAME }},\
               NODE_ENV=production,\
-              USING_DEVNET=false,\
-              PRIVY_BYPASS=false,\
               REDIS_PORT=6379,\
               DB_NAME=${{ secrets.DB_NAME }},\
               SERVER_URL=${{ secrets.SERVER_URL }},\
-              FRONTEND_URL=${{ secrets.FRONTEND_URL }},\
-              CORS_ORIGINS=${{ secrets.CORS_ORIGINS}},\
-              JWT_EXPIRY=${{ secrets.JWT_EXPIRY}},\
-              JWT_REFRESH_EXPIRY=${{ secrets.JWT_REFRESH_EXPIRY}},\
-              JWT_ISSUER=${{ secrets.JWT_ISSUER}},\
-              JWT_AUDIENCE=${{ secrets.JWT_AUDIENCE}},\
-              RUN_WORKERS=${{ secrets.RUN_WORKERS}}"
+              FRONTEND_URL=${{ secrets.FRONTEND_URL}},\

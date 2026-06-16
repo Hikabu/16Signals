@@ -28,7 +28,7 @@ async function bootstrap() {
   app.use(helmet());
 
   const corsOrigins = (
-    process.env.CORS_ORIGINS ||
+    process.env.FRONTEND_URL ||
     process.env.FRONTEND_URL ||
     ''
   )

@@ -15,10 +15,10 @@ async function bootstrap() {
   });
 
   //ONLY TESTING
-  await debug_closeOpenJobs(app);
-  app.enableShutdownHooks();
-  registerShutdown(app);
-  logger.log('Worker is running');
+  // await debug_closeOpenJobs(app);
+  // app.enableShutdownHooks();
+  // registerShutdown(app);
+  // logger.log('Worker is running');
 }
 
 async function debug_closeOpenJobs(app: INestApplicationContext) {

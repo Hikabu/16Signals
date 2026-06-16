@@ -27,41 +27,15 @@ export const envSchema = z.object({
   JWT_SECRET: z.string(),
   JWT_ACCESS_SECRET: z.string(),
   JWT_REFRESH_SECRET: z.string(),
-  JWT_EXPIRY: z.string(),
-  JWT_REFRESH_EXPIRY: z.string(),
-  JWT_ISSUER: z.string(),
-  JWT_AUDIENCE: z.string(),
 
-  PRIVY_APP_ID: z.string(),
-  PRIVY_SECRET: z.string(),
-  PRIVY_JWKS_URL: z.string(),
-  PRIVY_BYPASS: z.string(),
-
-  ENCRYPTION_KEY: z.string().optional(),
-  INTERNAL_API_KEY: z.string().optional(),
   INTERNAL_SERVICE_KEY: z.string().optional(),
-
-  HELIUS_API_KEY: z.string().optional(),
-  HELIUS_WEBHOOK_SECRET: z.string().optional(),
-  WALLET_CHALLENGE_SECRET: z.string().optional(),
-  APP_BASE_URL: z.string().optional(),
-  VOUCH_ICON_URL: z.string().optional(),
-  SOLANA_RPC_URL: z.string().optional(),
-  SOLANA_DEVNET_RPC_URL: z.string().optional(),
-  USING_DEVNET: z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM: z.string().optional(),
-  SENTRY_DSN: z.string().optional(),
 
   GOOGLE_AI_API_KEY: z.string().optional(),
 
   RECLAIM_APP_ID: z.string().optional(),
   RECLAIM_APP_SECRET: z.string().optional(),
 
-  CLOUDINARY_CLOUD_NAME: z.string().optional(),
-  CLOUDINARY_API_KEY: z.string().optional(),
-  CLOUDINARY_API_SECRET: z.string().optional(),
-
-  PROCESS_CACHE: z.string().optional(),
 });
